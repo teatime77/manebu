@@ -4,6 +4,8 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
+    <script type="text/javascript" src="js/main.js" ></script>
+    <script type="text/javascript" src="js/speech.js" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -11,8 +13,17 @@
           margin-bottom: 10px;
         }
       </style>  
+
+<script type="text/javascript">
+
+  function body_onload(){
+      console.log("body load");
+      manebu.init_manebu();
+  }
+  </script>
+  
 </head>
-<body>
+<body onload="body_onload()">
 $$
 \newcommand{\P}{\mathcal{P}}
 \\
@@ -22,9 +33,12 @@ $$
 \newcommand{\U}{{}^\ast U}
 $$
 
+<button onclick="manebu.speak();">Press to manually speak</button>
+
+<textarea id="txt-math" cols="160" rows="8">
 $$
 \frac{1}{ {(2 \pi)}^{D/2}  } \frac{1}{ {\mid \Sigma \mid}^{ 1/2 }  } 
 \exp \{ - \frac{1}{2}   {(\v{x_n} - \v{\mu})}^T \Sigma^{-1} (\v{x_n} - \v{\mu}) \}
 $$
-
+</textarea>
 </body></html>
