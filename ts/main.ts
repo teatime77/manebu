@@ -4,9 +4,7 @@ declare var MathJax:any;
 
 var dom_list : (HTMLElement | SVGSVGElement)[] = [];
 var focused_mjx : MathMLNode | null = null;
-var current_mjx_idx : number = -1;
-var current_mjx : any = null;
-var current_mjx_color : any = null;
+var selected_mjx : MathMLNode[] = [];
 
 var svg : SVGSVGElement;
 var svg_ratio: number;
@@ -17,6 +15,28 @@ console.log("hello");
 
 function to_svg(x:number) : number{
     return x * svg_ratio;
+}
+
+function set_current_mjx(node : MathMLNode){
+    if(! selected_mjx.includes(node)){
+
+        selected_mjx.push(node);
+
+        node.ele.style.color = "red";
+
+        var rc = node.ele.getBoundingClientRect();
+
+        move_svg_rect(current_rect, rc.left, rc.top, rc.width, rc.height);
+    }
+}
+
+function restore_current_mjx_color(){
+    for(let node of selected_mjx){
+
+        node.ele.style.color = "unset";
+    }
+
+    selected_mjx = [];
 }
 
 class TextBlock {
@@ -36,44 +56,24 @@ class TextBlock {
         this.ele.addEventListener("click", this.onclick_block);
         
         this.ele.addEventListener('keydown', (event) => {          
-            if (event.key === 'Control') {
-              // do not alert when only Control key is pressed.
-              return;
-            }
+            // if (event.key === 'Control') {
+            //   // do not alert when only Control key is pressed.
+            //   return;
+            // }
 
-            if(focused_mjx == null || ! event.ctrlKey){
-                return;
-            }
+            // if(current_mjx == null || ! event.ctrlKey){
+            //     return;
+            // }
 
-            if (event.key === 'ArrowRight' || event.key === 'ArrowLeft'){
-                var nodes: MathMLNode[] = focused_mjx.get_descendants();
+            // if (event.key === 'ArrowUp'){
+            //     if(current_mjx.parent == null){
+            //         return;
+            //     }
 
-                if (event.key === 'ArrowRight'){
-
-                    if(current_mjx_idx + 1 < nodes.length){
-
-                        current_mjx_idx++;
-                    }
-                }
-                else{
-
-                    if(0 < current_mjx_idx){
-                        current_mjx_idx--;
-                    }
-                }
-
-                var node = nodes[current_mjx_idx];
-                if(node.ele == null){
-                    return;
-                }
-
-                var rc = node.ele.getBoundingClientRect();
-
-                move_svg_rect(current_rect, rc.left, rc.top, rc.width, rc.height);
-
-                console.log(`key down ${event.key} ${event.ctrlKey} ${rc}`);
-                return;
-            }
+            //     set_current_mjx(current_mjx.parent);
+            // }
+            // if (event.key === 'ArrowRight' || event.key === 'ArrowLeft'){
+            // }
 
             console.log(`key down ${event.key} ${event.ctrlKey}`);
           
@@ -89,6 +89,8 @@ class TextBlock {
     
     onclick_block=()=>{
         console.log("clicked");
+
+        restore_current_mjx_color();
 
         var ev = window.event as MouseEvent;
         ev.stopPropagation();
@@ -112,25 +114,72 @@ class TextBlock {
 
         focused_mjx = new MathMLNode(null, "", null);
         dump_mjx(focused_mjx, mjx_math, 0);
-        current_mjx_idx = 0;        
 
-        var nodes = focused_mjx.get_descendants();
-        var node_eles = nodes.map(x => x.ele);
+        var sel = window.getSelection();
+        
+        if(sel.rangeCount == 1){
 
-        for(var ele = ev.srcElement as HTMLElement;;){
-            if(ele.tagName != "SPAN"){
-                break;
+            var rng = sel.getRangeAt(0);
+            var st = MathMLNode.get_by_html_element(focused_mjx, rng.startContainer);
+            var ed = MathMLNode.get_by_html_element(focused_mjx, rng.endContainer);
+
+            if(st != null && ed != null){
+
+                if(st == ed){
+
+                    set_current_mjx(st);
+                }
+                else{
+
+                    var st_a = st.get_ancestors().reverse();
+                    var ed_a = ed.get_ancestors().reverse();
+
+                    for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
+                        if(st_a[nest] != ed_a[nest]){
+
+                            console.assert(nest != 0);
+
+                            var st_i = st_a[nest].get_index();
+                            var ed_i = ed_a[nest].get_index();
+    
+                            var nodes = st_a[nest - 1].children.slice(st_i, ed_i + 1);
+                            for(let nd of nodes){
+    
+                                set_current_mjx(nd);
+                            }    
+                        }
+                    }
+                    // if(st.parent != null && st.parent == ed.parent){
+
+                    //     var st_i = st.parent.children.indexOf(st);
+                    //     var ed_i = st.parent.children.indexOf(ed);
+
+                    //     for(var i = st_i; i <= ed_i; i++ ){
+
+                    //         set_current_mjx(st.parent.children[i]);
+                    //     }
+                    // }
+                    // else{
+
+                    //     set_current_mjx(st);
+                    //     set_current_mjx(ed);
+                    // }
+                }
             }
+            
 
-            var i = node_eles.indexOf(ele);
-            if(i != -1){
-
-                node_eles[i].style.color = "red";
-                break;
-            }
-
-            ele = ele.parentNode as HTMLElement;
+            // console.log(`start:[${st}]${rng.startContainer.nodeName} ${(rng.startContainer as HTMLElement).className}:${rng.startOffset} end:[${ed}]${rng.endContainer.nodeName} ${(rng.endContainer as HTMLElement).className}:${rng.endOffset}`);
         }
+
+        // var node = MathMLNode.get_by_html_element(focused_mjx, ev.srcElement as HTMLElement);
+        // if(node != null){
+
+        //     set_current_mjx(node);
+        // }
+
+
+        window.getSelection().removeAllRanges();
+
 
         if(ev.ctrlKey){
 
@@ -149,6 +198,45 @@ class MathMLNode {
         this.parent = parent;
         this.class_name = class_name;
         this.ele = ele;
+    }
+
+    static get_by_html_element(node: MathMLNode, src_ele_node: HTMLElement | Node) : MathMLNode | null{
+        var src_ele;
+
+        if(src_ele_node.nodeName == "#text"){
+            src_ele = src_ele_node.parentElement;
+        }
+        else{
+
+            src_ele = src_ele_node;
+        }
+
+        var nodes = node.get_descendants();
+
+        var map : Map<HTMLElement, MathMLNode> = new Map<HTMLElement, MathMLNode>( nodes.map(x => [x.ele, x] as [HTMLElement, MathMLNode]) );
+
+        for(var ele = src_ele;;){
+            if(ele.tagName != "SPAN"){
+                break;
+            }
+
+            if(map.has(ele)){
+
+                return map.get(ele);
+            }
+
+            ele = ele.parentNode as HTMLElement;
+        }
+
+        return null;
+    }
+
+    get_index(){
+        if(this.parent == null){
+            return -1;
+        }
+
+        return this.parent.children.indexOf(this);
     }
 
     dump(nest: number){
@@ -177,6 +265,17 @@ class MathMLNode {
         var nodes: MathMLNode[] = [];
         this.add_descendants(nodes);
         return nodes;
+    }
+
+    get_ancestors(): MathMLNode[] {
+        var nodes: MathMLNode[] = [];
+
+        for(var node : MathMLNode | null = this; node != null; node = node.parent){
+
+            nodes.push(node);
+        }
+
+        return nodes;        
     }
 }
 
@@ -316,9 +415,11 @@ function dump_mjx(parent:MathMLNode, ele: HTMLElement, nest: number ){
 function ontypeset(blc: TextBlock, id: number){
     console.log(`${blc.ele} ${id}`);
 
-    var pi = document.getElementById("MJXc-Node-14");
-    pi.style.color = "red";
+    var math_elements = blc.ele.getElementsByClassName("mjx-math");
+    for(let ele of math_elements){
 
+        // (ele as HTMLSpanElement).style.userSelect = "none";
+    }
 }
 
 function move_svg_rect(rect: SVGRectElement, x: number, y: number, width: number, height: number){
