@@ -6,6 +6,7 @@ var dom_list : (HTMLElement | SVGSVGElement)[] = [];
 var focused_mjx : MathMLNode | null = null;
 var selected_mjx : MathMLNode[] = [];
 
+var use_svg = false;
 var svg : SVGSVGElement;
 var svg_ratio: number;
 var current_rect : SVGRectElement;
@@ -24,9 +25,12 @@ function set_current_mjx(node : MathMLNode){
 
         node.ele.style.color = "red";
 
-        var rc = node.ele.getBoundingClientRect();
+        if(use_svg){
 
-        move_svg_rect(current_rect, rc.left, rc.top, rc.width, rc.height);
+            var rc = node.ele.getBoundingClientRect();
+
+            move_svg_rect(current_rect, rc.left, rc.top, rc.width, rc.height);
+        }
     }
 }
 
@@ -86,6 +90,44 @@ class TextBlock {
             // }
           }, false);        
     }
+
+    dump_ej(obj: any, nest: number){
+        if(obj == null){
+
+            console.log(`${" ".repeat(2 * nest)}null`)
+            return;
+        }
+        if (typeof obj === 'string' || obj instanceof String){
+
+            console.log(`${" ".repeat(2 * nest)}${obj}`)
+            return;
+        }
+
+        var name = "";
+        if(obj.nodeName != undefined){
+            name = obj.nodeName;
+        }
+
+
+        var id = "";
+        if(obj.CHTMLnodeID != undefined){
+            id = obj.CHTMLnodeID;
+
+            if(["mi", "mn", "mo"].includes(name)){
+                var text = document.getElementById(`MJXc-Node-${id}`).textContent;
+                console.log(`${" ".repeat(2 * nest)}name:${name} id:${id} text:${text}`);
+                return;
+            }
+        }
+
+        console.log(`${" ".repeat(2 * nest)}name:${name} id:${id}`)
+
+        if(obj.childNodes != undefined){
+            for(let nd of obj.childNodes){
+                this.dump_ej(nd, nest + 1);
+            }
+        }
+    }
     
     onclick_block=()=>{
         console.log("clicked");
@@ -115,13 +157,23 @@ class TextBlock {
         focused_mjx = new MathMLNode(null, "", null);
         dump_mjx(focused_mjx, mjx_math, 0);
 
+        var obj1 = MathJax.Hub.getAllJax([ev.srcElement]);
+
+        var src_mjx = focused_mjx.get_by_html_element(ev.srcElement as Node);
+        var obj2 = MathJax.Hub.getAllJax([src_mjx.ele]);
+        var obj3 = MathJax.Hub.getAllJax([src_mjx.ele.id]);
+        var obj4 = MathJax.Hub.getAllJax();
+        for(let ej of obj4){
+            this.dump_ej(ej.root, 0);
+        }
+
         var sel = window.getSelection();
         
         if(sel.rangeCount == 1){
 
             var rng = sel.getRangeAt(0);
-            var st = MathMLNode.get_by_html_element(focused_mjx, rng.startContainer);
-            var ed = MathMLNode.get_by_html_element(focused_mjx, rng.endContainer);
+            var st = focused_mjx.get_by_html_element(rng.startContainer);
+            var ed = focused_mjx.get_by_html_element(rng.endContainer);
 
             if(st != null && ed != null){
 
@@ -200,7 +252,7 @@ class MathMLNode {
         this.ele = ele;
     }
 
-    static get_by_html_element(node: MathMLNode, src_ele_node: HTMLElement | Node) : MathMLNode | null{
+    get_by_html_element(src_ele_node: HTMLElement | Node) : MathMLNode | null{
         var src_ele;
 
         if(src_ele_node.nodeName == "#text"){
@@ -211,7 +263,7 @@ class MathMLNode {
             src_ele = src_ele_node;
         }
 
-        var nodes = node.get_descendants();
+        var nodes = this.get_descendants();
 
         var map : Map<HTMLElement, MathMLNode> = new Map<HTMLElement, MathMLNode>( nodes.map(x => [x.ele, x] as [HTMLElement, MathMLNode]) );
 
@@ -430,6 +482,10 @@ function move_svg_rect(rect: SVGRectElement, x: number, y: number, width: number
 }
 
 function make_svg_rect(x: number, y: number, width: number, height: number) : SVGRectElement {
+    if(! use_svg){
+        return null;
+    }
+
     var rect : SVGRectElement = document.createElementNS("http://www.w3.org/2000/svg","rect");
 
     move_svg_rect(rect, x, y, width, height);
@@ -445,12 +501,15 @@ function make_svg_rect(x: number, y: number, width: number, height: number) : SV
 export function init_manebu(){
     console.log("body loaded");
 
-    svg  = document.getElementById("main-svg") as any as SVGSVGElement;
-    var rc = svg.getBoundingClientRect() as DOMRect;
-    svg_ratio = svg.viewBox.baseVal.width / rc.width;
+    if(use_svg){
 
-    make_svg_rect(0, 0, 100, 50);
-    current_rect = make_svg_rect(100, 50, 100, 50);
+        svg  = document.getElementById("main-svg") as any as SVGSVGElement;
+        var rc = svg.getBoundingClientRect() as DOMRect;
+        svg_ratio = svg.viewBox.baseVal.width / rc.width;
+
+        make_svg_rect(0, 0, 100, 50);
+        current_rect = make_svg_rect(100, 50, 100, 50);
+    }
 
 
 

@@ -26,13 +26,23 @@ export function init_speech(){
 
 var speech_idx = 0;
 var speech_texts = [
-    "エックスエヌにニューを代入します。",
-    "9.52と9.53から",
-    "これをzで周辺化します。",
-    "ベイズの定理を使うと、",
-    "分母を周辺化します。",
-    "Jをμkで微分して0とおくと、",
+    'エックスエヌに<break/><mark name="1"/>ニューを代入します。',
+    '9.52と<break/><mark name="1"/>9.53から',
+    'これを<break/><mark name="1"/>zで<break/><mark name="2"/>周辺化します。',
+    'ベイズの<break/><mark name="1"/>定理を<break/><mark name="2"/>使うと、',
+    '分母を<break/><mark name="1"/>周辺化します。',
+    'Jをμkで<break/><mark name="1"/>微分して<break/><mark name="2"/>0とおくと、',
 ];
+speech_texts = [
+    'エックスエヌにニューを代入します。',
+    '9.52と9.53から',
+    'これをzで周辺化します。',
+    'ベイズの定理を使うと、',
+    '分母を周辺化します。',
+    'Jをμkで微分して0とおくと、',
+];
+
+var prev_idx = 0;
 
 function speak_next(){
     if(speech_texts.length <= speech_idx){
@@ -43,13 +53,42 @@ function speak_next(){
     var text = speech_texts[speech_idx];
     speech_idx++;
 
-    console.log(text)
-    const uttr = new SpeechSynthesisUtterance(text);
+    var ssml_text = `<?xml version="1.0"?>\r\n<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">${text}</speak>`;
+
+    ssml_text =     '<?xml version="1.0"?>\r\n<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">' + text + '</speak>';
+    ssml_text = text;
+
+
+    console.log(ssml_text)
+
+    const uttr = new SpeechSynthesisUtterance(ssml_text);
 
     // uttr.voice = google_jp;
     // 発言を再生 (発言キューに発言を追加)
 
-    uttr.onend = speak_next;
+    // uttr.onend = speak_next;
+    uttr.onend = function(ev: SpeechSynthesisEvent ) { 
+        console.log(`end: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prev_idx, ev.charIndex)}`);
+
+        prev_idx = 0;
+
+        speak_next();
+    };
+
+
+    uttr.onmark = function(event) { 
+        console.log('A mark was reached: ' + event.name);
+    };
+
+    prev_idx = 0;
+    uttr.onboundary = function(ev: SpeechSynthesisEvent ) { 
+        console.log(`bdr: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prev_idx, ev.charIndex)}`);
+        prev_idx = ev.charIndex;
+    };
+
+    // uttr.addEventListener('mark', function(event) { 
+    //     console.log('A mark was reached: ' + event.name);
+    // });
 
     speechSynthesis.speak(uttr);
 }

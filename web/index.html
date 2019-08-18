@@ -24,7 +24,7 @@
   
 </head>
 <body onload="body_onload()" style="margin:0px; padding:0px">
-<svg id="main-svg" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="position: absolute; margin:0px; padding:0px; left: 0px; right: 0px; width:1000px; height:1000px; border-style: solid; border-width: 1px; border-color:blue;" ></svg>
+<!-- <svg id="main-svg" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="position: absolute; margin:0px; padding:0px; left: 0px; right: 0px; width:1000px; height:1000px; border-style: solid; border-width: 1px; border-color:blue;" ></svg> -->
 
 <!-- $$
 \newcommand{\P}{\mathcal{P}}
@@ -40,8 +40,10 @@ $$ -->
 <textarea id="txt-math" cols="160" rows="8">
 これは$\sqrt{2 \pi}$二乗です。
 $$
+\v{x_n}^2 + \v{x_n} + \v{x}^2
+\\
 \frac{1}{ {(2 \pi)}^{D/2}  } \frac{1}{ {\mid \Sigma \mid}^{ 1/2 }  } 
-\exp \{ - \frac{1}{2}   {(\v{x_n} - \v{\mu})}^T \Sigma^{-1} (\v{x_n} - \v{\mu}) \}
+\exp \{ - \frac{1}{2}   {(\v{x_n}^2 - \v{\mu})}^T \Sigma^{-1} (\v{x_n} - \v{\mu}^2) \}
 $$
 </textarea>
 
