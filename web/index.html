@@ -34,9 +34,25 @@
 \newcommand{\U}{{}^\ast U}
 $$ -->
 
-<button onclick="manebu.speak();">Press to manually speak</button>
+<table>
+  <tr>
+    <td>
+      メニュー
+      <button onclick="manebu.speak();">音声合成のテスト</button>  
+    </td>
+  </tr>
 
-<textarea id="txt-math" cols="160" rows="8">
+  <tr>
+      <td>
+        数式<br/>
+        <div id="div-math"></div>      
+      </td>
+  </tr>
+
+  <tr>
+      <td>
+        入力 &#x1f640;<br/>
+        <textarea id="txt-math" cols="160" rows="8" onblur="manebu.txt_math_onblur" onselect="manebu.txt_math_onselect()" >
 これは$\sqrt{2 \pi}$二乗です。
 $$
 \v{x_n}^2 + \v{x_n} + \v{x}^2
@@ -44,7 +60,18 @@ $$
 \frac{1}{ {(2 \pi)}^{D/2}  } \frac{1}{ {\mid \Sigma \mid}^{ 1/2 }  } 
 \exp \{ - \frac{1}{2}   {(\v{x_n}^2 - \v{\mu})}^T \Sigma^{-1} (\v{x_n} - \v{\mu}^2) \}
 $$
-</textarea>
+        </textarea>
+      </td>
+  </tr>
+
+  <tr>
+      <td>
+        メッセージ      
+      </td>
+  </tr>
+</table>
+
+
 
 
 </body></html>

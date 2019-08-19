@@ -2,30 +2,70 @@
 namespace manebu {
 declare var MathJax:any;
 
-var focused_mjx : MathMLNode | null = null;
-var selected_mjx : MathMLNode[] = [];
+var selected_mjx : HTMLElement[] = [];
 
 
 console.log("hello");
 
 
-function set_current_mjx(node : MathMLNode){
+function set_current_mjx(node : HTMLElement){
     if(! selected_mjx.includes(node)){
 
         selected_mjx.push(node);
 
-        node.ele.style.color = "red";
+        node.style.color = "red";
     }
 }
 
 function restore_current_mjx_color(){
     for(let node of selected_mjx){
 
-        node.ele.style.color = "unset";
+        node.style.color = "unset";
     }
 
     selected_mjx = [];
 }
+
+function* getElementJax(node:any){
+    if(node != null && node.nodeName != undefined && node.CHTMLnodeID != undefined){
+
+        yield node;
+
+        if(! ["mi", "mn", "mo"].includes(node.nodeName)){
+
+            if(node.childNodes != undefined){
+                for(let nd of node.childNodes){
+                    yield* getElementJax(nd);
+                }
+            }
+        }
+    }
+}
+
+function* getElementJaxAncestor(node:any){
+    for(let nd = node.parent; nd != undefined; nd = nd.parent){
+        yield nd;
+    }
+}
+
+function getDomAncestor(node){
+    function* fnc(node){
+        for(let nd = node; nd != null; nd = nd.parentNode){
+            yield nd;
+        }
+    }
+
+    return Array.from(fnc(node));
+}
+
+function getDomFromJax(node) : HTMLElement{
+    return document.getElementById(`MJXc-Node-${node.CHTMLnodeID}`);
+}
+
+function getJaxIndex(node){
+    return node.parent.childNodes.indexOf(node);
+}
+
 
 class TextBlock {
     text: string;
@@ -74,44 +114,6 @@ class TextBlock {
             // }
           }, false);        
     }
-
-    dump_ej(obj: any, nest: number){
-        if(obj == null){
-
-            console.log(`${" ".repeat(2 * nest)}null`)
-            return;
-        }
-        if (typeof obj === 'string' || obj instanceof String){
-
-            console.log(`${" ".repeat(2 * nest)}${obj}`)
-            return;
-        }
-
-        var name = "";
-        if(obj.nodeName != undefined){
-            name = obj.nodeName;
-        }
-
-
-        var id = "";
-        if(obj.CHTMLnodeID != undefined){
-            id = obj.CHTMLnodeID;
-
-            if(["mi", "mn", "mo"].includes(name)){
-                var text = document.getElementById(`MJXc-Node-${id}`).textContent;
-                console.log(`${" ".repeat(2 * nest)}name:${name} id:${id} text:${text}`);
-                return;
-            }
-        }
-
-        console.log(`${" ".repeat(2 * nest)}name:${name} id:${id}`)
-
-        if(obj.childNodes != undefined){
-            for(let nd of obj.childNodes){
-                this.dump_ej(nd, nest + 1);
-            }
-        }
-    }
     
     onclick_block=()=>{
         console.log("clicked");
@@ -138,17 +140,24 @@ class TextBlock {
             return;
         }
 
-        focused_mjx = new MathMLNode(null, "", null);
-        dump_mjx(focused_mjx, mjx_math, 0);
-
-        var obj1 = MathJax.Hub.getAllJax([ev.srcElement]);
-
-        var src_mjx = focused_mjx.get_by_html_element(ev.srcElement as Node);
-        var obj2 = MathJax.Hub.getAllJax([src_mjx.ele]);
-        var obj3 = MathJax.Hub.getAllJax([src_mjx.ele.id]);
         var obj4 = MathJax.Hub.getAllJax();
+        var map = new Map<HTMLElement, any>();
         for(let ej of obj4){
-            this.dump_ej(ej.root, 0);
+            for(let node of getElementJax(ej.root)){
+
+                var nest = Array.from( getElementJaxAncestor(node) ).length;
+
+                var ele = getDomFromJax(node);
+                map.set(ele, node);
+                if(["mi", "mn", "mo"].includes(node.nodeName)){
+                    var text = ele.textContent;
+                    console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName} ${text}`);
+                }
+                else{
+
+                    console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName}`);
+                }    
+            }
         }
 
         var sel = window.getSelection();
@@ -156,164 +165,45 @@ class TextBlock {
         if(sel.rangeCount == 1){
 
             var rng = sel.getRangeAt(0);
-            var st = focused_mjx.get_by_html_element(rng.startContainer);
-            var ed = focused_mjx.get_by_html_element(rng.endContainer);
 
-            if(st != null && ed != null){
+            if(rng.startContainer == rng.endContainer){
 
-                if(st == ed){
+                var v = getDomAncestor(rng.startContainer).filter(x => map.has(x));
+                if(v.length != 0){
 
-                    set_current_mjx(st);
-                }
-                else{
-
-                    var st_a = st.get_ancestors().reverse();
-                    var ed_a = ed.get_ancestors().reverse();
-
-                    for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
-                        if(st_a[nest] != ed_a[nest]){
-
-                            console.assert(nest != 0);
-
-                            var st_i = st_a[nest].get_index();
-                            var ed_i = ed_a[nest].get_index();
-    
-                            var nodes = st_a[nest - 1].children.slice(st_i, ed_i + 1);
-                            for(let nd of nodes){
-    
-                                set_current_mjx(nd);
-                            }    
-                        }
-                    }
-                    // if(st.parent != null && st.parent == ed.parent){
-
-                    //     var st_i = st.parent.children.indexOf(st);
-                    //     var ed_i = st.parent.children.indexOf(ed);
-
-                    //     for(var i = st_i; i <= ed_i; i++ ){
-
-                    //         set_current_mjx(st.parent.children[i]);
-                    //     }
-                    // }
-                    // else{
-
-                    //     set_current_mjx(st);
-                    //     set_current_mjx(ed);
-                    // }
+                    set_current_mjx(v[0]);
                 }
             }
-            
+            else{
 
-            // console.log(`start:[${st}]${rng.startContainer.nodeName} ${(rng.startContainer as HTMLElement).className}:${rng.startOffset} end:[${ed}]${rng.endContainer.nodeName} ${(rng.endContainer as HTMLElement).className}:${rng.endOffset}`);
+                var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+                var ed_a = getDomAncestor(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+
+                for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
+                    if(st_a[nest] != ed_a[nest]){
+
+                        console.assert(nest != 0);
+
+                        var st_i = getJaxIndex(st_a[nest]);
+                        var ed_i = getJaxIndex(ed_a[nest]);
+
+                        var nodes = st_a[nest - 1].childNodes.slice(st_i, ed_i + 1);
+                        for(let nd of nodes){
+
+                            if(nd != null){
+
+                                set_current_mjx(getDomFromJax(nd));
+                            }
+                        }    
+                    }
+                }
+            }
         }
-
-        // var node = MathMLNode.get_by_html_element(focused_mjx, ev.srcElement as HTMLElement);
-        // if(node != null){
-
-        //     set_current_mjx(node);
-        // }
-
 
         window.getSelection().removeAllRanges();
-
-
-        if(ev.ctrlKey){
-
-            focused_mjx.dump(0);
-        }
     }
 }
 
-class MathMLNode {
-    parent: MathMLNode | null;
-    class_name : string;
-    ele   : HTMLElement | null;
-    children : MathMLNode[] = [];
-
-    constructor(parent: MathMLNode | null, class_name: string, ele   : HTMLElement | null){
-        this.parent = parent;
-        this.class_name = class_name;
-        this.ele = ele;
-    }
-
-    get_by_html_element(src_ele_node: HTMLElement | Node) : MathMLNode | null{
-        var src_ele;
-
-        if(src_ele_node.nodeName == "#text"){
-            src_ele = src_ele_node.parentElement;
-        }
-        else{
-
-            src_ele = src_ele_node;
-        }
-
-        var nodes = this.get_descendants();
-
-        var map : Map<HTMLElement, MathMLNode> = new Map<HTMLElement, MathMLNode>( nodes.map(x => [x.ele, x] as [HTMLElement, MathMLNode]) );
-
-        for(var ele = src_ele;;){
-            if(ele.tagName != "SPAN"){
-                break;
-            }
-
-            if(map.has(ele)){
-
-                return map.get(ele);
-            }
-
-            ele = ele.parentNode as HTMLElement;
-        }
-
-        return null;
-    }
-
-    get_index(){
-        if(this.parent == null){
-            return -1;
-        }
-
-        return this.parent.children.indexOf(this);
-    }
-
-    dump(nest: number){
-        if([ "mi", "mn", "mo" ].includes(this.class_name)){
-
-            console.log(`${" ".repeat(nest * 2)}${this.class_name} [${this.ele.textContent}]`);
-        }
-        else{
-
-            console.log(`${" ".repeat(nest * 2)}${this.class_name}`);
-        }
-
-        for(let node of this.children){
-            node.dump(nest + 1);
-        }
-    }
-
-    add_descendants(nodes: MathMLNode[]){
-        nodes.push(this);
-        for(let node of this.children){
-            node.add_descendants(nodes);
-        }
-    }
-    
-    get_descendants() : MathMLNode[]{
-        var nodes: MathMLNode[] = [];
-        this.add_descendants(nodes);
-        return nodes;
-    }
-
-    get_ancestors(): MathMLNode[] {
-        var nodes: MathMLNode[] = [];
-
-        for(var node : MathMLNode | null = this; node != null; node = node.parent){
-
-            nodes.push(node);
-        }
-
-        return nodes;        
-    }
-}
 
 function get_indent(line: string) : [number, string]{
     var indent = 0;
@@ -406,44 +296,10 @@ function make_html_lines(text: string){
 function make_div(text: string){
     var ele = document.createElement("div");
     ele.innerHTML = make_html_lines(text);
-    document.body.appendChild(ele);
+
+    document.getElementById("div-math").appendChild(ele);
 
     return ele;
-}
-
-function dump_mjx(parent:MathMLNode, ele: HTMLElement, nest: number ){
-    var class_name = null;
-
-    if(ele.className != undefined && ele.className.startsWith("mjx-m")){
-
-        class_name = ele.className.split(' ')[0].substring(4);
-        if(class_name == "mo" && ele.textContent.trim() == ""){
-
-            console.log("空白の除去");
-            return;
-        }
-
-        var node = new MathMLNode(parent, class_name, ele);
-        parent.children.push(node);
-        if([ "mi", "mn", "mo" ].includes(class_name)){
-
-            return;
-        }
-        parent = node
-        nest++;
-    }
-
-    for(let ele2 of ele.childNodes){
-        dump_mjx(parent, ele2 as HTMLElement, nest);
-    }
-
-    if(class_name == "mrow" && parent != null && parent.parent != null && parent.children.length == 1){
-        var idx = parent.parent.children.indexOf(parent);
-        console.assert(idx != -1);
-
-        console.log("mrowの簡約化");
-        parent.parent.children[idx] = parent.children[0];
-    }
 }
 
 function ontypeset(blc: TextBlock, id: number){
@@ -459,8 +315,6 @@ function ontypeset(blc: TextBlock, id: number){
 export function init_manebu(){
     console.log("body loaded");
 
-
-
     init_speech();
 
     let s = (document.getElementById("txt-math") as HTMLTextAreaElement).value;
@@ -470,5 +324,25 @@ export function init_manebu(){
 
     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
     MathJax.Hub.Queue([ontypeset, blc, 123]);
+
+    var txt_math = document.getElementById("txt-math") as HTMLTextAreaElement;
+    txt_math.onblur = function(ev:FocusEvent){
+        
+        var sel = window.getSelection();
+        
+        if(sel.rangeCount == 1){
+
+            var rng = sel.getRangeAt(0);
+            console.log(`blur2 ${ev} ${sel.rangeCount} start:${txt_math.selectionStart} end:${txt_math.selectionEnd}`);
+        }
+        txt_math.value = txt_math.value.substring(0, txt_math.selectionStart) + "🙀" + txt_math.value.substring(txt_math.selectionEnd);
+    }
+
+}
+export function txt_math_onselect(ev){
+    console.log(`select ${ev}`);
+}
+export function txt_math_onblur(ev){
+    console.log(`blur ${ev}`);
 }
 }
