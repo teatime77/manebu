@@ -2,21 +2,12 @@
 namespace manebu {
 declare var MathJax:any;
 
-var dom_list : (HTMLElement | SVGSVGElement)[] = [];
 var focused_mjx : MathMLNode | null = null;
 var selected_mjx : MathMLNode[] = [];
 
-var use_svg = false;
-var svg : SVGSVGElement;
-var svg_ratio: number;
-var current_rect : SVGRectElement;
 
 console.log("hello");
 
-
-function to_svg(x:number) : number{
-    return x * svg_ratio;
-}
 
 function set_current_mjx(node : MathMLNode){
     if(! selected_mjx.includes(node)){
@@ -24,13 +15,6 @@ function set_current_mjx(node : MathMLNode){
         selected_mjx.push(node);
 
         node.ele.style.color = "red";
-
-        if(use_svg){
-
-            var rc = node.ele.getBoundingClientRect();
-
-            move_svg_rect(current_rect, rc.left, rc.top, rc.width, rc.height);
-        }
     }
 }
 
@@ -423,8 +407,6 @@ function make_div(text: string){
     var ele = document.createElement("div");
     ele.innerHTML = make_html_lines(text);
     document.body.appendChild(ele);
-    
-    dom_list.push(ele);
 
     return ele;
 }
@@ -474,42 +456,8 @@ function ontypeset(blc: TextBlock, id: number){
     }
 }
 
-function move_svg_rect(rect: SVGRectElement, x: number, y: number, width: number, height: number){
-    rect.setAttribute("x", `${to_svg(x)}`);
-    rect.setAttribute("y", `${to_svg(y)}`);
-    rect.setAttribute("width", `${to_svg(width)}`);
-    rect.setAttribute("height", `${to_svg(height)}`);
-}
-
-function make_svg_rect(x: number, y: number, width: number, height: number) : SVGRectElement {
-    if(! use_svg){
-        return null;
-    }
-
-    var rect : SVGRectElement = document.createElementNS("http://www.w3.org/2000/svg","rect");
-
-    move_svg_rect(rect, x, y, width, height);
-    rect.setAttribute("fill", "transparent");
-    rect.setAttribute("stroke", "red");
-    rect.setAttribute("stroke-width", `${to_svg(1)}`);
-
-    svg.appendChild(rect);
-
-    return rect;
-}
-
 export function init_manebu(){
     console.log("body loaded");
-
-    if(use_svg){
-
-        svg  = document.getElementById("main-svg") as any as SVGSVGElement;
-        var rc = svg.getBoundingClientRect() as DOMRect;
-        svg_ratio = svg.viewBox.baseVal.width / rc.width;
-
-        make_svg_rect(0, 0, 100, 50);
-        current_rect = make_svg_rect(100, 50, 100, 50);
-    }
 
 
 
