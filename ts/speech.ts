@@ -93,8 +93,37 @@ function speak_next(){
     speechSynthesis.speak(uttr);
 }
 
-export function speak(){
-    speak_next();
+export function addSpeech(text: string){
+    if(text == ""){
+        return;
+    }
+    textMath.value = "";
+
+    actions.push(new SpeechAction(text));
+}
+
+export function* speak(act: SpeechAction){
+    const uttr = new SpeechSynthesisUtterance(act.text);
+
+    // uttr.voice = google_jp;
+    // 発言を再生 (発言キューに発言を追加)
+
+    var ended = false;
+    uttr.onend = function(ev: SpeechSynthesisEvent ) {
+        ended = true;
+        console.log(`end: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prev_idx, ev.charIndex)}`);
+    };
+
+    uttr.onboundary = function(ev: SpeechSynthesisEvent ) { 
+        console.log(`bdr: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prev_idx, ev.charIndex)}`);
+        prev_idx = ev.charIndex;
+    };
+
+    speechSynthesis.speak(uttr);
+
+    while(! ended){
+        yield;
+    }
 }
 
 }

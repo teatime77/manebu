@@ -3,7 +3,8 @@ namespace manebu {
 declare var MathJax:any;
 
 var selected_mjx : HTMLElement[] = [];
-
+export var textMath : HTMLTextAreaElement;
+var divMath : HTMLDivElement;
 
 console.log("hello");
 
@@ -66,6 +67,34 @@ function getJaxIndex(node){
     return node.parent.childNodes.indexOf(node);
 }
 
+class Action {
+    type: string;
+
+    constructor(type: string){
+        this.type = type;
+    }
+}
+
+export var actions : Action[] = [];
+export var action_pos : number = 0;
+
+export class TextBlockAction extends Action {
+    text: string;
+
+    constructor(text: string){
+        super("TextBlockAction");
+        this.text = text;
+    }
+}
+
+export class SpeechAction extends Action {
+    text: string;
+
+    constructor(text: string){
+        super("SpeechAction");
+        this.text = text;
+    }
+}
 
 class TextBlock {
     text: string;
@@ -297,11 +326,16 @@ function make_div(text: string){
     var ele = document.createElement("div");
     ele.innerHTML = make_html_lines(text);
 
-    document.getElementById("div-math").appendChild(ele);
+    if(divMath.childNodes.length != 0){
+
+        divMath.appendChild(document.createElement("hr"));
+    }
+    divMath.appendChild(ele);
 
     return ele;
 }
 
+var typeset_ended = false;
 function ontypeset(blc: TextBlock, id: number){
     console.log(`${blc.ele} ${id}`);
 
@@ -310,6 +344,13 @@ function ontypeset(blc: TextBlock, id: number){
 
         // (ele as HTMLSpanElement).style.userSelect = "none";
     }
+
+    typeset_ended = true;
+}
+
+
+export function addTextBlock(text: string){
+    actions.push(new TextBlockAction(text));
 }
 
 export function init_manebu(){
@@ -317,25 +358,25 @@ export function init_manebu(){
 
     init_speech();
 
-    let s = (document.getElementById("txt-math") as HTMLTextAreaElement).value;
+    divMath = document.getElementById("div-math") as HTMLDivElement;
+    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
 
-    var blc = new TextBlock(s);
-    blc.make();
+    // addTextBlock(textMath.value);
 
-    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-    MathJax.Hub.Queue([ontypeset, blc, 123]);
-
-    var txt_math = document.getElementById("txt-math") as HTMLTextAreaElement;
-    txt_math.onblur = function(ev:FocusEvent){
+    textMath.onblur = function(ev:FocusEvent){
+        console.log(`blur:${textMath.value.charAt(0)} ${textMath.value.charCodeAt(0).toString(16)} ${"🙀".charCodeAt(0).toString(16)}`);
+        if(textMath.value.charCodeAt(0) != "🙀".charCodeAt(0)){
+            return;
+        }
         
         var sel = window.getSelection();
         
         if(sel.rangeCount == 1){
 
             var rng = sel.getRangeAt(0);
-            console.log(`blur2 ${ev} ${sel.rangeCount} start:${txt_math.selectionStart} end:${txt_math.selectionEnd}`);
+            console.log(`blur2 ${ev} ${sel.rangeCount} start:${textMath.selectionStart} end:${textMath.selectionEnd}`);
         }
-        txt_math.value = txt_math.value.substring(0, txt_math.selectionStart) + "🙀" + txt_math.value.substring(txt_math.selectionEnd);
+        textMath.value = textMath.value.substring(0, textMath.selectionStart) + "🙀" + textMath.value.substring(textMath.selectionEnd);
     }
 
 }
@@ -345,4 +386,51 @@ export function txt_math_onselect(ev){
 export function txt_math_onblur(ev){
     console.log(`blur ${ev}`);
 }
+
+function* makeTextBlock(act: TextBlockAction){
+    typeset_ended = false;
+
+    var blc = new TextBlock(act.text);
+    blc.make();
+    textMath.value = "";
+
+    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    MathJax.Hub.Queue([ontypeset, blc, 123]);
+
+    while(! typeset_ended){
+        yield;
+    }
+}
+
+function* play_gen(start_pos: number){
+    for(action_pos = start_pos; action_pos < actions.length; action_pos++){
+        var act = actions[action_pos];
+        switch(act.type){
+        case "TextBlockAction":
+            yield* makeTextBlock(act as TextBlockAction);
+            break;
+        case "SpeechAction":
+            
+            yield* speak(act as SpeechAction);
+            break;
+        }
+    }
+}
+
+export function play(pos:number){
+    var gen = play_gen(pos);
+    var id = setInterval(function(){
+        var ret = gen.next();
+        if(ret.done){
+            clearInterval(id);
+        }
+    },100);
+}
+
+export function resume(){
+    if(action_pos < actions.length){
+        play(action_pos);
+    }
+}
+
 }

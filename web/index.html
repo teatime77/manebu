@@ -16,11 +16,53 @@
 
 <script type="text/javascript">
 
-  function body_onload(){
-      console.log("body load");
-      manebu.init_manebu();
-  }
-  </script>
+function body_onload(){
+    console.log("body load");
+    manebu.init_manebu();
+}
+function loadData(){
+    var this_url = window.location.href;
+    var k = this_url.lastIndexOf('/');
+    var data_url = this_url.substring(0, k) + "/data/data.json";
+
+    fetch(data_url)
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(json_data) {
+        console.log(JSON.stringify(json_data));
+
+        manebu.actions = json_data;
+        manebu.play(0)
+    });
+}
+
+function startPlay(){
+    manebu.play(0)
+}
+
+function copyData(){
+    var s = JSON.stringify(manebu.actions);
+    console.log(s);
+
+    navigator.clipboard.writeText(s).then(function() {
+        console.log("copy ok");
+    }, 
+    function() {
+      console.log("copy ng");
+    });    
+}
+
+function addTextBlock_resume(){
+    manebu.addTextBlock(manebu.textMath.value);
+    manebu.resume();
+}
+
+function addSpeech_resume(){
+    manebu.addSpeech(manebu.textMath.value);
+    manebu.resume();
+}
+</script>
   
 </head>
 <body onload="body_onload()" style="margin:0px; padding:0px">
@@ -38,21 +80,25 @@ $$ -->
   <tr>
     <td>
       メニュー
+      <button onclick="loadData();">開く</button>  
+      <button onclick="copyData();">コピー</button>  
+      <button onclick="startPlay();">再生</button>  
       <button onclick="manebu.speak();">音声合成のテスト</button>  
     </td>
+    <td style="width: 200px" ></td>
   </tr>
 
   <tr>
       <td>
         数式<br/>
-        <div id="div-math"></div>      
+        <div id="div-math" style="width: 600px"></div>      
       </td>
   </tr>
 
   <tr>
       <td>
         入力 &#x1f640;<br/>
-        <textarea id="txt-math" cols="160" rows="8" onblur="manebu.txt_math_onblur" onselect="manebu.txt_math_onselect()" >
+        <textarea id="txt-math" cols="80" rows="8" onblur="manebu.txt_math_onblur" onselect="manebu.txt_math_onselect()" >
 これは$\sqrt{2 \pi}$二乗です。
 $$
 \v{x_n}^2 + \v{x_n} + \v{x}^2
@@ -62,7 +108,11 @@ $$
 $$
         </textarea>
       </td>
-  </tr>
+      <td>
+          <button onclick="addTextBlock_resume()">テキストを追加</button> <hr/>
+          <button onclick="addSpeech_resume()">音声を追加</button>  
+      </td>
+    </tr>
 
   <tr>
       <td>
