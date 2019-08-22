@@ -8,6 +8,11 @@ var divMath : HTMLDivElement;
 
 console.log("hello");
 
+function last<T>(v:Array<T>) : T{
+    console.assert(v.length != 0);
+
+    return v[v.length - 1];
+}
 
 function set_current_mjx(node : HTMLElement){
     if(! selected_mjx.includes(node)){
@@ -43,10 +48,15 @@ function* getElementJax(node:any){
     }
 }
 
-function* getElementJaxAncestor(node:any){
-    for(let nd = node.parent; nd != undefined; nd = nd.parent){
-        yield nd;
+function getElementJaxAncestor(node:any){
+
+    function* fnc(node:any){
+        for(let nd = node.parent; nd != undefined; nd = nd.parent){
+            yield nd;
+        }
     }
+
+    return Array.from(fnc(node));
 }
 
 function getDomAncestor(node){
@@ -65,6 +75,67 @@ function getDomFromJax(node) : HTMLElement{
 
 function getJaxIndex(node){
     return node.parent.childNodes.indexOf(node);
+}
+
+function dumpJax(root:any){
+    for(let node of getElementJax(root)){
+
+        var nest = getElementJaxAncestor(node).length;
+
+        var ele = getDomFromJax(node);
+        if(["mi", "mn", "mo"].includes(node.nodeName)){
+            var text = ele.textContent;
+            console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName} ${text}`);
+        }
+        else{
+
+            console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName}`);
+        }    
+    }
+}
+
+function makeDomJaxMap() : [any, Map<HTMLElement, any>]{
+    var all_jax = MathJax.Hub.getAllJax();
+    var map = new Map<HTMLElement, any>();
+    for(let ej of all_jax){
+        for(let node of getElementJax(ej.root)){
+
+            var ele = getDomFromJax(node);
+            map.set(ele, node);
+        }
+    }
+
+    return [all_jax, map];
+}
+
+function getJaxPath(jax_idx: number, jax_list:any[], max_nest: number) : any[]{
+    var path : any[] = [];
+
+    var parent = jax_list[0];
+
+    path.push({ "idx": jax_idx, "nodeName": parent.nodeName});
+
+    for(var nest = 1; nest <= max_nest; nest++){
+        var jax = jax_list[nest];
+        var idx = parent.childNodes.indexOf(jax);
+        console.assert(idx != -1);
+        path.push({ "idx": idx, "nodeName": jax.nodeName});
+        parent = jax;
+    }
+
+    return path;
+}
+
+function getJaxFromPath(all_jax:any[], path:any[]){
+    var node = all_jax[path[0]["idx"]].root;
+    console.assert(node.nodeName == path[0]["nodeName"])
+
+    for(let obj of path.slice(1)){
+        node = node.childNodes[obj["idx"]];
+        console.assert(node.nodeName == obj["nodeName"])
+    }
+
+    return node;
 }
 
 class Action {
@@ -93,6 +164,13 @@ export class SpeechAction extends Action {
     constructor(text: string){
         super("SpeechAction");
         this.text = text;
+    }
+}
+
+export class SelectionAction extends Action {
+
+    constructor(){
+        super("SelectionAction");
     }
 }
 
@@ -169,25 +247,7 @@ class TextBlock {
             return;
         }
 
-        var obj4 = MathJax.Hub.getAllJax();
-        var map = new Map<HTMLElement, any>();
-        for(let ej of obj4){
-            for(let node of getElementJax(ej.root)){
-
-                var nest = Array.from( getElementJaxAncestor(node) ).length;
-
-                var ele = getDomFromJax(node);
-                map.set(ele, node);
-                if(["mi", "mn", "mo"].includes(node.nodeName)){
-                    var text = ele.textContent;
-                    console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName} ${text}`);
-                }
-                else{
-
-                    console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName}`);
-                }    
-            }
-        }
+        var [all_jax, map] = makeDomJaxMap();
 
         var sel = window.getSelection();
         
@@ -195,17 +255,31 @@ class TextBlock {
 
             var rng = sel.getRangeAt(0);
 
+            console.log(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
+
+            var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+            var jax_idx;
+            for(jax_idx = 0; jax_idx < all_jax.length; jax_idx++){
+                if(all_jax[jax_idx].root == st_a[0]){
+                    break;
+                }
+            }
+
+            console.log(`all jax: ${jax_idx}`);
+
             if(rng.startContainer == rng.endContainer){
 
-                var v = getDomAncestor(rng.startContainer).filter(x => map.has(x));
-                if(v.length != 0){
+                if(st_a.length != 0){
 
-                    set_current_mjx(v[0]);
+                    var path = getJaxPath(jax_idx, st_a, st_a.length - 1);
+                    console.log(`path: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+                    var node = getJaxFromPath(all_jax, path);
+                    console.assert(node == last(st_a));
+                    set_current_mjx(getDomFromJax(last(st_a)));
                 }
             }
             else{
 
-                var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
                 var ed_a = getDomAncestor(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
 
                 for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
@@ -213,17 +287,46 @@ class TextBlock {
 
                         console.assert(nest != 0);
 
-                        var st_i = getJaxIndex(st_a[nest]);
-                        var ed_i = getJaxIndex(ed_a[nest]);
+                        var parent_jax = st_a[nest - 1];
 
-                        var nodes = st_a[nest - 1].childNodes.slice(st_i, ed_i + 1);
-                        for(let nd of nodes){
+                        if(parent_jax.nodeName == "msubsup"){
 
-                            if(nd != null){
+                            var path = getJaxPath(jax_idx, st_a, nest - 1);
+                            console.log(`path: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+                            var node = getJaxFromPath(all_jax, path);
+                            console.assert(node == parent_jax);
+        
+                            set_current_mjx(getDomFromJax(parent_jax));
+                        }
+                        else{
 
-                                set_current_mjx(getDomFromJax(nd));
-                            }
-                        }    
+                            var st_i = getJaxIndex(st_a[nest]);
+                            var ed_i = getJaxIndex(ed_a[nest]);
+
+                            var path : any[];
+                            var node;
+                            path = getJaxPath(jax_idx, st_a, nest);
+                            console.log(`path1: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+                            node = getJaxFromPath(all_jax, path);
+                            console.assert(node == st_a[nest]);
+
+                            path = getJaxPath(jax_idx, ed_a, nest);
+                            console.log(`path2: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+                            node = getJaxFromPath(all_jax, path);
+                            console.assert(node == ed_a[nest]);
+
+                            console.log(`start:${st_i} end:${ed_i}`);
+                            // dumpJax(parent_jax);
+
+                            var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
+                            for(let nd of nodes){
+
+                                if(nd != null){
+
+                                    set_current_mjx(getDomFromJax(nd));
+                                }
+                            }    
+                        }
                     }
                 }
             }
@@ -351,6 +454,10 @@ function ontypeset(blc: TextBlock, id: number){
 
 export function addTextBlock(text: string){
     actions.push(new TextBlockAction(text));
+}
+
+export function addSelection(){
+    // actions.push(new TextBlockAction(text));
 }
 
 export function init_manebu(){
