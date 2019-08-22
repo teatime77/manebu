@@ -168,9 +168,16 @@ export class SpeechAction extends Action {
 }
 
 export class SelectionAction extends Action {
+    dom_type: string;
+    start_path:any[];
+    end_path:any[] | null;
 
-    constructor(){
+    constructor(dom_type:string, start_path:any[], end_path:any[] | null){
         super("SelectionAction");
+
+        this.dom_type = dom_type;
+        this.start_path = start_path;
+        this.end_path   = end_path;
     }
 }
 
@@ -249,6 +256,12 @@ class TextBlock {
 
         var [all_jax, map] = makeDomJaxMap();
 
+        function check_path(msg: string, path:any[], node_sv: any){
+            console.log(`${msg}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+            var node = getJaxFromPath(all_jax, path);
+            console.assert(node == node_sv);
+        }
+
         var sel = window.getSelection();
         
         if(sel.rangeCount == 1){
@@ -271,11 +284,10 @@ class TextBlock {
 
                 if(st_a.length != 0){
 
-                    var path = getJaxPath(jax_idx, st_a, st_a.length - 1);
-                    console.log(`path: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-                    var node = getJaxFromPath(all_jax, path);
-                    console.assert(node == last(st_a));
-                    set_current_mjx(getDomFromJax(last(st_a)));
+                    var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
+                    check_path("path", start_path, last(st_a));
+
+                    addSelection("math", start_path, null);
                 }
             }
             else{
@@ -291,45 +303,27 @@ class TextBlock {
 
                         if(parent_jax.nodeName == "msubsup"){
 
-                            var path = getJaxPath(jax_idx, st_a, nest - 1);
-                            console.log(`path: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-                            var node = getJaxFromPath(all_jax, path);
-                            console.assert(node == parent_jax);
-        
-                            set_current_mjx(getDomFromJax(parent_jax));
+                            var start_path = getJaxPath(jax_idx, st_a, nest - 1);
+                            check_path("path", start_path, parent_jax);
+
+                            addSelection("math", start_path, null);
                         }
                         else{
 
-                            var st_i = getJaxIndex(st_a[nest]);
-                            var ed_i = getJaxIndex(ed_a[nest]);
+                            var start_path = getJaxPath(jax_idx, st_a, nest);
+                            var end_path   = getJaxPath(jax_idx, ed_a, nest);
 
-                            var path : any[];
-                            var node;
-                            path = getJaxPath(jax_idx, st_a, nest);
-                            console.log(`path1: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-                            node = getJaxFromPath(all_jax, path);
-                            console.assert(node == st_a[nest]);
+                            check_path("path1", start_path, st_a[nest]);
+                            check_path("path2", end_path  , ed_a[nest]);
 
-                            path = getJaxPath(jax_idx, ed_a, nest);
-                            console.log(`path2: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-                            node = getJaxFromPath(all_jax, path);
-                            console.assert(node == ed_a[nest]);
-
-                            console.log(`start:${st_i} end:${ed_i}`);
-                            // dumpJax(parent_jax);
-
-                            var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
-                            for(let nd of nodes){
-
-                                if(nd != null){
-
-                                    set_current_mjx(getDomFromJax(nd));
-                                }
-                            }    
+                            addSelection("math", start_path, end_path);
                         }
+                        break;
                     }
                 }
             }
+
+            resume();
         }
 
         window.getSelection().removeAllRanges();
@@ -456,8 +450,8 @@ export function addTextBlock(text: string){
     actions.push(new TextBlockAction(text));
 }
 
-export function addSelection(){
-    // actions.push(new TextBlockAction(text));
+export function addSelection(type:string, start_path:any[], end_path:any[] | null){
+    actions.push(new SelectionAction(type, start_path, end_path));
 }
 
 export function init_manebu(){
@@ -509,6 +503,43 @@ function* makeTextBlock(act: TextBlockAction){
     }
 }
 
+function setSelection(act: SelectionAction){
+    console.assert(act.dom_type == "math");
+
+    var [all_jax, map] = makeDomJaxMap();
+
+    var start_jax = getJaxFromPath(all_jax, act.start_path);
+    var st_i = last(act.start_path)["idx"];
+
+    var parent_jax = start_jax.parent;
+    console.assert(getJaxIndex(start_jax) == st_i);
+    console.assert(start_jax.nodeName == last(act.start_path)["nodeName"])
+
+    if(act.end_path == null){
+
+        set_current_mjx(getDomFromJax(start_jax));
+    }
+    else{
+
+        var end_jax = getJaxFromPath(all_jax, act.end_path);
+
+        var ed_i = last(act.end_path)["idx"];
+
+        console.assert(getJaxIndex(end_jax) == ed_i);
+        console.assert(end_jax.nodeName == last(act.end_path)["nodeName"])
+    
+        var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
+        for(let nd of nodes){
+
+            if(nd != null){
+
+                set_current_mjx(getDomFromJax(nd));
+            }
+        }    
+
+    }
+}
+
 function* play_gen(start_pos: number){
     for(action_pos = start_pos; action_pos < actions.length; action_pos++){
         var act = actions[action_pos];
@@ -519,6 +550,10 @@ function* play_gen(start_pos: number){
         case "SpeechAction":
             
             yield* speak(act as SpeechAction);
+            break;
+
+        case "SelectionAction":
+            setSelection(act as SelectionAction);
             break;
         }
     }
