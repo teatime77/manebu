@@ -99,7 +99,9 @@ export function addSpeech(text: string){
     }
     textMath.value = "";
 
-    actions.push(new SpeechAction(text));
+    var act = new SpeechAction(text);
+    actions.push(act);
+    addActionSummary(act);
 }
 
 export function* speak(act: SpeechAction){

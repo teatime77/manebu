@@ -5,6 +5,12 @@ declare var MathJax:any;
 var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;
 var divMath : HTMLDivElement;
+var divActions : HTMLDivElement;
+var tmpSelection : SelectionAction | null = null;
+var blue_style = { "color": "blue" };
+var red_style  = { "color": "red" };
+var isDesign = true;
+var TextBlockId = 0;
 
 console.log("hello");
 
@@ -14,12 +20,23 @@ function last<T>(v:Array<T>) : T{
     return v[v.length - 1];
 }
 
-function set_current_mjx(node : HTMLElement){
+function set_current_mjx(node : HTMLElement, style:any){
     if(! selected_mjx.includes(node)){
 
         selected_mjx.push(node);
 
-        node.style.color = "red";
+        console.assert(style["color"] != undefined)
+        if(style["color"] == "blue"){
+
+            // node.style.color = "#00CC00";
+            node.style.color = "#8080FF";
+            // node.style.textDecoration = "wavy underline red"
+            node.style.backgroundColor = "#C0C0C0";
+        }
+        else{
+
+            node.style.color = style["color"];
+        }
     }
 }
 
@@ -27,6 +44,8 @@ function restore_current_mjx_color(){
     for(let node of selected_mjx){
 
         node.style.color = "unset";
+        // node.style.textDecoration = "unset"
+        node.style.backgroundColor = "unset";
     }
 
     selected_mjx = [];
@@ -168,16 +187,28 @@ export class SpeechAction extends Action {
 }
 
 export class SelectionAction extends Action {
+    style : any;
     dom_type: string;
     start_path:any[];
     end_path:any[] | null;
 
-    constructor(dom_type:string, start_path:any[], end_path:any[] | null){
+    constructor(style: any, dom_type:string, start_path:any[], end_path:any[] | null){
         super("SelectionAction");
 
+        this.style = style;
         this.dom_type = dom_type;
         this.start_path = start_path;
         this.end_path   = end_path;
+    }
+}
+
+
+export class RemoveAction extends Action {
+    dom_id : string;
+
+    constructor(dom_id : string){
+        super("RemoveAction");
+        this.dom_id = dom_id;
     }
 }
 
@@ -194,38 +225,36 @@ class TextBlock {
         HTML要素を作る。
     */
     make(){
-        this.ele = make_div(this.text);
+        if(divMath.childNodes.length != 0){
+
+            divMath.appendChild(document.createElement("hr"));
+        }
+
+        TextBlockId++;
+        
+        var btn = document.createElement("button") as HTMLButtonElement;
+        btn.dataset.text_block_id = `manebu-text-block-${TextBlockId}`;
+        btn.addEventListener("click", function(ev:MouseEvent){
+            var act = new RemoveAction(btn.dataset.text_block_id);
+            actions.push(act)
+            addActionSummary(act);
+    
+            resume();
+        });
+    
+        btn.innerHTML = "❌";
+        divMath.appendChild(btn);
+    
+        this.ele = document.createElement("div");
+        this.ele.id = btn.dataset.text_block_id;
+        this.ele.className = "manebu-text-block";
+        this.ele.innerHTML = make_html_lines(this.text);
+        divMath.appendChild(this.ele);
+    
         this.ele.addEventListener("click", this.onclick_block);
         
-        this.ele.addEventListener('keydown', (event) => {          
-            // if (event.key === 'Control') {
-            //   // do not alert when only Control key is pressed.
-            //   return;
-            // }
-
-            // if(current_mjx == null || ! event.ctrlKey){
-            //     return;
-            // }
-
-            // if (event.key === 'ArrowUp'){
-            //     if(current_mjx.parent == null){
-            //         return;
-            //     }
-
-            //     set_current_mjx(current_mjx.parent);
-            // }
-            // if (event.key === 'ArrowRight' || event.key === 'ArrowLeft'){
-            // }
-
+        this.ele.addEventListener('keydown', (event) => {
             console.log(`key down ${event.key} ${event.ctrlKey}`);
-          
-            // if (event.ctrlKey) {
-            //   // Even though event.key is not 'Control' (e.g., 'a' is pressed),
-            //   // event.ctrlKey may be true if Ctrl key is pressed at the same time.
-            //   alert(`Combination of ctrlKey + ${keyName}`);
-            // } else {
-            //   alert(`Key pressed ${keyName}`);
-            // }
           }, false);        
     }
     
@@ -287,7 +316,7 @@ class TextBlock {
                     var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
                     check_path("path", start_path, last(st_a));
 
-                    addSelection("math", start_path, null);
+                    tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
                 }
             }
             else{
@@ -306,7 +335,7 @@ class TextBlock {
                             var start_path = getJaxPath(jax_idx, st_a, nest - 1);
                             check_path("path", start_path, parent_jax);
 
-                            addSelection("math", start_path, null);
+                            tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
                         }
                         else{
 
@@ -316,14 +345,16 @@ class TextBlock {
                             check_path("path1", start_path, st_a[nest]);
                             check_path("path2", end_path  , ed_a[nest]);
 
-                            addSelection("math", start_path, end_path);
+                            tmpSelection = new SelectionAction(blue_style, "math", start_path, end_path);
                         }
                         break;
                     }
                 }
             }
 
-            resume();
+            if(tmpSelection != null){
+                setSelection(tmpSelection);
+            }
         }
 
         window.getSelection().removeAllRanges();
@@ -419,18 +450,6 @@ function make_html_lines(text: string){
     return html_lines.join("\n");
 }
 
-function make_div(text: string){
-    var ele = document.createElement("div");
-    ele.innerHTML = make_html_lines(text);
-
-    if(divMath.childNodes.length != 0){
-
-        divMath.appendChild(document.createElement("hr"));
-    }
-    divMath.appendChild(ele);
-
-    return ele;
-}
 
 var typeset_ended = false;
 function ontypeset(blc: TextBlock, id: number){
@@ -445,14 +464,57 @@ function ontypeset(blc: TextBlock, id: number){
     typeset_ended = true;
 }
 
+export function addActionSummary(act: Action){
+    var ele = document.createElement("div");
+
+    var summary: string;
+    switch(act.type){
+        case "TextBlockAction":
+            summary = "テキスト";
+            break;
+        case "SpeechAction":
+            
+            summary = `音声: ${(act as SpeechAction).text}`;
+            break;
+
+        case "SelectionAction":
+            summary = "選択";
+            break;
+
+        case "RemoveAction":
+            summary = `削除: ${(act as RemoveAction).dom_id}`;
+            break;
+    
+        default:
+            console.assert(false);
+            break;
+    }
+
+    ele.innerHTML = summary;
+
+    divActions.appendChild(ele);
+}
 
 export function addTextBlock(text: string){
-    actions.push(new TextBlockAction(text));
+    var act = new TextBlockAction(text)
+    actions.push(act);
+    addActionSummary(act);
 }
 
-export function addSelection(type:string, start_path:any[], end_path:any[] | null){
-    actions.push(new SelectionAction(type, start_path, end_path));
+export function addSelection_resume(){
+    if(tmpSelection == null){
+        return;
+    }
+
+    restore_current_mjx_color();
+
+    tmpSelection.style = red_style;
+    actions.push(tmpSelection);
+    addActionSummary(tmpSelection);
+
+    resume();
 }
+
 
 export function init_manebu(){
     console.log("body loaded");
@@ -461,6 +523,7 @@ export function init_manebu(){
 
     divMath = document.getElementById("div-math") as HTMLDivElement;
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
+    divActions = document.getElementById("div-actions") as HTMLDivElement;
 
     // addTextBlock(textMath.value);
 
@@ -504,7 +567,7 @@ function* makeTextBlock(act: TextBlockAction){
 }
 
 function setSelection(act: SelectionAction){
-    console.assert(act.dom_type == "math");
+    console.assert(act.dom_type == "math" && act.style != undefined);
 
     var [all_jax, map] = makeDomJaxMap();
 
@@ -517,7 +580,7 @@ function setSelection(act: SelectionAction){
 
     if(act.end_path == null){
 
-        set_current_mjx(getDomFromJax(start_jax));
+        set_current_mjx(getDomFromJax(start_jax), act.style);
     }
     else{
 
@@ -533,11 +596,58 @@ function setSelection(act: SelectionAction){
 
             if(nd != null){
 
-                set_current_mjx(getDomFromJax(nd));
+                set_current_mjx(getDomFromJax(nd), act.style);
             }
         }    
 
     }
+}
+
+export function substitute(){
+    var s = textMath.value;
+
+    var [all_jax, map] = makeDomJaxMap();
+
+    var start_jax = getJaxFromPath(all_jax, tmpSelection.start_path);
+
+    var idx = getJaxIndex(start_jax);
+    all_jax[2].root.parent = start_jax.parent;
+    start_jax.parent.childNodes[idx] = all_jax[2].root;
+
+    all_jax[1].Rerender();
+}
+
+function removeTextBlock(act: RemoveAction){
+    var div = document.getElementById(act.dom_id);
+
+    if(isDesign){
+
+        // 削除ボタンを削除する。
+        console.assert(div.previousSibling != null && div.previousSibling.nodeName == "BUTTON");
+        div.parentNode.removeChild(div.previousSibling);
+    }
+
+    if(div.previousSibling == null){
+        // テキストブロックが先頭にある場合
+
+        if(div.nextSibling != null){
+            // 後ろにテキストブロックがある場合
+
+            // 後ろとの区切りを削除する。
+            console.assert(div.nextSibling.nodeName == "HR");
+            div.parentNode.removeChild(div.nextSibling);
+        }
+    }
+    else{
+        // テキストブロックが先頭でない場合
+
+        // 直前との区切りを削除する。
+        console.assert(div.previousSibling.nodeName == "HR");
+        div.parentNode.removeChild(div.previousSibling);
+    }
+
+    // テキストブロックを削除する。
+    div.parentNode.removeChild(div);
 }
 
 function* play_gen(start_pos: number){
@@ -554,6 +664,14 @@ function* play_gen(start_pos: number){
 
         case "SelectionAction":
             setSelection(act as SelectionAction);
+            break;
+
+        case "RemoveAction":
+            removeTextBlock(act as RemoveAction);
+            break;
+
+        default:
+            console.assert(false);
             break;
         }
     }
@@ -574,5 +692,25 @@ export function resume(){
         play(action_pos);
     }
 }
+
+export function loadData(this_url : string){
+    var k = this_url.lastIndexOf('/');
+    var data_url = this_url.substring(0, k) + "/data/data.json";
+
+    fetch(data_url)
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(json_data) {
+        console.log(JSON.stringify(json_data));
+
+        actions = json_data;
+        for(let act of manebu.actions){
+            addActionSummary(act);
+        }
+        play(0)
+    });
+}
+
 
 }

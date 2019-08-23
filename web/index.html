@@ -20,22 +20,6 @@ function body_onload(){
     console.log("body load");
     manebu.init_manebu();
 }
-function loadData(){
-    var this_url = window.location.href;
-    var k = this_url.lastIndexOf('/');
-    var data_url = this_url.substring(0, k) + "/data/data.json";
-
-    fetch(data_url)
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(json_data) {
-        console.log(JSON.stringify(json_data));
-
-        manebu.actions = json_data;
-        manebu.play(0)
-    });
-}
 
 function startPlay(){
     manebu.play(0)
@@ -80,7 +64,7 @@ $$ -->
   <tr>
     <td>
       メニュー
-      <button onclick="loadData();">開く</button>  
+      <button onclick="manebu.loadData(window.location.href);">開く</button>  
       <button onclick="copyData();">コピー</button>  
       <button onclick="startPlay();">再生</button>  
       <button onclick="manebu.speak();">音声合成のテスト</button>  
@@ -90,41 +74,28 @@ $$ -->
 
   <tr>
       <td>
-        数式<br/>
+        <br/>
+        <button onclick="manebu.addSelection_resume()">テキストを選択</button>
+        <button onclick="manebu.substitute()">テキストを代入</button>
+        <br/>
         <div id="div-math" style="width: 600px"></div>      
       </td>
-      <td>
-          <button onclick="addTextBlock_resume()">テキストを選択</button>
+      <td rowspan="2" valign="top">
+        <div id="div-actions" ></div>
       </td>
   </tr>
 
   <tr>
       <td>
-        入力 &#x1f640;<br/>
+          <br/>
+          &#x1f640;
+          <button onclick="manebu.textMath.value = ''">クリア</button>
+          <button onclick="addTextBlock_resume()">テキストを追加</button>
+          <button onclick="addSpeech_resume()">音声を追加</button>  
+          <br/>
         <textarea id="txt-math" cols="80" rows="8" onblur="manebu.txt_math_onblur" onselect="manebu.txt_math_onselect()" >
-これは$\sqrt{2 \pi}$二乗です。
-$$
-\v{x_n}^2 + \v{x_n} + \v{x}^2
-\\
-\frac{1}{ {(2 \pi)}^{D/2}  } \frac{1}{ {\mid \Sigma \mid}^{ 1/2 }  } 
-\exp \{ - \frac{1}{2}   {(\v{x_n}^2 - \v{\mu})}^T \Sigma^{-1} (\v{x_n} - \v{\mu}^2) \}
-$$
         </textarea>
       </td>
-      <td>
-          <button onclick="addTextBlock_resume()">テキストを追加</button> <br/>
-          <button onclick="addSpeech_resume()">音声を追加</button>  
-      </td>
     </tr>
-
-  <tr>
-      <td>
-        メッセージ      
-      </td>
-  </tr>
 </table>
-
-
-
-
 </body></html>
