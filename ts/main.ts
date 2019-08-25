@@ -175,6 +175,11 @@ export class TextBlockAction extends Action {
         super("TextBlockAction");
         this.text = text;
     }
+
+    toJSON() : string {
+        // return `{\n ${JSON.stringify(this.text)}}\n`;
+        return '{\n\t"text":' + JSON.stringify(this.text) + '}\n';
+    }
 }
 
 export class SpeechAction extends Action {
@@ -712,5 +717,7 @@ export function loadData(this_url : string){
     });
 }
 
-
+export function actions_toJSON() : string {
+    return "[\n" + actions.map(x => "\t" + JSON.stringify(x)).join("\n\t,\n") + "\n]";
+}
 }

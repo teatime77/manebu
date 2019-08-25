@@ -26,7 +26,7 @@ function startPlay(){
 }
 
 function copyData(){
-    var s = JSON.stringify(manebu.actions);
+    var s = manebu.actions_toJSON();
     console.log(s);
 
     navigator.clipboard.writeText(s).then(function() {
@@ -98,4 +98,11 @@ $$ -->
       </td>
     </tr>
 </table>
+
+<div contenteditable="true">
+    <span style="font-family: 'Segoe UI Emoji' ">🖍</span>  
+    このテキストは閲覧者が編集することができます。
+    🖍
+    🖍    
+</div>
 </body></html>
