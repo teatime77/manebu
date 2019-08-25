@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
     <script type="text/javascript" src="js/main.js" ></script>
+    <script type="text/javascript" src="js/markdown.js" ></script>
     <script type="text/javascript" src="js/speech.js" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
@@ -64,25 +65,10 @@ $$ -->
   <tr>
     <td>
       メニュー
-      <button onclick="manebu.loadData(window.location.href);">開く</button>  
-      <button onclick="copyData();">コピー</button>  
-      <button onclick="startPlay();">再生</button>  
-      <button onclick="manebu.speak();">音声合成のテスト</button>  
+      <button onclick="manebu.open_markdown(window.location.href);">開く</button>  
+      <button onclick="manebu.preview(0)">再生</button>
     </td>
     <td style="width: 200px" ></td>
-  </tr>
-
-  <tr>
-      <td>
-        <br/>
-        <button onclick="manebu.addSelection_resume()">テキストを選択</button>
-        <button onclick="manebu.substitute()">テキストを代入</button>
-        <br/>
-        <div id="div-math" style="width: 600px"></div>      
-      </td>
-      <td rowspan="2" valign="top">
-        <div id="div-actions" ></div>
-      </td>
   </tr>
 
   <tr>
@@ -93,8 +79,13 @@ $$ -->
           <button onclick="addTextBlock_resume()">テキストを追加</button>
           <button onclick="addSpeech_resume()">音声を追加</button>  
           <br/>
-        <textarea id="txt-math" cols="80" rows="8" onblur="manebu.txt_math_onblur" onselect="manebu.txt_math_onselect()" >
-        </textarea>
+        <textarea id="txt-math" rows="50" cols="50" spellcheck="false" style="overflow-x: visible; width: 50em; white-space: pre; " ></textarea>
+      </td>
+      <td valign="top">
+        <button onclick="manebu.addSelection()">テキストを選択</button>
+        <button onclick="manebu.substitute()">テキストを代入</button>
+        <br/>
+        <div id="div-math" style="width: 600px"></div>      
       </td>
     </tr>
 </table>
@@ -105,4 +96,11 @@ $$ -->
     🖍
     🖍    
 </div>
+<div id="div-actions" ></div>
+<button onclick="manebu.loadData(window.location.href);">開く</button>  
+<button onclick="copyData();">コピー</button>  
+<button onclick="startPlay();">再生</button>  
+<button onclick="manebu.speak();">音声合成のテスト</button>  
+<button onclick="manebu.addSelection_resume()">テキストを選択</button>
+
 </body></html>

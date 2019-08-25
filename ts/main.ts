@@ -10,7 +10,10 @@ var tmpSelection : SelectionAction | null = null;
 var blue_style = { "color": "blue" };
 var red_style  = { "color": "red" };
 var isDesign = true;
+var oldAction = false;
 var TextBlockId = 0;
+var textMathSelectionStart : number;
+var textMathSelectionEnd : number;
 
 console.log("hello");
 
@@ -217,6 +220,10 @@ export class RemoveAction extends Action {
     }
 }
 
+export function getTextBlockId(id: number) : string {
+    return `manebu-text-block-${id}`;
+}
+
 class TextBlock {
     text: string;
     ele: HTMLDivElement | null;
@@ -237,23 +244,33 @@ class TextBlock {
 
         TextBlockId++;
         
-        var btn = document.createElement("button") as HTMLButtonElement;
-        btn.dataset.text_block_id = `manebu-text-block-${TextBlockId}`;
-        btn.addEventListener("click", function(ev:MouseEvent){
-            var act = new RemoveAction(btn.dataset.text_block_id);
-            actions.push(act)
-            addActionSummary(act);
-    
-            resume();
-        });
-    
-        btn.innerHTML = "❌";
-        divMath.appendChild(btn);
-    
+        var text_block_id = getTextBlockId(TextBlockId);
+        var id_ele = "";
+
+        if(oldAction){
+
+            var btn = document.createElement("button") as HTMLButtonElement;
+            btn.dataset.text_block_id = text_block_id;
+            btn.addEventListener("click", function(ev:MouseEvent){
+                var act = new RemoveAction(btn.dataset.text_block_id);
+                actions.push(act)
+                addActionSummary(act);
+        
+                resume();
+            });
+        
+            btn.innerHTML = "❌";
+            divMath.appendChild(btn);
+        }
+        else{
+
+            id_ele = `<b>id:${TextBlockId}</b><br/>`;
+        }
+            
         this.ele = document.createElement("div");
-        this.ele.id = btn.dataset.text_block_id;
+        this.ele.id = text_block_id;
         this.ele.className = "manebu-text-block";
-        this.ele.innerHTML = make_html_lines(this.text);
+        this.ele.innerHTML = id_ele + make_html_lines(this.text);
         divMath.appendChild(this.ele);
     
         this.ele.addEventListener("click", this.onclick_block);
@@ -521,6 +538,19 @@ export function addSelection_resume(){
 }
 
 
+export function addSelection(){
+    if(tmpSelection == null){
+        return;
+    }
+
+    restore_current_mjx_color();
+
+    tmpSelection.style = red_style;
+
+    var ins_str = '\n@select ' + JSON.stringify(tmpSelection) + '\n';
+    textMath.value = textMath.value.substring(0, textMathSelectionEnd) + ins_str + textMath.value.substring(textMathSelectionEnd);
+}
+
 export function init_manebu(){
     console.log("body loaded");
 
@@ -533,35 +563,30 @@ export function init_manebu(){
     // addTextBlock(textMath.value);
 
     textMath.onblur = function(ev:FocusEvent){
-        console.log(`blur:${textMath.value.charAt(0)} ${textMath.value.charCodeAt(0).toString(16)} ${"🙀".charCodeAt(0).toString(16)}`);
-        if(textMath.value.charCodeAt(0) != "🙀".charCodeAt(0)){
-            return;
-        }
-        
         var sel = window.getSelection();
         
         if(sel.rangeCount == 1){
 
             var rng = sel.getRangeAt(0);
-            console.log(`blur2 ${ev} ${sel.rangeCount} start:${textMath.selectionStart} end:${textMath.selectionEnd}`);
+            textMathSelectionStart = textMath.selectionStart;
+            textMathSelectionEnd = textMath.selectionEnd;
+            console.log(`blur2 ${ev} ${sel.rangeCount} start:${textMathSelectionStart} end:${textMathSelectionEnd}`);
+
+            if(textMath.value.charCodeAt(0) == "🙀".charCodeAt(0)){
+                console.log(`blur:${textMath.value.charAt(0)} ${textMath.value.charCodeAt(0).toString(16)} ${"🙀".charCodeAt(0).toString(16)}`);
+                textMath.value = textMath.value.substring(0, textMathSelectionStart) + "🙀" + textMath.value.substring(textMathSelectionEnd);
+            }        
         }
-        textMath.value = textMath.value.substring(0, textMath.selectionStart) + "🙀" + textMath.value.substring(textMath.selectionEnd);
+
     }
 
 }
-export function txt_math_onselect(ev){
-    console.log(`select ${ev}`);
-}
-export function txt_math_onblur(ev){
-    console.log(`blur ${ev}`);
-}
 
-function* makeTextBlock(act: TextBlockAction){
+export function* makeTextBlock(act: TextBlockAction){
     typeset_ended = false;
 
     var blc = new TextBlock(act.text);
     blc.make();
-    textMath.value = "";
 
     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
     MathJax.Hub.Queue([ontypeset, blc, 123]);
@@ -571,7 +596,7 @@ function* makeTextBlock(act: TextBlockAction){
     }
 }
 
-function setSelection(act: SelectionAction){
+export function setSelection(act: SelectionAction){
     console.assert(act.dom_type == "math" && act.style != undefined);
 
     var [all_jax, map] = makeDomJaxMap();
@@ -622,14 +647,17 @@ export function substitute(){
     all_jax[1].Rerender();
 }
 
-function removeTextBlock(act: RemoveAction){
+export function removeTextBlock(act: RemoveAction){
     var div = document.getElementById(act.dom_id);
 
     if(isDesign){
 
-        // 削除ボタンを削除する。
-        console.assert(div.previousSibling != null && div.previousSibling.nodeName == "BUTTON");
-        div.parentNode.removeChild(div.previousSibling);
+        if(oldAction){
+
+            // 削除ボタンを削除する。
+            console.assert(div.previousSibling != null && div.previousSibling.nodeName == "BUTTON");
+            div.parentNode.removeChild(div.previousSibling);
+        }
     }
 
     if(div.previousSibling == null){
