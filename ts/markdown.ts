@@ -5,10 +5,12 @@ var lines : string[];
 var line_idx : number;
 
 function getCommand(line: string) : [string|null, string|null] {
-    for(let cmd of ["@speak", "@wait", "@del", "@select", "@unselect" ]){
-        if(line.startsWith(cmd + " ")){
+    var line_trim = line.trim();
 
-            var arg = line.substring(cmd.length + 1);
+    for(let cmd of [ "@div", "@speak", "@wait", "@del", "@select", "@us", "@unselect" ]){
+        if(line.startsWith(cmd + " ") || line_trim == cmd){
+
+            var arg = line.substring(cmd.length + 1).trim();
             return [cmd, arg]
         }
     }
@@ -20,21 +22,27 @@ function* player(start_pos: number){
     var texts : string[] = [];
     var valid_text : boolean = false;
 
+    divMath.appendChild(document.createElement("div"));
     for(line_idx = start_pos; line_idx < lines.length; line_idx++){
+
         var line = lines[line_idx];
 
         var [cmd, arg] = getCommand(line);
         if(cmd != null){
             if(valid_text){
 
-                yield* makeTextBlock( new TextBlockAction(texts.join('\n')) );
+                yield* appendTextBlock( texts );
                 texts = [];
                 valid_text = false;
             }
 
             switch(cmd){
+            case "@div":
+                divMath.appendChild(document.createElement("div"));
+                break;
+
             case "@speak":
-                if(arg.trim() != ""){
+                if(arg != ""){
 
                     yield* speak(new SpeechAction(arg));
                 }
@@ -46,10 +54,20 @@ function* player(start_pos: number){
                 setSelection(act);
                 break;
 
-            case "@del":
-                var id = getTextBlockId( parseInt(arg) );
+            case "@us":
+                restore_current_mjx_color();
+                break;
 
-                removeTextBlock(new RemoveAction(id));
+            case "@del":
+                if(arg == ""){
+                    divMath.innerHTML = "";
+                }
+                else{
+                    var idx = parseInt(arg) - 1;
+
+                    console.assert(0 <= idx && idx < divMath.childNodes.length );
+                    divMath.removeChild(divMath.childNodes[idx]);
+                }
             }
         }
         else{
@@ -62,12 +80,16 @@ function* player(start_pos: number){
 
     if(valid_text){
 
-        yield* makeTextBlock( new TextBlockAction(texts.join('\n')) );
+        yield* appendTextBlock( texts );
     }
 
 }
 
 export function preview(start_pos: number){
+    if(start_pos == 0){
+        divMath.innerHTML = "";
+    }
+    
     lines = textMath.value.replace('\r\n', '\n').split('\n');
 
     var gen = player(start_pos);
@@ -79,9 +101,9 @@ export function preview(start_pos: number){
     },100);
 }
 
-export function open_markdown(this_url : string){
+export function open_markdown(this_url : string, name: string){
     var k = this_url.lastIndexOf('/');
-    var data_url = this_url.substring(0, k) + "/data/test.md";
+    var data_url = this_url.substring(0, k) + `/data/${name}.md`;
 
     fetch(data_url)
     .then(function(response) {
@@ -89,6 +111,8 @@ export function open_markdown(this_url : string){
     })
     .then(function (text) {
         textMath.value = text;
+
+        preview(0);
     });
 
 }

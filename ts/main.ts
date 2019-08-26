@@ -4,7 +4,7 @@ declare var MathJax:any;
 
 var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;
-var divMath : HTMLDivElement;
+export var divMath : HTMLDivElement;
 var divActions : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
 var blue_style = { "color": "blue" };
@@ -43,7 +43,7 @@ function set_current_mjx(node : HTMLElement, style:any){
     }
 }
 
-function restore_current_mjx_color(){
+export function restore_current_mjx_color(){
     for(let node of selected_mjx){
 
         node.style.color = "unset";
@@ -160,6 +160,109 @@ function getJaxFromPath(all_jax:any[], path:any[]){
     return node;
 }
 
+function onclick_block(){
+    console.log("clicked");
+
+    restore_current_mjx_color();
+
+    var ev = window.event as MouseEvent;
+    ev.stopPropagation();
+
+    var mjx_math = null;
+    for(var ele = ev.srcElement as HTMLElement;;){
+
+        if(ele.tagName != "SPAN"){
+            break;
+        }
+        if(ele.className == "mjx-math"){
+            mjx_math = ele;
+            break;
+        }
+
+        ele = ele.parentNode as HTMLElement;
+    }
+    if(mjx_math == null){
+        return;
+    }
+
+    var [all_jax, map] = makeDomJaxMap();
+
+    function check_path(msg: string, path:any[], node_sv: any){
+        console.log(`${msg}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+        var node = getJaxFromPath(all_jax, path);
+        console.assert(node == node_sv);
+    }
+
+    var sel = window.getSelection();
+    
+    if(sel.rangeCount == 1){
+
+        var rng = sel.getRangeAt(0);
+
+        console.log(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
+
+        var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+        var jax_idx;
+        for(jax_idx = 0; jax_idx < all_jax.length; jax_idx++){
+            if(all_jax[jax_idx].root == st_a[0]){
+                break;
+            }
+        }
+
+        console.log(`all jax: ${jax_idx}`);
+
+        if(rng.startContainer == rng.endContainer){
+
+            if(st_a.length != 0){
+
+                var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
+                check_path("path", start_path, last(st_a));
+
+                tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
+            }
+        }
+        else{
+
+            var ed_a = getDomAncestor(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+
+            for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
+                if(st_a[nest] != ed_a[nest]){
+
+                    console.assert(nest != 0);
+
+                    var parent_jax = st_a[nest - 1];
+
+                    if(parent_jax.nodeName == "msubsup"){
+
+                        var start_path = getJaxPath(jax_idx, st_a, nest - 1);
+                        check_path("path", start_path, parent_jax);
+
+                        tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
+                    }
+                    else{
+
+                        var start_path = getJaxPath(jax_idx, st_a, nest);
+                        var end_path   = getJaxPath(jax_idx, ed_a, nest);
+
+                        check_path("path1", start_path, st_a[nest]);
+                        check_path("path2", end_path  , ed_a[nest]);
+
+                        tmpSelection = new SelectionAction(blue_style, "math", start_path, end_path);
+                    }
+                    break;
+                }
+            }
+        }
+
+        if(tmpSelection != null){
+            setSelection(tmpSelection);
+        }
+    }
+
+    window.getSelection().removeAllRanges();
+}
+
+
 class Action {
     type: string;
 
@@ -273,114 +376,12 @@ class TextBlock {
         this.ele.innerHTML = id_ele + make_html_lines(this.text);
         divMath.appendChild(this.ele);
     
-        this.ele.addEventListener("click", this.onclick_block);
+        this.ele.addEventListener("click", onclick_block);
         
         this.ele.addEventListener('keydown', (event) => {
             console.log(`key down ${event.key} ${event.ctrlKey}`);
           }, false);        
-    }
-    
-    onclick_block=()=>{
-        console.log("clicked");
-
-        restore_current_mjx_color();
-
-        var ev = window.event as MouseEvent;
-        ev.stopPropagation();
-
-        var mjx_math = null;
-        for(var ele = ev.srcElement as HTMLElement;;){
-
-            if(ele.tagName != "SPAN"){
-                break;
-            }
-            if(ele.className == "mjx-math"){
-                mjx_math = ele;
-                break;
-            }
-
-            ele = ele.parentNode as HTMLElement;
-        }
-        if(mjx_math == null){
-            return;
-        }
-
-        var [all_jax, map] = makeDomJaxMap();
-
-        function check_path(msg: string, path:any[], node_sv: any){
-            console.log(`${msg}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-            var node = getJaxFromPath(all_jax, path);
-            console.assert(node == node_sv);
-        }
-
-        var sel = window.getSelection();
-        
-        if(sel.rangeCount == 1){
-
-            var rng = sel.getRangeAt(0);
-
-            console.log(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
-
-            var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
-            var jax_idx;
-            for(jax_idx = 0; jax_idx < all_jax.length; jax_idx++){
-                if(all_jax[jax_idx].root == st_a[0]){
-                    break;
-                }
-            }
-
-            console.log(`all jax: ${jax_idx}`);
-
-            if(rng.startContainer == rng.endContainer){
-
-                if(st_a.length != 0){
-
-                    var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
-                    check_path("path", start_path, last(st_a));
-
-                    tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
-                }
-            }
-            else{
-
-                var ed_a = getDomAncestor(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
-
-                for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
-                    if(st_a[nest] != ed_a[nest]){
-
-                        console.assert(nest != 0);
-
-                        var parent_jax = st_a[nest - 1];
-
-                        if(parent_jax.nodeName == "msubsup"){
-
-                            var start_path = getJaxPath(jax_idx, st_a, nest - 1);
-                            check_path("path", start_path, parent_jax);
-
-                            tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
-                        }
-                        else{
-
-                            var start_path = getJaxPath(jax_idx, st_a, nest);
-                            var end_path   = getJaxPath(jax_idx, ed_a, nest);
-
-                            check_path("path1", start_path, st_a[nest]);
-                            check_path("path2", end_path  , ed_a[nest]);
-
-                            tmpSelection = new SelectionAction(blue_style, "math", start_path, end_path);
-                        }
-                        break;
-                    }
-                }
-            }
-
-            if(tmpSelection != null){
-                setSelection(tmpSelection);
-            }
-        }
-
-        window.getSelection().removeAllRanges();
-    }
+    }    
 }
 
 
@@ -474,14 +475,8 @@ function make_html_lines(text: string){
 
 
 var typeset_ended = false;
-function ontypeset(blc: TextBlock, id: number){
-    console.log(`${blc.ele} ${id}`);
-
-    var math_elements = blc.ele.getElementsByClassName("mjx-math");
-    for(let ele of math_elements){
-
-        // (ele as HTMLSpanElement).style.userSelect = "none";
-    }
+function ontypeset(msg: string, id: number){
+    console.log(`${msg} ${id}`);
 
     typeset_ended = true;
 }
@@ -580,6 +575,15 @@ export function init_manebu(){
 
     }
 
+    if(window.location.search != "" && window.location.search[0] == '?'){
+        var params = window.location.search.substring(1).split('&');
+        var key_values = params.map(x => x.split('='));
+        var map = new Map<string, string>(key_values.map(x => [x[0], x[1]] as [string, string]));
+
+        var name = map.get("name");
+        console.log(`name:${name}`);
+        open_markdown(window.location.href, name);
+    }
 }
 
 export function* makeTextBlock(act: TextBlockAction){
@@ -589,7 +593,36 @@ export function* makeTextBlock(act: TextBlockAction){
     blc.make();
 
     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-    MathJax.Hub.Queue([ontypeset, blc, 123]);
+    MathJax.Hub.Queue([ontypeset, "make", 123]);
+
+    while(! typeset_ended){
+        yield;
+    }
+}
+
+export function* appendTextBlock(lines: string[]){
+    // 最初の空行を除去する。
+    while(lines.length != 0 && lines[0].trim() == ""){
+        lines.shift();
+    }
+
+    // 末尾の空行を除去する。
+    while(lines.length != 0 && last(lines).trim() == ""){
+        lines.pop();
+    }
+
+    var text = lines.join('\n');
+
+    typeset_ended = false;
+
+    var div = document.createElement("span");
+    div.innerHTML = make_html_lines(text);
+    div.addEventListener("click", onclick_block);
+
+    divMath.lastChild.appendChild(div);
+
+    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    MathJax.Hub.Queue([ontypeset, "append", 123]);
 
     while(! typeset_ended){
         yield;

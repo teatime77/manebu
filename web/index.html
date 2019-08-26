@@ -65,7 +65,8 @@ $$ -->
   <tr>
     <td>
       メニュー
-      <button onclick="manebu.open_markdown(window.location.href);">開く</button>  
+      <input id="text-name" type="text" size=10 value="gauss" />
+      <button onclick="manebu.open_markdown(window.location.href, document.getElementById('text-name').value);">開く</button>  
       <button onclick="manebu.preview(0)">再生</button>
     </td>
     <td style="width: 200px" ></td>
