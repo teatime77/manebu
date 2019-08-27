@@ -1,6 +1,7 @@
 /// <reference path="speech.ts" />
 namespace manebu {
 declare var MathJax:any;
+declare var firebase:any;
 
 var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;

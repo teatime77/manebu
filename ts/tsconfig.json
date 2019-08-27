@@ -3,6 +3,6 @@
         "target": "es2016",
         "module": "commonjs",
         "sourceMap": true,
-        "outDir": "../web/js"
+        "outDir": "../firebase/public/js"
     }
 }

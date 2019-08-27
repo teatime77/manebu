@@ -98,10 +98,37 @@ $$ -->
     🖍    
 </div>
 <div id="div-actions" ></div>
+<a href="login.html" >ログイン</a>
 <button onclick="manebu.loadData(window.location.href);">開く</button>  
 <button onclick="copyData();">コピー</button>  
 <button onclick="startPlay();">再生</button>  
 <button onclick="manebu.speak();">音声合成のテスト</button>  
 <button onclick="manebu.addSelection_resume()">テキストを選択</button>
+
+
+
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-firestore.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#config-web-app -->
+
+<script>
+  // Your web app's Firebase configuration
+  var firebaseConfig = {
+    apiKey: "AIzaSyBrlDYj-nxqzVIkOyByXoKy7XOTVWSTxt8",
+    authDomain: "manebu-6d038.firebaseapp.com",
+    databaseURL: "https://manebu-6d038.firebaseio.com",
+    projectId: "manebu-6d038",
+    storageBucket: "manebu-6d038.appspot.com",
+    messagingSenderId: "251130880062",
+    appId: "1:251130880062:web:509513c72997552c"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+</script>
 
 </body></html>
