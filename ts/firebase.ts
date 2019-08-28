@@ -13,8 +13,6 @@ var docs : Map<string, any>;
 class Doc {
     ctime  : number;
     mtime  : number;
-    path   : string;
-    title  : string;
     text   : string;
 }
 
@@ -63,15 +61,6 @@ function getMaxFileId() : number {
 
 function getFileById(id: number) : FileInfo | undefined{
     return getAllFileInfo().find(x => x.id == id);
-}
-
-export function make_folder(){
-    var name = textName.value.trim();
-    var new_folder = new FileInfo(name, false);
-
-    selectedFile.children.push(new_folder);
-
-    showFileTreeView();
 }
 
 function showFileTreeView(){
@@ -128,6 +117,8 @@ function readUserData(){
             if(user_data.rootFile != undefined){
 
                 rootFile = JSON.parse(user_data.rootFile);
+
+                (document.getElementById("btn-open-folder") as HTMLButtonElement).disabled = false;
             }
             else{
 
@@ -218,36 +209,6 @@ function writeUserData(){
     });
 }
 
-export function firebase_put(){
-    if(uid == null){
-        console.log("ログインしていません。");
-        return;
-    }
-
-    var ctime = Math.round((new Date()).getTime());
-    var path = textName.value.trim();
-    var title = textTitle.value.trim();
-    var text = textMath.value;
-
-    db.collection('users').doc(uid).collection('docs').add({
-        ctime  : ctime,
-        mtime  : ctime,
-        path   : path,
-        title  : title,
-        text   : text
-    })
-    .then(function(docRef) {
-        console.log("Document written with ID: ", docRef.id);
-    })
-    .catch(function(error) {
-        console.error("Error adding document: ", error);
-    });
-}
-
-export function firebase_update(){
-
-}
-
 export function openFolder(){
     showFileTreeView();
     dlgFolder.showModal();
@@ -262,5 +223,71 @@ export function saveFolder(){
 
     dlgFolder.close();
 }
+
+
+export function make_folder(){
+    var name = textName.value.trim();
+    var new_folder = new FileInfo(name, false);
+
+    selectedFile.children.push(new_folder);
+
+    showFileTreeView();
+}
+
+
+function writeFile(file: FileInfo, text: string){
+    var ctime = Math.round((new Date()).getTime());
+    var title = textTitle.value.trim();
+
+    db.collection('users').doc(uid).collection('docs').doc("" + file.id).set({
+        ctime  : ctime,
+        mtime  : ctime,
+        text   : text
+    })
+    .then(function() {
+        console.log(`[${file.id}]${file.name} に書き込みました。`);
+    })
+    .catch(function(error) {
+        console.error("Error adding document: ", error);
+    });
+}
+
+export function firebase_update(){
+    writeFile(selectedFile, textMath.value);
+}
+
+export function openFile(){
+    var file = selectedFile;
+
+    db.collection('users').doc(uid).collection('docs').doc("" + file.id).get().then(function(doc) {
+        if (doc.exists) {
+            var doc_data = doc.data() as Doc;
+
+            textMath.value = doc_data.text;
+
+            console.log(`[${file.id}]${file.name} を読みこみました。`);
+        } else {
+            // doc.data() will be undefined in this case
+
+            textMath.value = "";
+            console.log(`[${file.id}]${file.name} はありません。`);
+        }
+    })
+    .catch(function(error) {
+        console.log(`[${file.id}]${file.name} の読み込みエラーです。`);
+    });
+}
+
+export function make_file(){
+    var name = textName.value.trim();
+    var new_file = new FileInfo(name, true);
+
+    writeFile(new_file, "");
+
+    selectedFile.children.push(new_file);
+
+    showFileTreeView();
+}
+
 
 }

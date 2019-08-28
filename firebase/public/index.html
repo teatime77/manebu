@@ -4,10 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js?ver=1566964500" ></script>
-    <script type="text/javascript" src="js/firebase.js?ver=1566964500" ></script>
-    <script type="text/javascript" src="js/markdown.js?ver=1566964500" ></script>
-    <script type="text/javascript" src="js/speech.js?ver=1566964500" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1566971128" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1566971128" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1566971128" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1566971128" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -67,14 +67,13 @@ $$ -->
     <td>
       メニュー
       <a href="login.html" >ログイン</a>
-      <button onclick="manebu.openFolder()">フォルダーを開く</button>
+      <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
 
       <button onclick="manebu.open_markdown(window.location.href, document.getElementById('text-name').value);">開く</button>  
       <button onclick="manebu.preview(0)">再生</button>
       <br/>
       タイトル:
       <input id="text-title" type="text" size=10 value="" />
-      <button onclick="manebu.firebase_put()">追加</button>  
       <button onclick="manebu.firebase_update()">更新</button>  
     </td>
     <td style="width: 200px" ></td>
@@ -114,11 +113,13 @@ $$ -->
 
 <dialog id="dlg-Folder">
   名前:
-  <input id="text-name" type="text" size=10 value="" /><br/>
+  <input id="text-name" type="text" size=20 value="" /><br/>
   <button onclick="manebu.make_folder()">フォルダーを作成</button>  
+  <button onclick="manebu.make_file()">ファイルを作成</button>  
 
   <ul id="file-tree-view"></ul>
 
+  <button onclick="manebu.openFile()">開く</button>  
   <button onclick="manebu.saveFolder()">保存</button>  
   <button onclick="manebu.closeFolder()">閉じる</button>  
 </dialog>
