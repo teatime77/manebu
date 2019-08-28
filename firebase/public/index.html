@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
     <script type="text/javascript" src="js/main.js" ></script>
+    <script type="text/javascript" src="js/firebase.js?v=6" ></script>
     <script type="text/javascript" src="js/markdown.js" ></script>
     <script type="text/javascript" src="js/speech.js" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
@@ -63,16 +64,32 @@ $$ -->
 
 <table>
   <tr>
+    <td style="width: 500px" ></td>
     <td>
       メニュー
-      <input id="text-name" type="text" size=10 value="gauss" />
+      <a href="login.html" >ログイン</a>
+
       <button onclick="manebu.open_markdown(window.location.href, document.getElementById('text-name').value);">開く</button>  
       <button onclick="manebu.preview(0)">再生</button>
+      <br/>
+      <br/>
+      名前:
+      <input id="text-name" type="text" size=10 value="" /><br/>
+      <button onclick="manebu.make_folder()">フォルダーを作成</button>  
+
+      タイトル:
+      <input id="text-title" type="text" size=10 value="" />
+      <button onclick="manebu.firebase_put()">追加</button>  
+      <button onclick="manebu.firebase_update()">更新</button>  
     </td>
     <td style="width: 200px" ></td>
   </tr>
 
   <tr>
+      <td>
+        <ul id="file-tree-view"></ul>
+      </td>
+
       <td>
           <br/>
           &#x1f640;
@@ -98,7 +115,6 @@ $$ -->
     🖍    
 </div>
 <div id="div-actions" ></div>
-<a href="login.html" >ログイン</a>
 <button onclick="manebu.loadData(window.location.href);">開く</button>  
 <button onclick="copyData();">コピー</button>  
 <button onclick="startPlay();">再生</button>  

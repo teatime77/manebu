@@ -1,7 +1,7 @@
 /// <reference path="speech.ts" />
+/// <reference path="firebase.ts" />
 namespace manebu {
 declare var MathJax:any;
-declare var firebase:any;
 
 var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;
@@ -550,6 +550,7 @@ export function addSelection(){
 export function init_manebu(){
     console.log("body loaded");
 
+    firebase_init();
     init_speech();
 
     divMath = document.getElementById("div-math") as HTMLDivElement;
