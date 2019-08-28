@@ -519,20 +519,6 @@ export function addTextBlock(text: string){
     addActionSummary(act);
 }
 
-export function addSelection_resume(){
-    if(tmpSelection == null){
-        return;
-    }
-
-    restore_current_mjx_color();
-
-    tmpSelection.style = red_style;
-    actions.push(tmpSelection);
-    addActionSummary(tmpSelection);
-
-    resume();
-}
-
 
 export function addSelection(){
     if(tmpSelection == null){
@@ -575,16 +561,6 @@ export function init_manebu(){
             }        
         }
 
-    }
-
-    if(window.location.search != "" && window.location.search[0] == '?'){
-        var params = window.location.search.substring(1).split('&');
-        var key_values = params.map(x => x.split('='));
-        var map = new Map<string, string>(key_values.map(x => [x[0], x[1]] as [string, string]));
-
-        var name = map.get("name");
-        console.log(`name:${name}`);
-        open_markdown(window.location.href, name);
     }
 }
 
@@ -761,26 +737,5 @@ export function resume(){
     }
 }
 
-export function loadData(this_url : string){
-    var k = this_url.lastIndexOf('/');
-    var data_url = this_url.substring(0, k) + "/data/data.json";
 
-    fetch(data_url)
-    .then(function(response) {
-        return response.json();
-    })
-    .then(function(json_data) {
-        console.log(JSON.stringify(json_data));
-
-        actions = json_data;
-        for(let act of manebu.actions){
-            addActionSummary(act);
-        }
-        play(0)
-    });
-}
-
-export function actions_toJSON() : string {
-    return "[\n" + actions.map(x => "\t" + JSON.stringify(x)).join("\n\t,\n") + "\n]";
-}
 }

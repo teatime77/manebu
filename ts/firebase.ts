@@ -2,7 +2,6 @@ namespace manebu {
 declare var firebase:any;
 
 var textName  : HTMLInputElement;
-var textTitle : HTMLInputElement;
 var fileTreeView : HTMLUListElement;
 var dlgFolder : HTMLDialogElement;
 
@@ -190,7 +189,6 @@ export function firebase_init(){
     });
 
     textName  = document.getElementById("text-name") as HTMLInputElement;
-    textTitle = document.getElementById("text-title") as HTMLInputElement;
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
     dlgFolder = document.getElementById("dlg-Folder") as HTMLDialogElement;
 
@@ -237,7 +235,6 @@ export function make_folder(){
 
 function writeFile(file: FileInfo, text: string){
     var ctime = Math.round((new Date()).getTime());
-    var title = textTitle.value.trim();
 
     db.collection('users').doc(uid).collection('docs').doc("" + file.id).set({
         ctime  : ctime,
@@ -266,7 +263,10 @@ export function openFile(){
             textMath.value = doc_data.text;
 
             console.log(`[${file.id}]${file.name} を読みこみました。`);
-        } else {
+
+            dlgFolder.close();
+        } 
+        else {
             // doc.data() will be undefined in this case
 
             textMath.value = "";

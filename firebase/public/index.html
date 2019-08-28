@@ -4,10 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js?ver=1566971128" ></script>
-    <script type="text/javascript" src="js/firebase.js?ver=1566971128" ></script>
-    <script type="text/javascript" src="js/markdown.js?ver=1566971128" ></script>
-    <script type="text/javascript" src="js/speech.js?ver=1566971128" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1566972556" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1566972556" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1566972556" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1566972556" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -21,32 +21,6 @@
 function body_onload(){
     console.log("body load");
     manebu.init_manebu();
-}
-
-function startPlay(){
-    manebu.play(0)
-}
-
-function copyData(){
-    var s = manebu.actions_toJSON();
-    console.log(s);
-
-    navigator.clipboard.writeText(s).then(function() {
-        console.log("copy ok");
-    }, 
-    function() {
-      console.log("copy ng");
-    });    
-}
-
-function addTextBlock_resume(){
-    manebu.addTextBlock(manebu.textMath.value);
-    manebu.resume();
-}
-
-function addSpeech_resume(){
-    manebu.addSpeech(manebu.textMath.value);
-    manebu.resume();
 }
 </script>
   
@@ -65,28 +39,19 @@ $$ -->
 <table>
   <tr>
     <td>
-      メニュー
-      <a href="login.html" >ログイン</a>
+      <button onclick="window.location.href='login.html'">ログイン</button>
       <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
-
-      <button onclick="manebu.open_markdown(window.location.href, document.getElementById('text-name').value);">開く</button>  
-      <button onclick="manebu.preview(0)">再生</button>
-      <br/>
-      タイトル:
-      <input id="text-title" type="text" size=10 value="" />
       <button onclick="manebu.firebase_update()">更新</button>  
+      <button onclick="manebu.preview(0)">再生</button>
+      &#x1f640;
+      <button onclick="manebu.textMath.value = ''">クリア</button>
+
     </td>
     <td style="width: 200px" ></td>
   </tr>
 
   <tr>
       <td>
-          <br/>
-          &#x1f640;
-          <button onclick="manebu.textMath.value = ''">クリア</button>
-          <button onclick="addTextBlock_resume()">テキストを追加</button>
-          <button onclick="addSpeech_resume()">音声を追加</button>  
-          <br/>
         <textarea id="txt-math" rows="50" cols="50" spellcheck="false" style="overflow-x: visible; width: 50em; white-space: pre; " ></textarea>
       </td>
       <td valign="top">
@@ -100,16 +65,10 @@ $$ -->
 
 <div contenteditable="true">
     <span style="font-family: 'Segoe UI Emoji' ">🖍</span>  
-    このテキストは閲覧者が編集することができます。
-    🖍
-    🖍    
+    このテキストは閲覧者が編集することができます。 🖍 🖍    
 </div>
+
 <div id="div-actions" ></div>
-<button onclick="manebu.loadData(window.location.href);">開く</button>  
-<button onclick="copyData();">コピー</button>  
-<button onclick="startPlay();">再生</button>  
-<button onclick="manebu.speak();">音声合成のテスト</button>  
-<button onclick="manebu.addSelection_resume()">テキストを選択</button>
 
 <dialog id="dlg-Folder">
   名前:

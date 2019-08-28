@@ -101,19 +101,4 @@ export function preview(start_pos: number){
     },100);
 }
 
-export function open_markdown(this_url : string, name: string){
-    var k = this_url.lastIndexOf('/');
-    var data_url = this_url.substring(0, k) + `/data/${name}.md`;
-
-    fetch(data_url)
-    .then(function(response) {
-        return response.text();
-    })
-    .then(function (text) {
-        textMath.value = text;
-
-        preview(0);
-    });
-
-}
 }
