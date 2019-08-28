@@ -4,10 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js" ></script>
-    <script type="text/javascript" src="js/firebase.js?v=6" ></script>
-    <script type="text/javascript" src="js/markdown.js" ></script>
-    <script type="text/javascript" src="js/speech.js" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1566964500" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1566964500" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1566964500" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1566964500" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -64,19 +64,14 @@ $$ -->
 
 <table>
   <tr>
-    <td style="width: 500px" ></td>
     <td>
       メニュー
       <a href="login.html" >ログイン</a>
+      <button onclick="manebu.openFolder()">フォルダーを開く</button>
 
       <button onclick="manebu.open_markdown(window.location.href, document.getElementById('text-name').value);">開く</button>  
       <button onclick="manebu.preview(0)">再生</button>
       <br/>
-      <br/>
-      名前:
-      <input id="text-name" type="text" size=10 value="" /><br/>
-      <button onclick="manebu.make_folder()">フォルダーを作成</button>  
-
       タイトル:
       <input id="text-title" type="text" size=10 value="" />
       <button onclick="manebu.firebase_put()">追加</button>  
@@ -86,10 +81,6 @@ $$ -->
   </tr>
 
   <tr>
-      <td>
-        <ul id="file-tree-view"></ul>
-      </td>
-
       <td>
           <br/>
           &#x1f640;
@@ -121,7 +112,16 @@ $$ -->
 <button onclick="manebu.speak();">音声合成のテスト</button>  
 <button onclick="manebu.addSelection_resume()">テキストを選択</button>
 
+<dialog id="dlg-Folder">
+  名前:
+  <input id="text-name" type="text" size=10 value="" /><br/>
+  <button onclick="manebu.make_folder()">フォルダーを作成</button>  
 
+  <ul id="file-tree-view"></ul>
+
+  <button onclick="manebu.saveFolder()">保存</button>  
+  <button onclick="manebu.closeFolder()">閉じる</button>  
+</dialog>
 
 <!-- The core Firebase JS SDK is always required and must be listed first -->
 <script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>

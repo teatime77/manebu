@@ -4,6 +4,8 @@ declare var firebase:any;
 var textName  : HTMLInputElement;
 var textTitle : HTMLInputElement;
 var fileTreeView : HTMLUListElement;
+var dlgFolder : HTMLDialogElement;
+
 var db;
 var uid = null;
 var docs : Map<string, any>;
@@ -75,18 +77,29 @@ export function make_folder(){
 function showFileTreeView(){
     function fnc(file:FileInfo, ul: HTMLUListElement){
         var li = document.createElement("li") as HTMLLIElement;
-        li.addEventListener("click", function(ev:MouseEvent){
-            ev.stopPropagation();
-            var file_id = parseInt( this.dataset.file_id );
-            selectedFile = getFileById(file_id);
-            console.assert(selectedFile != undefined);
-            this.style.backgroundColor = "lightgray";
-        });
-        li.dataset.file_id = "" + file.id;
         ul.appendChild(li);
 
         var span = document.createElement("span");
+        span.className = "span-file";
         span.innerHTML = file.name;
+        span.addEventListener("click", function(ev:MouseEvent){
+            ev.stopPropagation();
+
+            var spans = fileTreeView.getElementsByClassName("span-file");
+            for(let x of spans){
+
+                (x as HTMLSpanElement).style.backgroundColor = "white";
+            }
+
+            var file_id = parseInt( this.dataset.file_id );
+            selectedFile = getFileById(file_id);
+            console.assert(selectedFile != undefined);
+
+            this.style.backgroundColor = "lightgray";
+        });
+        span.dataset.file_id = "" + file.id;
+
+
         li.appendChild(span);
 
 
@@ -188,6 +201,7 @@ export function firebase_init(){
     textName  = document.getElementById("text-name") as HTMLInputElement;
     textTitle = document.getElementById("text-title") as HTMLInputElement;
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
+    dlgFolder = document.getElementById("dlg-Folder") as HTMLDialogElement;
 
     db = firebase.firestore();
 }
@@ -209,8 +223,6 @@ export function firebase_put(){
         console.log("ログインしていません。");
         return;
     }
-
-    writeUserData();
 
     var ctime = Math.round((new Date()).getTime());
     var path = textName.value.trim();
@@ -234,6 +246,21 @@ export function firebase_put(){
 
 export function firebase_update(){
 
+}
+
+export function openFolder(){
+    showFileTreeView();
+    dlgFolder.showModal();
+}
+
+export function closeFolder(){
+    dlgFolder.close();
+}
+
+export function saveFolder(){
+    writeUserData();
+
+    dlgFolder.close();
 }
 
 }
