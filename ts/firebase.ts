@@ -107,15 +107,14 @@ function showFileTreeView(){
 }
 
 function readUserData(){
-    var docRef = db.collection('users').doc(uid);
-
-    docRef.get().then(function(doc) {
+    db.collection('users').doc(uid).collection('docs').doc("root").get()
+    .then(function(doc) {
         if (doc.exists) {
-            var user_data = doc.data();
+            var doc_data = doc.data() as Doc;
 
-            if(user_data.rootFile != undefined){
+            if(doc_data.text != undefined){
 
-                rootFile = JSON.parse(user_data.rootFile);
+                rootFile = JSON.parse(doc_data.text);
 
                 (document.getElementById("btn-open-folder") as HTMLButtonElement).disabled = false;
             }
@@ -132,7 +131,8 @@ function readUserData(){
         }
 
         showFileTreeView();
-    }).catch(function(error) {
+    })
+    .catch(function(error) {
         msg(`Error getting document:${error}`);
         rootFile = new FileInfo("root", false);
 
@@ -195,8 +195,12 @@ export function firebase_init(){
 }
 
 function writeUserData(){
-    db.collection('users').doc(uid).set({
-        rootFile: JSON.stringify(rootFile)
+    var ctime = Math.round((new Date()).getTime());
+
+    db.collection('users').doc(uid).collection('docs').doc("root").set({
+        ctime  : ctime,
+        mtime  : ctime,
+        text   : JSON.stringify(rootFile)
     })
     .then(function() {
         msg("Document successfully written!");
@@ -279,8 +283,6 @@ export function openFile(){
             msg(`[${file.id}]${file.name} を読みこみました。`);
 
             hidePopup(dlgFolder);
-
-            preview(0);            
         } 
         else {
             // doc.data() will be undefined in this case
