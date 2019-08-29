@@ -45,6 +45,9 @@ function* player(start_pos: number){
                 if(arg != ""){
 
                     yield* speak(new SpeechAction(arg));
+
+                    valid_text = true;
+                    texts.push(arg);
                 }
                 break;
 

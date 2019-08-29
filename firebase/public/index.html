@@ -4,10 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js?ver=1566972556" ></script>
-    <script type="text/javascript" src="js/firebase.js?ver=1566972556" ></script>
-    <script type="text/javascript" src="js/markdown.js?ver=1566972556" ></script>
-    <script type="text/javascript" src="js/speech.js?ver=1566972556" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1567043609" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1567043609" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1567043609" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1567043609" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -36,32 +36,35 @@ function body_onload(){
 \newcommand{\U}{{}^\ast U}
 $$ -->
 
-<table>
+<table border="1" width="100%">
   <tr>
-    <td>
-      <button onclick="window.location.href='login.html'">ログイン</button>
-      <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
-      <button onclick="manebu.firebase_update()">更新</button>  
-      <button onclick="manebu.preview(0)">再生</button>
-      &#x1f640;
-      <button onclick="manebu.textMath.value = ''">クリア</button>
-
-    </td>
-    <td style="width: 200px" ></td>
-  </tr>
-
-  <tr>
-      <td>
-        <textarea id="txt-math" rows="50" cols="50" spellcheck="false" style="overflow-x: visible; width: 50em; white-space: pre; " ></textarea>
+      <td valign="top" width="50%">
+          <button onclick="window.location.href='login.html'">ログイン</button>
+          <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
+          <button onclick="manebu.firebase_update()">更新</button>  
+          <button onclick="manebu.preview(0)">再生</button>
+          &#x1f640;
+          <button onclick="manebu.textMath.value = ''">クリア</button>
+          <br/>
+          <textarea id="txt-math" spellcheck="false" style="width: 99%; height: 700px; overflow-x: visible; white-space: pre; " ></textarea>
       </td>
-      <td valign="top">
+      <td valign="top" width="50%">
         <button onclick="manebu.addSelection()">テキストを選択</button>
         <button onclick="manebu.substitute()">テキストを代入</button>
         <br/>
-        <div id="div-math" style="width: 600px"></div>      
+        <div id="div-math" style="height: 700px; overflow: scroll; border-style:inset; border-width: 3px;" ></div>
+        <!-- <div >
+        </div> -->
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+          <pre id="div-msg" style="height: 200px; overflow: scroll; border-style:inset; border-width: 3px;" ></pre>
       </td>
     </tr>
 </table>
+
+
 
 <div contenteditable="true">
     <span style="font-family: 'Segoe UI Emoji' ">🖍</span>  
@@ -70,7 +73,7 @@ $$ -->
 
 <div id="div-actions" ></div>
 
-<dialog id="dlg-Folder">
+<div id="dlg-Folder" style="display: none; position:fixed; border-style:outset; border-width: 5px; background-color: cornsilk;">
   名前:
   <input id="text-name" type="text" size=20 value="" /><br/>
   <button onclick="manebu.make_folder()">フォルダーを作成</button>  
@@ -81,7 +84,7 @@ $$ -->
   <button onclick="manebu.openFile()">開く</button>  
   <button onclick="manebu.saveFolder()">保存</button>  
   <button onclick="manebu.closeFolder()">閉じる</button>  
-</dialog>
+</div>
 
 <!-- The core Firebase JS SDK is always required and must be listed first -->
 <script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>

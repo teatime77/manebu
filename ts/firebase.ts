@@ -3,7 +3,7 @@ declare var firebase:any;
 
 var textName  : HTMLInputElement;
 var fileTreeView : HTMLUListElement;
-var dlgFolder : HTMLDialogElement;
+var dlgFolder : HTMLDivElement;
 
 var db;
 var uid = null;
@@ -123,18 +123,17 @@ function readUserData(){
 
                 rootFile = new FileInfo("root", false);
             }
-            console.log("Document data:", user_data);
         } 
         else {
             // doc.data() will be undefined in this case
-            console.log("No such document!");
+            msg("No such document!");
 
             rootFile = new FileInfo("root", false);
         }
 
         showFileTreeView();
     }).catch(function(error) {
-        console.log("Error getting document:", error);
+        msg(`Error getting document:${error}`);
         rootFile = new FileInfo("root", false);
 
         showFileTreeView();
@@ -148,7 +147,7 @@ function read_docs(){
     db.collection('users').doc(uid).collection('docs').get().then((querySnapshot) => {
         querySnapshot.forEach((doc) => {
             var data = doc.data();
-            console.log(`${doc.id} => ${data}`);
+            msg(`${doc.id} => ${data}`);
 
             docs.set(doc.id, data);
         });
@@ -159,7 +158,7 @@ export function firebase_init(){
     firebase.auth().onAuthStateChanged(function(user: any) {
         if (user) {
             // User is signed in.
-            console.log(`login A ${user.uid} ${user.displayName} ${user.email}`);
+            msg(`login A ${user.uid} ${user.displayName} ${user.email}`);
     
             var user1 = firebase.auth().currentUser;
     
@@ -167,7 +166,7 @@ export function firebase_init(){
                 // User is signed in.
 
                 uid = user.uid;
-                console.log(`login B ${user1.uid} ${user1.displayName} ${user1.email}`);
+                msg(`login B ${user1.uid} ${user1.displayName} ${user1.email}`);
 
                 readUserData();
                 read_docs();                
@@ -176,7 +175,7 @@ export function firebase_init(){
                 // No user is signed in.
 
                 uid = null;
-                console.log("ログアウト");
+                msg("ログアウト");
             }    
         } 
         else {
@@ -184,13 +183,13 @@ export function firebase_init(){
             // ...
 
             uid = null;
-            console.log("ログアウト");
+            msg("ログアウト");
         }
     });
 
     textName  = document.getElementById("text-name") as HTMLInputElement;
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
-    dlgFolder = document.getElementById("dlg-Folder") as HTMLDialogElement;
+    dlgFolder = document.getElementById("dlg-Folder") as HTMLDivElement;
 
     db = firebase.firestore();
 }
@@ -200,7 +199,7 @@ function writeUserData(){
         rootFile: JSON.stringify(rootFile)
     })
     .then(function() {
-        console.log("Document successfully written!");
+        msg("Document successfully written!");
     })
     .catch(function(error) {
         console.error("Error writing document: ", error);
@@ -209,17 +208,17 @@ function writeUserData(){
 
 export function openFolder(){
     showFileTreeView();
-    dlgFolder.showModal();
+    showPopup(dlgFolder);
 }
 
 export function closeFolder(){
-    dlgFolder.close();
+    hidePopup(dlgFolder);
 }
 
 export function saveFolder(){
     writeUserData();
 
-    dlgFolder.close();
+    hidePopup(dlgFolder);
 }
 
 
@@ -242,7 +241,7 @@ function writeFile(file: FileInfo, text: string){
         text   : text
     })
     .then(function() {
-        console.log(`[${file.id}]${file.name} に書き込みました。`);
+        msg(`[${file.id}]${file.name} に書き込みました。`);
     })
     .catch(function(error) {
         console.error("Error adding document: ", error);
@@ -251,6 +250,21 @@ function writeFile(file: FileInfo, text: string){
 
 export function firebase_update(){
     writeFile(selectedFile, textMath.value);
+}
+
+function showPopup(div: HTMLDivElement){
+    div.style.display = "inline-block";
+    div.style.position = "fixed";
+    div.style.left = "20px";
+    div.style.top  = "20px";
+    // div.style.width = `${window.innerWidth - 50}px`;
+    // div.style.height = `${window.innerHeight - 50}px`;
+    div.style.width = `${document.documentElement.clientWidth - 50}px`;
+    div.style.height = `${document.documentElement.clientHeight - 50}px`;
+}
+
+function hidePopup(div: HTMLDivElement){
+    div.style.display = "none";
 }
 
 export function openFile(){
@@ -262,19 +276,21 @@ export function openFile(){
 
             textMath.value = doc_data.text;
 
-            console.log(`[${file.id}]${file.name} を読みこみました。`);
+            msg(`[${file.id}]${file.name} を読みこみました。`);
 
-            dlgFolder.close();
+            hidePopup(dlgFolder);
+
+            preview(0);            
         } 
         else {
             // doc.data() will be undefined in this case
 
             textMath.value = "";
-            console.log(`[${file.id}]${file.name} はありません。`);
+            msg(`[${file.id}]${file.name} はありません。`);
         }
     })
     .catch(function(error) {
-        console.log(`[${file.id}]${file.name} の読み込みエラーです。`);
+        msg(`[${file.id}]${file.name} の読み込みエラーです。`);
     });
 }
 

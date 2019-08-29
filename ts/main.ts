@@ -15,13 +15,19 @@ var oldAction = false;
 var TextBlockId = 0;
 var textMathSelectionStart : number;
 var textMathSelectionEnd : number;
-
-console.log("hello");
+var divMsg : HTMLDivElement;
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
 
     return v[v.length - 1];
+}
+
+export function msg(text: string){
+    console.log(text);
+
+    divMsg.textContent = divMsg.textContent + "\n" + text;
+    divMsg.scrollTop = divMsg.scrollHeight;
 }
 
 function set_current_mjx(node : HTMLElement, style:any){
@@ -108,11 +114,11 @@ function dumpJax(root:any){
         var ele = getDomFromJax(node);
         if(["mi", "mn", "mo"].includes(node.nodeName)){
             var text = ele.textContent;
-            console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName} ${text}`);
+            msg(`ej ${" ".repeat(2 * nest)}${node.nodeName} ${text}`);
         }
         else{
 
-            console.log(`ej ${" ".repeat(2 * nest)}${node.nodeName}`);
+            msg(`ej ${" ".repeat(2 * nest)}${node.nodeName}`);
         }    
     }
 }
@@ -162,7 +168,7 @@ function getJaxFromPath(all_jax:any[], path:any[]){
 }
 
 function onclick_block(){
-    console.log("clicked");
+    msg("clicked");
 
     restore_current_mjx_color();
 
@@ -188,8 +194,8 @@ function onclick_block(){
 
     var [all_jax, map] = makeDomJaxMap();
 
-    function check_path(msg: string, path:any[], node_sv: any){
-        console.log(`${msg}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
+    function check_path(text: string, path:any[], node_sv: any){
+        msg(`${text}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
         var node = getJaxFromPath(all_jax, path);
         console.assert(node == node_sv);
     }
@@ -200,7 +206,7 @@ function onclick_block(){
 
         var rng = sel.getRangeAt(0);
 
-        console.log(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
+        msg(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
 
         var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
         var jax_idx;
@@ -210,7 +216,7 @@ function onclick_block(){
             }
         }
 
-        console.log(`all jax: ${jax_idx}`);
+        msg(`all jax: ${jax_idx}`);
 
         if(rng.startContainer == rng.endContainer){
 
@@ -380,7 +386,7 @@ class TextBlock {
         this.ele.addEventListener("click", onclick_block);
         
         this.ele.addEventListener('keydown', (event) => {
-            console.log(`key down ${event.key} ${event.ctrlKey}`);
+            msg(`key down ${event.key} ${event.ctrlKey}`);
           }, false);        
     }    
 }
@@ -476,10 +482,12 @@ function make_html_lines(text: string){
 
 
 var typeset_ended = false;
-function ontypeset(msg: string, id: number){
-    console.log(`${msg} ${id}`);
+function ontypeset(text: string, id: number){
+    msg(`${text} ${id}`);
 
     typeset_ended = true;
+
+    divMath.scrollTop = divMath.scrollHeight;
 }
 
 export function addActionSummary(act: Action){
@@ -531,17 +539,21 @@ export function addSelection(){
 
     var ins_str = '\n@select ' + JSON.stringify(tmpSelection) + '\n';
     textMath.value = textMath.value.substring(0, textMathSelectionEnd) + ins_str + textMath.value.substring(textMathSelectionEnd);
+
+    setSelection(tmpSelection);
 }
 
 export function init_manebu(){
-    console.log("body loaded");
-
-    firebase_init();
-    init_speech();
-
     divMath = document.getElementById("div-math") as HTMLDivElement;
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
     divActions = document.getElementById("div-actions") as HTMLDivElement;
+    divMsg = document.getElementById("div-msg") as HTMLDivElement;
+
+    msg("body loaded");
+    msg(`w:${document.body.clientWidth} h:${document.body.clientHeight}`);
+
+    firebase_init();
+    init_speech();
 
     // addTextBlock(textMath.value);
 
@@ -553,10 +565,10 @@ export function init_manebu(){
             var rng = sel.getRangeAt(0);
             textMathSelectionStart = textMath.selectionStart;
             textMathSelectionEnd = textMath.selectionEnd;
-            console.log(`blur2 ${ev} ${sel.rangeCount} start:${textMathSelectionStart} end:${textMathSelectionEnd}`);
+            msg(`blur2 ${ev} ${sel.rangeCount} start:${textMathSelectionStart} end:${textMathSelectionEnd}`);
 
             if(textMath.value.charCodeAt(0) == "🙀".charCodeAt(0)){
-                console.log(`blur:${textMath.value.charAt(0)} ${textMath.value.charCodeAt(0).toString(16)} ${"🙀".charCodeAt(0).toString(16)}`);
+                msg(`blur:${textMath.value.charAt(0)} ${textMath.value.charCodeAt(0).toString(16)} ${"🙀".charCodeAt(0).toString(16)}`);
                 textMath.value = textMath.value.substring(0, textMathSelectionStart) + "🙀" + textMath.value.substring(textMathSelectionEnd);
             }        
         }
