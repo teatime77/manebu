@@ -192,6 +192,8 @@ export function firebase_init(){
     dlgFolder = document.getElementById("dlg-Folder") as HTMLDivElement;
 
     db = firebase.firestore();
+
+    initFileDrop();
 }
 
 function writeUserData(){
@@ -307,5 +309,46 @@ export function make_file(){
     showFileTreeView();
 }
 
+function uploadFile(file: File){
+    // Create a root reference
+    var storageRef = firebase.storage().ref();
+
+    // Create a reference to 'mountains.jpg'
+    var img_ref = storageRef.child(`${uid}/img/${file.name}`);
+
+    img_ref.put(file).then(function(snapshot) {
+        snapshot.ref.getDownloadURL().then(function(downloadURL) {
+            msg(`download URL: [${downloadURL}]`);
+        });
+        msg('Uploaded a blob or file!');
+    });    
+}
+
+function handleFileSelect(ev: DragEvent) {
+    ev.stopPropagation();
+    ev.preventDefault();
+
+    var files = ev.dataTransfer.files; // FileList object.
+
+    for (let f of files) {
+        msg(`drop name:${escape(f.name)} type:${f.type} size:${f.size} mtime:${f.lastModified.toLocaleString()} `);
+
+        uploadFile(f);
+    }
+}
+
+function handleDragOver(evt) {
+    evt.stopPropagation();
+    evt.preventDefault();
+    evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+}
+
+
+function initFileDrop(){
+    // Setup the dnd listeners.
+    var dropZone = document.getElementById('drop_zone') as HTMLDivElement;
+    dropZone.addEventListener('dragover', handleDragOver, false);
+    dropZone.addEventListener('drop', handleFileSelect, false);
+}
 
 }
