@@ -7,7 +7,7 @@ var line_idx : number;
 function getCommand(line: string) : [string|null, string|null] {
     var line_trim = line.trim();
 
-    for(let cmd of [ "@div", "@speak", "@wait", "@del", "@select", "@us", "@unselect" ]){
+    for(let cmd of [ "@div", "@speak", "@wait", "@del", "@select", "@us", "@unselect", "@img" ]){
         if(line.startsWith(cmd + " ") || line_trim == cmd){
 
             var arg = line.substring(cmd.length + 1).trim();
@@ -71,6 +71,14 @@ function* player(start_pos: number){
                     console.assert(0 <= idx && idx < divMath.childNodes.length );
                     divMath.removeChild(divMath.childNodes[idx]);
                 }
+
+            case "@img":
+                var img = document.createElement("img");
+                divMath.appendChild(img);
+                setImgSrc(img, arg);
+
+                divMath.appendChild(document.createElement("div"));
+                break;
             }
         }
         else{

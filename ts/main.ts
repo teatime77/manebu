@@ -13,8 +13,8 @@ var red_style  = { "color": "red" };
 var isDesign = true;
 var oldAction = false;
 var TextBlockId = 0;
-var textMathSelectionStart : number;
-var textMathSelectionEnd : number;
+var textMathSelectionStart : number = 0;
+var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement;
 
 function last<T>(v:Array<T>) : T{
@@ -527,6 +527,9 @@ export function addTextBlock(text: string){
     addActionSummary(act);
 }
 
+export function insertText(ins_str: string){
+    textMath.value = textMath.value.substring(0, textMathSelectionEnd) + ins_str + textMath.value.substring(textMathSelectionEnd);
+}
 
 export function addSelection(){
     if(tmpSelection == null){
@@ -538,7 +541,7 @@ export function addSelection(){
     tmpSelection.style = red_style;
 
     var ins_str = '\n@select ' + JSON.stringify(tmpSelection) + '\n';
-    textMath.value = textMath.value.substring(0, textMathSelectionEnd) + ins_str + textMath.value.substring(textMathSelectionEnd);
+    insertText(ins_str);
 
     setSelection(tmpSelection);
 }

@@ -4,6 +4,7 @@ declare var firebase:any;
 var textName  : HTMLInputElement;
 var fileTreeView : HTMLUListElement;
 var dlgFolder : HTMLDivElement;
+export var dropZone : HTMLDivElement;
 
 var db;
 var uid = null;
@@ -190,6 +191,7 @@ export function firebase_init(){
     textName  = document.getElementById("text-name") as HTMLInputElement;
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
     dlgFolder = document.getElementById("dlg-Folder") as HTMLDivElement;
+    dropZone = document.getElementById('drop_zone') as HTMLDivElement;
 
     db = firebase.firestore();
 
@@ -309,17 +311,36 @@ export function make_file(){
     showFileTreeView();
 }
 
-function uploadFile(file: File){
+function getImgRef(file_name: string){
     // Create a root reference
     var storageRef = firebase.storage().ref();
 
+    return storageRef.child(`/users/${uid}/img/${file_name}`);
+}
+
+export function setImgSrc(img: HTMLImageElement, file_name: string){
+    var img_ref = getImgRef(file_name);
+
+    img_ref.getDownloadURL().then(function(downloadURL) {
+        msg(`download URL: [${downloadURL}]`);
+
+        img.src = downloadURL;
+    });
+}
+
+function uploadFile(file: File){
+
     // Create a reference to 'mountains.jpg'
-    var img_ref = storageRef.child(`${uid}/img/${file.name}`);
+    var img_ref = getImgRef(file.name);
 
     img_ref.put(file).then(function(snapshot) {
         snapshot.ref.getDownloadURL().then(function(downloadURL) {
             msg(`download URL: [${downloadURL}]`);
+
+            dropZone.style.display = "none";            
         });
+
+        insertText( `\n@img ${file.name}\n` );
         msg('Uploaded a blob or file!');
     });    
 }
@@ -346,9 +367,12 @@ function handleDragOver(evt) {
 
 function initFileDrop(){
     // Setup the dnd listeners.
-    var dropZone = document.getElementById('drop_zone') as HTMLDivElement;
     dropZone.addEventListener('dragover', handleDragOver, false);
     dropZone.addEventListener('drop', handleFileSelect, false);
+}
+
+export function dropImage(){
+
 }
 
 }

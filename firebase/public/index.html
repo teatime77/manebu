@@ -4,10 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js?ver=1567052552" ></script>
-    <script type="text/javascript" src="js/firebase.js?ver=1567052552" ></script>
-    <script type="text/javascript" src="js/markdown.js?ver=1567052552" ></script>
-    <script type="text/javascript" src="js/speech.js?ver=1567052552" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1567078439" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1567078439" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1567078439" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1567078439" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -22,18 +22,19 @@ function body_onload(){
     console.log("body load");
     manebu.init_manebu();
 }
+
+function openDropZone(){
+    manebu.dropZone.style.display = "inline-block";
+}
+
+function closeDropZone(){
+    manebu.dropZone.style.display = "none";
+}
+
 </script>
   
 </head>
 <body onload="body_onload()" style="margin:0px; padding:0px">
-
-<!-- ************************************************************************************* -->
-<!-- ************************************************************************************* -->
-
-<div id="drop_zone" style="width: 300px; height: 200px; border-style: groove; border-width: 3px;">Drop files here</div>
-<!-- ************************************************************************************* -->
-<!-- ************************************************************************************* -->
-
 
 <!-- $$
 \newcommand{\P}{\mathcal{P}}
@@ -59,6 +60,7 @@ $$ -->
       <td valign="top" width="50%">
         <button onclick="manebu.addSelection()">テキストを選択</button>
         <button onclick="manebu.substitute()">テキストを代入</button>
+        <button onclick="openDropZone()" >画像を挿入</button>
         <br/>
         <div id="div-math" style="height: 700px; overflow: scroll; border-style:inset; border-width: 3px;" ></div>
         <!-- <div >
@@ -94,7 +96,12 @@ $$ -->
   <button onclick="manebu.closeFolder()">閉じる</button>  
 </div>
 
-
+<div id="drop_zone" style="display:none; position:fixed; left: 50px; top: 50px; width: 300px; height: 200px; border-style: groove; border-width: 3px;">
+    <p>&nbsp;</p>
+    <span>画像ファイルをドロップしてください。</span>
+    <p>&nbsp;</p>
+    <button onclick="closeDropZone()" >閉じる</button>
+</div>
 
 <!-- The core Firebase JS SDK is always required and must be listed first -->
 <script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>
