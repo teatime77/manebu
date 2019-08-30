@@ -18,11 +18,6 @@
 
 <script type="text/javascript">
 
-function body_onload(){
-    console.log("body load");
-    manebu.init_manebu();
-}
-
 function openDropZone(){
     manebu.dropZone.style.display = "inline-block";
 }
@@ -34,7 +29,7 @@ function closeDropZone(){
 </script>
   
 </head>
-<body onload="body_onload()" style="margin:0px; padding:0px">
+<body onload="manebu.init_manebu(true)" style="margin:0px; padding:0px">
 
 <!-- $$
 \newcommand{\P}{\mathcal{P}}

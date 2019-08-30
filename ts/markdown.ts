@@ -96,12 +96,8 @@ function* player(start_pos: number){
 
 }
 
-export function preview(start_pos: number){
-    if(start_pos == 0){
-        divMath.innerHTML = "";
-    }
-    
-    lines = textMath.value.replace('\r\n', '\n').split('\n');
+export function playText(text: string, start_pos: number){
+    lines = text.replace('\r\n', '\n').split('\n');
 
     var gen = player(start_pos);
     var id = setInterval(function(){
@@ -110,6 +106,14 @@ export function preview(start_pos: number){
             clearInterval(id);
         }
     },100);
+}
+
+export function preview(start_pos: number){
+    if(start_pos == 0){
+        divMath.innerHTML = "";
+    }
+
+    playText(textMath.value, start_pos);
 }
 
 }

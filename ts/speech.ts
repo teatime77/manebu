@@ -34,7 +34,6 @@ export function init_speech(){
         msg("voices changed");
         setVoice();
     };
-
 }
 
 

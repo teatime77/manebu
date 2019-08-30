@@ -7,8 +7,10 @@ var dlgFolder : HTMLDivElement;
 export var dropZone : HTMLDivElement;
 
 var db;
-var uid = null;
-var docs : Map<string, any>;
+
+const default_uid = "Rb6xnDguG5Z9Jij6XLIPHV4oNge2";
+var login_uid = null;
+var guest_uid = default_uid;
 
 class Doc {
     ctime  : number;
@@ -88,9 +90,7 @@ function showFileTreeView(){
         });
         span.dataset.file_id = "" + file.id;
 
-
         li.appendChild(span);
-
 
         if(file.children != undefined){
             var ul2 = document.createElement("ul");
@@ -100,15 +100,75 @@ function showFileTreeView(){
                 fnc(x, ul2);
             }
         }
-
     }
 
     fileTreeView.innerHTML = "";
     fnc(rootFile, fileTreeView);
 }
 
-function readUserData(){
-    db.collection('users').doc(uid).collection('docs').doc("root").get()
+function showContents(){
+    function fnc(file:FileInfo, ul: HTMLUListElement){
+        var li = document.createElement("li") as HTMLLIElement;
+        ul.appendChild(li);
+
+        if(file.children == undefined){
+            // ファイルの場合
+
+            var link = document.createElement("button");
+            link.innerHTML = file.name;
+            link.dataset.file_id = "" + file.id;
+            link.addEventListener("click", function(ev:MouseEvent){
+                ev.stopPropagation();
+
+                var file_id = parseInt( this.dataset.file_id );
+
+                var file = getFileById(file_id);
+                console.assert(file != undefined);
+
+                db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
+                    if (doc.exists) {
+                        var doc_data = doc.data() as Doc;
+
+                        playText(doc_data.text, 0);
+                    } 
+                    else {
+                        // doc.data() will be undefined in this case
+            
+                        msg(`[${file.id}]${file.name} はありません。`);
+                    }
+                })
+                .catch(function(error) {
+                    msg(`[${file.id}]${file.name} の読み込みエラーです。`);
+                });
+
+                msg(`click:${file_id} ${this.textContent}`);
+            });
+
+            li.appendChild(link);
+        }
+        else{
+            // フォルダーの場合
+
+            var span = document.createElement("span");
+            span.innerHTML = file.name;
+            li.appendChild(span);
+
+            var ul2 = document.createElement("ul");
+            li.appendChild(ul2);
+
+            for(let x of file.children){
+                fnc(x, ul2);
+            }
+        }
+    }
+
+    var root_ul = document.getElementById("ulContents") as HTMLUListElement;
+    root_ul.innerHTML = "";
+    fnc(rootFile, root_ul);
+}
+
+function readFileTree(user_uid: string){
+    db.collection('users').doc(user_uid).collection('docs').doc("root").get()
     .then(function(doc) {
         if (doc.exists) {
             var doc_data = doc.data() as Doc;
@@ -117,7 +177,10 @@ function readUserData(){
 
                 rootFile = JSON.parse(doc_data.text);
 
-                (document.getElementById("btn-open-folder") as HTMLButtonElement).disabled = false;
+                if(inEditor){
+
+                    (document.getElementById("btn-open-folder") as HTMLButtonElement).disabled = false;
+                }
             }
             else{
 
@@ -131,32 +194,26 @@ function readUserData(){
             rootFile = new FileInfo("root", false);
         }
 
-        showFileTreeView();
+        if(inEditor){
+
+            showFileTreeView();
+        }
+        else{
+
+            showContents();
+        }
     })
     .catch(function(error) {
         msg(`Error getting document:${error}`);
         rootFile = new FileInfo("root", false);
-
-        showFileTreeView();
     });
-
-}
-
-function read_docs(){
-    docs = new Map<string, any>();
-
-    db.collection('users').doc(uid).collection('docs').get().then((querySnapshot) => {
-        querySnapshot.forEach((doc) => {
-            var data = doc.data();
-            msg(`${doc.id} => ${data}`);
-
-            docs.set(doc.id, data);
-        });
-    });    
 }
 
 export function firebase_init(){
     firebase.auth().onAuthStateChanged(function(user: any) {
+        login_uid = null;
+        guest_uid = default_uid;
+        
         if (user) {
             // User is signed in.
             msg(`login A ${user.uid} ${user.displayName} ${user.email}`);
@@ -166,16 +223,14 @@ export function firebase_init(){
             if (user1) {
                 // User is signed in.
 
-                uid = user.uid;
-                msg(`login B ${user1.uid} ${user1.displayName} ${user1.email}`);
+                login_uid = user.uid;
+                guest_uid = user.uid;
 
-                readUserData();
-                read_docs();                
+                msg(`login B ${user1.uid} ${user1.displayName} ${user1.email}`);
             } 
             else {
                 // No user is signed in.
 
-                uid = null;
                 msg("ログアウト");
             }    
         } 
@@ -183,25 +238,31 @@ export function firebase_init(){
             // User is signed out.
             // ...
 
-            uid = null;
             msg("ログアウト");
         }
+
+        readFileTree(guest_uid);
     });
+
+    db = firebase.firestore();
+
+    if(! inEditor){
+        return;
+    }
 
     textName  = document.getElementById("text-name") as HTMLInputElement;
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
     dlgFolder = document.getElementById("dlg-Folder") as HTMLDivElement;
     dropZone = document.getElementById('drop_zone') as HTMLDivElement;
 
-    db = firebase.firestore();
-
-    initFileDrop();
+    dropZone.addEventListener('dragover', handleDragOver, false);
+    dropZone.addEventListener('drop', handleFileSelect, false);
 }
 
 function writeUserData(){
     var ctime = Math.round((new Date()).getTime());
 
-    db.collection('users').doc(uid).collection('docs').doc("root").set({
+    db.collection('users').doc(login_uid).collection('docs').doc("root").set({
         ctime  : ctime,
         mtime  : ctime,
         text   : JSON.stringify(rootFile)
@@ -239,11 +300,10 @@ export function make_folder(){
     showFileTreeView();
 }
 
-
 function writeFile(file: FileInfo, text: string){
     var ctime = Math.round((new Date()).getTime());
 
-    db.collection('users').doc(uid).collection('docs').doc("" + file.id).set({
+    db.collection('users').doc(login_uid).collection('docs').doc("" + file.id).set({
         ctime  : ctime,
         mtime  : ctime,
         text   : text
@@ -278,7 +338,7 @@ function hidePopup(div: HTMLDivElement){
 export function openFile(){
     var file = selectedFile;
 
-    db.collection('users').doc(uid).collection('docs').doc("" + file.id).get().then(function(doc) {
+    db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
         if (doc.exists) {
             var doc_data = doc.data() as Doc;
 
@@ -311,15 +371,22 @@ export function make_file(){
     showFileTreeView();
 }
 
-function getImgRef(file_name: string){
+function getImgRef(file_name: string, mode:string){
     // Create a root reference
     var storageRef = firebase.storage().ref();
+
+    var uid: string;
+    switch(mode){
+    case "r": uid = guest_uid; break;
+    case "w": uid = login_uid; break;
+    default: console.assert(false); break;
+    }
 
     return storageRef.child(`/users/${uid}/img/${file_name}`);
 }
 
 export function setImgSrc(img: HTMLImageElement, file_name: string){
-    var img_ref = getImgRef(file_name);
+    var img_ref = getImgRef(file_name, "r");
 
     img_ref.getDownloadURL().then(function(downloadURL) {
         msg(`download URL: [${downloadURL}]`);
@@ -331,7 +398,7 @@ export function setImgSrc(img: HTMLImageElement, file_name: string){
 function uploadFile(file: File){
 
     // Create a reference to 'mountains.jpg'
-    var img_ref = getImgRef(file.name);
+    var img_ref = getImgRef(file.name, "w");
 
     img_ref.put(file).then(function(snapshot) {
         snapshot.ref.getDownloadURL().then(function(downloadURL) {
@@ -364,15 +431,15 @@ function handleDragOver(evt) {
     evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
 }
 
+function backup(){
+    var docs = [];
 
-function initFileDrop(){
-    // Setup the dnd listeners.
-    dropZone.addEventListener('dragover', handleDragOver, false);
-    dropZone.addEventListener('drop', handleFileSelect, false);
-}
-
-export function dropImage(){
-
+    db.collection('users').doc(login_uid).collection('docs').get()
+    .then((querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+            docs.push({ id:doc.id, data: doc.data() });
+        });
+    });    
 }
 
 }

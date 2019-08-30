@@ -10,12 +10,13 @@ var divActions : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
 var blue_style = { "color": "blue" };
 var red_style  = { "color": "red" };
+export var inEditor : boolean;
 var isDesign = true;
 var oldAction = false;
 var TextBlockId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
-var divMsg : HTMLDivElement;
+var divMsg : HTMLDivElement = null;
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -26,8 +27,11 @@ function last<T>(v:Array<T>) : T{
 export function msg(text: string){
     console.log(text);
 
-    divMsg.textContent = divMsg.textContent + "\n" + text;
-    divMsg.scrollTop = divMsg.scrollHeight;
+    if(divMsg != null){
+
+        divMsg.textContent = divMsg.textContent + "\n" + text;
+        divMsg.scrollTop = divMsg.scrollHeight;
+    }
 }
 
 function set_current_mjx(node : HTMLElement, style:any){
@@ -546,19 +550,22 @@ export function addSelection(){
     setSelection(tmpSelection);
 }
 
-export function init_manebu(){
-    divMath = document.getElementById("div-math") as HTMLDivElement;
-    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
-    divActions = document.getElementById("div-actions") as HTMLDivElement;
+export function init_manebu(in_editor: boolean){
+    inEditor = in_editor;
     divMsg = document.getElementById("div-msg") as HTMLDivElement;
+    divMath = document.getElementById("div-math") as HTMLDivElement;
 
     msg("body loaded");
-    msg(`w:${document.body.clientWidth} h:${document.body.clientHeight}`);
 
     firebase_init();
     init_speech();
 
-    // addTextBlock(textMath.value);
+    if(! inEditor){
+        return;
+    }
+
+    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
+    divActions = document.getElementById("div-actions") as HTMLDivElement;
 
     textMath.onblur = function(ev:FocusEvent){
         var sel = window.getSelection();
@@ -575,7 +582,6 @@ export function init_manebu(){
                 textMath.value = textMath.value.substring(0, textMathSelectionStart) + "🙀" + textMath.value.substring(textMathSelectionEnd);
             }        
         }
-
     }
 }
 
