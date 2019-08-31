@@ -73,9 +73,7 @@ function* player(start_pos: number){
                 }
 
             case "@img":
-                var img = document.createElement("img");
-                divMath.appendChild(img);
-                setImgSrc(img, arg);
+                addSVG(arg);
 
                 divMath.appendChild(document.createElement("div"));
                 break;

@@ -4,10 +4,11 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js?ver=1567078439" ></script>
-    <script type="text/javascript" src="js/firebase.js?ver=1567078439" ></script>
-    <script type="text/javascript" src="js/markdown.js?ver=1567078439" ></script>
-    <script type="text/javascript" src="js/speech.js?ver=1567078439" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1567153826" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1567153826" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1567153826" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1567153826" ></script>
+    <script type="text/javascript" src="js/shape.js?ver=1567153826" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -56,6 +57,10 @@ $$ -->
         <button onclick="manebu.addSelection()">テキストを選択</button>
         <button onclick="manebu.substitute()">テキストを代入</button>
         <button onclick="openDropZone()" >画像を挿入</button>
+        <input type="radio" name="shape-tool" id="tool-move" value="move" />移動
+        <input type="radio" name="shape-tool" id="tool-line" value="line" />線
+        <input type="radio" name="shape-tool" id="tool-circle" value="circle" />円
+        <input type="radio" name="shape-tool" id="tool-circle" value="angle" />角度
         <br/>
         <div id="div-math" style="height: 700px; overflow: scroll; border-style:inset; border-width: 3px;" ></div>
         <!-- <div >

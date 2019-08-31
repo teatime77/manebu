@@ -583,6 +583,8 @@ export function init_manebu(in_editor: boolean){
             }        
         }
     }
+
+    init_shape();
 }
 
 export function* makeTextBlock(act: TextBlockAction){

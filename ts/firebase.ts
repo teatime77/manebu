@@ -385,6 +385,21 @@ function getImgRef(file_name: string, mode:string){
     return storageRef.child(`/users/${uid}/img/${file_name}`);
 }
 
+export function setSvgImg(img: SVGImageElement, file_name: string){
+    var img_ref = getImgRef(file_name, "r");
+
+    img_ref.getDownloadURL().then(function(downloadURL) {
+        msg(`download URL: [${downloadURL}]`);
+        
+        img.setAttributeNS('http://www.w3.org/2000/svg','height','100');
+        img.setAttributeNS('http://www.w3.org/2000/svg','width','100');
+        // img.setAttributeNS('http://www.w3.org/2000/svg','id','testimg2');
+        img.setAttributeNS('http://www.w3.org/1999/xlink','href',downloadURL);
+        img.setAttributeNS('http://www.w3.org/2000/svg','x','0');
+        img.setAttributeNS('http://www.w3.org/2000/svg','y','0');
+    });
+}
+
 export function setImgSrc(img: HTMLImageElement, file_name: string){
     var img_ref = getImgRef(file_name, "r");
 
