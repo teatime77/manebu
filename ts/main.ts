@@ -2,6 +2,17 @@
 /// <reference path="firebase.ts" />
 namespace manebu {
 declare var MathJax:any;
+class JaxNode {
+    CHTMLnodeID: number;
+    nodeName: string;
+    parent: JaxNode;
+    childNodes: JaxNode[];
+}
+
+class ElementJax {
+    root : JaxNode;
+    Rerender(){}
+}
 
 var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;
@@ -62,7 +73,7 @@ export function restore_current_mjx_color(){
     selected_mjx = [];
 }
 
-function* getJaxDescendants(node:any){
+function* getJaxDescendants(node:JaxNode){
     if(node != null && node.nodeName != undefined && node.CHTMLnodeID != undefined){
 
         yield node;
@@ -78,9 +89,9 @@ function* getJaxDescendants(node:any){
     }
 }
 
-function getDomAncestors(node){
-    function* fnc(node){
-        for(let nd = node; nd != null; nd = nd.parentNode){
+function getDomAncestors(node: Node) : HTMLElement[] {
+    function* fnc(node: Node){
+        for(let nd = node.parentElement; nd != null; nd = nd.parentElement){
             yield nd;
         }
     }
@@ -88,7 +99,7 @@ function getDomAncestors(node){
     return Array.from(fnc(node));
 }
 
-function getDomFromJax(node) : HTMLElement{
+function getDomFromJax(node: JaxNode) : HTMLElement{
     return document.getElementById(`MJXc-Node-${node.CHTMLnodeID}`);
 }
 
@@ -96,21 +107,23 @@ function getJaxIndex(node){
     return node.parent.childNodes.indexOf(node);
 }
 
-function makeDomJaxMap() : [any, Map<HTMLElement, any>]{
-    var all_jax = MathJax.Hub.getAllJax();
-    var map = new Map<HTMLElement, any>();
+function makeDomJaxMap() : [ElementJax[], Map<HTMLElement, JaxNode>, Map<JaxNode, HTMLElement>]{
+    var all_jax = MathJax.Hub.getAllJax() as ElementJax[];
+    var dom2jax = new Map<HTMLElement, JaxNode>();
+    var jax2dom = new Map<JaxNode, HTMLElement>();
     for(let ej of all_jax){
         for(let node of getJaxDescendants(ej.root)){
 
             var ele = getDomFromJax(node);
-            map.set(ele, node);
+            dom2jax.set(ele, node);
+            jax2dom.set(node, ele);
         }
     }
 
-    return [all_jax, map];
+    return [all_jax, dom2jax, jax2dom];
 }
 
-function getJaxPath(jax_idx: number, jax_list:any[], max_nest: number) : any[]{
+function getJaxPath(jax_idx: number, jax_list:JaxNode[], max_nest: number) : any[]{
     var path : any[] = [];
 
     var parent = jax_list[0];
@@ -128,8 +141,8 @@ function getJaxPath(jax_idx: number, jax_list:any[], max_nest: number) : any[]{
     return path;
 }
 
-function getJaxFromPath(all_jax:any[], path:any[]){
-    var node = all_jax[path[0]["idx"]].root;
+function getJaxFromPath(all_jax:ElementJax[], path:any[]) : JaxNode {
+    var node = all_jax[path[0]["idx"]].root as JaxNode;
     console.assert(node.nodeName == path[0]["nodeName"])
 
     for(let obj of path.slice(1)){
@@ -138,29 +151,6 @@ function getJaxFromPath(all_jax:any[], path:any[]){
     }
 
     return node;
-}
-
-export function convert(){
-    var [all_jax, map] = makeDomJaxMap();
-
-    var lines = textMath.value.split('\n');
-    for(let [idx,line] of lines.entries()){
-        if(line.startsWith("@select")){
-            var act = JSON.parse(line.substring(7).trim()) as SelectionAction;
-
-            var start_jax = getJaxFromPath(all_jax, act.start_path);
-
-            var v1 = act.start_path.map(x => [x["idx"], x["nodeName"]]);
-            var obj2 = { "type":act.dom_type, "start": v1};
-            if(act.end_path != null){
-
-                obj2["end"] = act.end_path.map(x => [x["idx"], x["nodeName"]]);
-            }
-            lines[idx] = "@select " + JSON.stringify(obj2);
-        }
-    }
-
-    textMath.value = lines.join('\n');
 }
 
 function onclick_block(){
@@ -186,9 +176,9 @@ function onclick_block(){
         return;
     }
 
-    var [all_jax, map] = makeDomJaxMap();
+    var [all_jax, dom2jax, jax2dom] = makeDomJaxMap();
 
-    function check_path(text: string, path:any[], node_sv: any){
+    function check_path(text: string, path:any[], node_sv: JaxNode){
         msg(`${text}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
         var node = getJaxFromPath(all_jax, path);
         console.assert(node == node_sv);
@@ -202,7 +192,7 @@ function onclick_block(){
 
         msg(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
 
-        var st_a = getDomAncestors(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+        var st_a = getDomAncestors(rng.startContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
         var jax_idx;
         for(jax_idx = 0; jax_idx < all_jax.length; jax_idx++){
             if(all_jax[jax_idx].root == st_a[0]){
@@ -224,7 +214,7 @@ function onclick_block(){
         }
         else{
 
-            var ed_a = getDomAncestors(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+            var ed_a = getDomAncestors(rng.endContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
 
             for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
                 if(st_a[nest] != ed_a[nest]){
@@ -276,12 +266,6 @@ export class SelectionAction {
         this.end_path   = end_path;
     }
 }
-
-
-export function getTextBlockId(id: number) : string {
-    return `manebu-text-block-${id}`;
-}
-
 
 function get_indent(line: string) : [number, string]{
     var indent = 0;
@@ -453,15 +437,13 @@ export function* appendTextBlock(lines: string[]){
 
     typeset_ended = false;
 
-    TextBlockId++;
-        
-    var text_block_id = getTextBlockId(TextBlockId);
-
     var span = document.createElement("span");
     span.innerHTML = make_html_lines(text);
     span.addEventListener("click", onclick_block);
-
     span.className = "manebu-text-block";
+
+    TextBlockId++;
+    span.dataset.text_block_idx = "" + TextBlockId;
 
     span.addEventListener('keydown', (event) => {
         msg(`key down ${event.key} ${event.ctrlKey}`);
@@ -480,7 +462,7 @@ export function* appendTextBlock(lines: string[]){
 export function setSelection(act: SelectionAction){
     console.assert(act.dom_type == "math" && act.style != undefined);
 
-    var [all_jax, map] = makeDomJaxMap();
+    var all_jax = MathJax.Hub.getAllJax() as ElementJax[];
 
     var start_jax = getJaxFromPath(all_jax, act.start_path);
     var st_i = last(act.start_path)["idx"];
@@ -511,20 +493,6 @@ export function setSelection(act: SelectionAction){
             }
         }    
     }
-}
-
-export function substitute(){
-    var s = textMath.value;
-
-    var [all_jax, map] = makeDomJaxMap();
-
-    var start_jax = getJaxFromPath(all_jax, tmpSelection.start_path);
-
-    var idx = getJaxIndex(start_jax);
-    all_jax[2].root.parent = start_jax.parent;
-    start_jax.parent.childNodes[idx] = all_jax[2].root;
-
-    all_jax[1].Rerender();
 }
 
 }
