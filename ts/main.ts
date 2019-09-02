@@ -6,13 +6,10 @@ declare var MathJax:any;
 var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;
 export var divMath : HTMLDivElement;
-var divActions : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
 var blue_style = { "color": "blue" };
 var red_style  = { "color": "red" };
 export var inEditor : boolean;
-var isDesign = true;
-var oldAction = false;
 var TextBlockId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
@@ -175,7 +172,7 @@ function onclick_block(){
     ev.stopPropagation();
 
     var mjx_math = null;
-    for(var ele = ev.srcElement as HTMLElement;;){
+    for(var ele = ev.srcElement as HTMLElement;; ele = ele.parentNode as HTMLElement){
 
         if(ele.tagName != "SPAN"){
             break;
@@ -184,8 +181,6 @@ function onclick_block(){
             mjx_math = ele;
             break;
         }
-
-        ele = ele.parentNode as HTMLElement;
     }
     if(mjx_math == null){
         return;
@@ -268,50 +263,13 @@ function onclick_block(){
     window.getSelection().removeAllRanges();
 }
 
-
-class Action {
-    type: string;
-
-    constructor(type: string){
-        this.type = type;
-    }
-}
-
-export var actions : Action[] = [];
-export var action_pos : number = 0;
-
-export class TextBlockAction extends Action {
-    text: string;
-
-    constructor(text: string){
-        super("TextBlockAction");
-        this.text = text;
-    }
-
-    toJSON() : string {
-        // return `{\n ${JSON.stringify(this.text)}}\n`;
-        return '{\n\t"text":' + JSON.stringify(this.text) + '}\n';
-    }
-}
-
-export class SpeechAction extends Action {
-    text: string;
-
-    constructor(text: string){
-        super("SpeechAction");
-        this.text = text;
-    }
-}
-
-export class SelectionAction extends Action {
+export class SelectionAction {
     style : any;
     dom_type: string;
     start_path:any[];
     end_path:any[] | null;
 
     constructor(style: any, dom_type:string, start_path:any[], end_path:any[] | null){
-        super("SelectionAction");
-
         this.style = style;
         this.dom_type = dom_type;
         this.start_path = start_path;
@@ -320,74 +278,8 @@ export class SelectionAction extends Action {
 }
 
 
-export class RemoveAction extends Action {
-    dom_id : string;
-
-    constructor(dom_id : string){
-        super("RemoveAction");
-        this.dom_id = dom_id;
-    }
-}
-
 export function getTextBlockId(id: number) : string {
     return `manebu-text-block-${id}`;
-}
-
-class TextBlock {
-    text: string;
-    ele: HTMLDivElement | null;
-
-    constructor(text: string){
-        this.text = text;
-        this.ele = null;
-    }
-
-    /*
-        HTML要素を作る。
-    */
-    make(){
-        if(divMath.childNodes.length != 0){
-
-            divMath.appendChild(document.createElement("hr"));
-        }
-
-        TextBlockId++;
-        
-        var text_block_id = getTextBlockId(TextBlockId);
-        var id_ele = "";
-
-        if(oldAction){
-
-            var btn = document.createElement("button") as HTMLButtonElement;
-            btn.dataset.text_block_id = text_block_id;
-            btn.addEventListener("click", function(ev:MouseEvent){
-                var act = new RemoveAction(btn.dataset.text_block_id);
-                actions.push(act)
-                addActionSummary(act);
-        
-                resume();
-            });
-        
-            btn.innerHTML = "❌";
-            divMath.appendChild(btn);
-        }
-        else{
-
-            id_ele = `<b>id:${TextBlockId}</b><br/>`;
-        }
-            
-        this.ele = document.createElement("div");
-        this.ele.id = text_block_id;
-        this.ele.className = "manebu-text-block";
-        this.ele.innerHTML = id_ele + make_html_lines(this.text);
-        divMath.appendChild(this.ele);
-    
-        this.ele.addEventListener("click", onclick_block);
-        
-        this.ele.addEventListener('keydown', (event) => {
-            msg(`key down ${event.key} ${event.ctrlKey}`);
-          }, false);        
-    }    
 }
 
 
@@ -479,7 +371,6 @@ function make_html_lines(text: string){
     return html_lines.join("\n");
 }
 
-
 var typeset_ended = false;
 function ontypeset(text: string, id: number){
     msg(`${text} ${id}`);
@@ -487,43 +378,6 @@ function ontypeset(text: string, id: number){
     typeset_ended = true;
 
     divMath.scrollTop = divMath.scrollHeight;
-}
-
-export function addActionSummary(act: Action){
-    var ele = document.createElement("div");
-
-    var summary: string;
-    switch(act.type){
-        case "TextBlockAction":
-            summary = "テキスト";
-            break;
-        case "SpeechAction":
-            
-            summary = `音声: ${(act as SpeechAction).text}`;
-            break;
-
-        case "SelectionAction":
-            summary = "選択";
-            break;
-
-        case "RemoveAction":
-            summary = `削除: ${(act as RemoveAction).dom_id}`;
-            break;
-    
-        default:
-            console.assert(false);
-            break;
-    }
-
-    ele.innerHTML = summary;
-
-    divActions.appendChild(ele);
-}
-
-export function addTextBlock(text: string){
-    var act = new TextBlockAction(text)
-    actions.push(act);
-    addActionSummary(act);
 }
 
 export function insertText(ins_str: string){
@@ -560,7 +414,6 @@ export function init_manebu(in_editor: boolean){
     }
 
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
-    divActions = document.getElementById("div-actions") as HTMLDivElement;
 
     textMath.onblur = function(ev:FocusEvent){
         var sel = window.getSelection();
@@ -582,20 +435,9 @@ export function init_manebu(in_editor: boolean){
     init_shape();
 }
 
-export function* makeTextBlock(act: TextBlockAction){
-    typeset_ended = false;
-
-    var blc = new TextBlock(act.text);
-    blc.make();
-
-    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-    MathJax.Hub.Queue([ontypeset, "make", 123]);
-
-    while(! typeset_ended){
-        yield;
-    }
-}
-
+/*
+    HTML要素を作る。
+*/
 export function* appendTextBlock(lines: string[]){
     // 最初の空行を除去する。
     while(lines.length != 0 && lines[0].trim() == ""){
@@ -611,9 +453,19 @@ export function* appendTextBlock(lines: string[]){
 
     typeset_ended = false;
 
+    TextBlockId++;
+        
+    var text_block_id = getTextBlockId(TextBlockId);
+
     var span = document.createElement("span");
     span.innerHTML = make_html_lines(text);
     span.addEventListener("click", onclick_block);
+
+    span.className = "manebu-text-block";
+
+    span.addEventListener('keydown', (event) => {
+        msg(`key down ${event.key} ${event.ctrlKey}`);
+      }, false);        
 
     divMath.lastChild.appendChild(span);
 
@@ -658,7 +510,6 @@ export function setSelection(act: SelectionAction){
                 set_current_mjx(getDomFromJax(nd), act.style);
             }
         }    
-
     }
 }
 
@@ -675,85 +526,5 @@ export function substitute(){
 
     all_jax[1].Rerender();
 }
-
-export function removeTextBlock(act: RemoveAction){
-    var div = document.getElementById(act.dom_id);
-
-    if(isDesign){
-
-        if(oldAction){
-
-            // 削除ボタンを削除する。
-            console.assert(div.previousSibling != null && div.previousSibling.nodeName == "BUTTON");
-            div.parentNode.removeChild(div.previousSibling);
-        }
-    }
-
-    if(div.previousSibling == null){
-        // テキストブロックが先頭にある場合
-
-        if(div.nextSibling != null){
-            // 後ろにテキストブロックがある場合
-
-            // 後ろとの区切りを削除する。
-            console.assert(div.nextSibling.nodeName == "HR");
-            div.parentNode.removeChild(div.nextSibling);
-        }
-    }
-    else{
-        // テキストブロックが先頭でない場合
-
-        // 直前との区切りを削除する。
-        console.assert(div.previousSibling.nodeName == "HR");
-        div.parentNode.removeChild(div.previousSibling);
-    }
-
-    // テキストブロックを削除する。
-    div.parentNode.removeChild(div);
-}
-
-function* play_gen(start_pos: number){
-    for(action_pos = start_pos; action_pos < actions.length; action_pos++){
-        var act = actions[action_pos];
-        switch(act.type){
-        case "TextBlockAction":
-            yield* makeTextBlock(act as TextBlockAction);
-            break;
-        case "SpeechAction":
-            
-            yield* speak(act as SpeechAction);
-            break;
-
-        case "SelectionAction":
-            setSelection(act as SelectionAction);
-            break;
-
-        case "RemoveAction":
-            removeTextBlock(act as RemoveAction);
-            break;
-
-        default:
-            console.assert(false);
-            break;
-        }
-    }
-}
-
-export function play(pos:number){
-    var gen = play_gen(pos);
-    var id = setInterval(function(){
-        var ret = gen.next();
-        if(ret.done){
-            clearInterval(id);
-        }
-    },100);
-}
-
-export function resume(){
-    if(action_pos < actions.length){
-        play(action_pos);
-    }
-}
-
 
 }

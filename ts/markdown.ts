@@ -46,7 +46,7 @@ function* player(start_pos: number, fast_forward: boolean){
 
                     if(! fast_forward){
 
-                        yield* speak(new SpeechAction(arg));
+                        yield* speak(arg);
                     }
 
                     valid_text = true;

@@ -3,6 +3,7 @@ namespace manebu {
 var is_speaking = false;
 var voice_list = null;
 var jp_voice : SpeechSynthesisVoice = null;
+var prev_idx = 0;
 
 function setVoice(){
     const voices = speechSynthesis.getVoices()
@@ -36,22 +37,7 @@ export function init_speech(){
     };
 }
 
-
-var prev_idx = 0;
-
-
-export function addSpeech(text: string){
-    if(text == ""){
-        return;
-    }
-    textMath.value = "";
-
-    var act = new SpeechAction(text);
-    actions.push(act);
-    addActionSummary(act);
-}
-
-export function* speak(act: SpeechAction){
+export function* speak(text: string){
     if(voice_list == null){
         setVoice();
     }
@@ -60,7 +46,7 @@ export function* speak(act: SpeechAction){
         yield;
     }
 
-    const uttr = new SpeechSynthesisUtterance(act.text);
+    const uttr = new SpeechSynthesisUtterance(text);
 
     if(jp_voice != null){
         uttr.voice = jp_voice;
