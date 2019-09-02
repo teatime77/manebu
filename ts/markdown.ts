@@ -18,7 +18,7 @@ function getCommand(line: string) : [string|null, string|null] {
     return [null, null];
 }
 
-function* player(start_pos: number){
+function* player(start_pos: number, fast_forward: boolean){
     var texts : string[] = [];
     var valid_text : boolean = false;
 
@@ -44,7 +44,10 @@ function* player(start_pos: number){
             case "@speak":
                 if(arg != ""){
 
-                    yield* speak(new SpeechAction(arg));
+                    if(! fast_forward){
+
+                        yield* speak(new SpeechAction(arg));
+                    }
 
                     valid_text = true;
                     texts.push(arg);
@@ -94,10 +97,10 @@ function* player(start_pos: number){
 
 }
 
-export function playText(text: string, start_pos: number){
+export function playText(text: string, start_pos: number, fast_forward: boolean){
     lines = text.replace('\r\n', '\n').split('\n');
 
-    var gen = player(start_pos);
+    var gen = player(start_pos, fast_forward);
     var id = setInterval(function(){
         var ret = gen.next();
         if(ret.done){
@@ -106,12 +109,11 @@ export function playText(text: string, start_pos: number){
     },100);
 }
 
-export function preview(start_pos: number){
+export function preview(start_pos: number, fast_forward: boolean){
     if(start_pos == 0){
         divMath.innerHTML = "";
     }
 
-    playText(textMath.value, start_pos);
+    playText(textMath.value, start_pos, fast_forward);
 }
-
 }

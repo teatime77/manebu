@@ -65,7 +65,7 @@ export function restore_current_mjx_color(){
     selected_mjx = [];
 }
 
-function* getElementJax(node:any){
+function* getJaxDescendants(node:any){
     if(node != null && node.nodeName != undefined && node.CHTMLnodeID != undefined){
 
         yield node;
@@ -74,25 +74,14 @@ function* getElementJax(node:any){
 
             if(node.childNodes != undefined){
                 for(let nd of node.childNodes){
-                    yield* getElementJax(nd);
+                    yield* getJaxDescendants(nd);
                 }
             }
         }
     }
 }
 
-function getElementJaxAncestor(node:any){
-
-    function* fnc(node:any){
-        for(let nd = node.parent; nd != undefined; nd = nd.parent){
-            yield nd;
-        }
-    }
-
-    return Array.from(fnc(node));
-}
-
-function getDomAncestor(node){
+function getDomAncestors(node){
     function* fnc(node){
         for(let nd = node; nd != null; nd = nd.parentNode){
             yield nd;
@@ -110,28 +99,11 @@ function getJaxIndex(node){
     return node.parent.childNodes.indexOf(node);
 }
 
-function dumpJax(root:any){
-    for(let node of getElementJax(root)){
-
-        var nest = getElementJaxAncestor(node).length;
-
-        var ele = getDomFromJax(node);
-        if(["mi", "mn", "mo"].includes(node.nodeName)){
-            var text = ele.textContent;
-            msg(`ej ${" ".repeat(2 * nest)}${node.nodeName} ${text}`);
-        }
-        else{
-
-            msg(`ej ${" ".repeat(2 * nest)}${node.nodeName}`);
-        }    
-    }
-}
-
 function makeDomJaxMap() : [any, Map<HTMLElement, any>]{
     var all_jax = MathJax.Hub.getAllJax();
     var map = new Map<HTMLElement, any>();
     for(let ej of all_jax){
-        for(let node of getElementJax(ej.root)){
+        for(let node of getJaxDescendants(ej.root)){
 
             var ele = getDomFromJax(node);
             map.set(ele, node);
@@ -169,6 +141,29 @@ function getJaxFromPath(all_jax:any[], path:any[]){
     }
 
     return node;
+}
+
+export function convert(){
+    var [all_jax, map] = makeDomJaxMap();
+
+    var lines = textMath.value.split('\n');
+    for(let [idx,line] of lines.entries()){
+        if(line.startsWith("@select")){
+            var act = JSON.parse(line.substring(7).trim()) as SelectionAction;
+
+            var start_jax = getJaxFromPath(all_jax, act.start_path);
+
+            var v1 = act.start_path.map(x => [x["idx"], x["nodeName"]]);
+            var obj2 = { "type":act.dom_type, "start": v1};
+            if(act.end_path != null){
+
+                obj2["end"] = act.end_path.map(x => [x["idx"], x["nodeName"]]);
+            }
+            lines[idx] = "@select " + JSON.stringify(obj2);
+        }
+    }
+
+    textMath.value = lines.join('\n');
 }
 
 function onclick_block(){
@@ -212,7 +207,7 @@ function onclick_block(){
 
         msg(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
 
-        var st_a = getDomAncestor(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+        var st_a = getDomAncestors(rng.startContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
         var jax_idx;
         for(jax_idx = 0; jax_idx < all_jax.length; jax_idx++){
             if(all_jax[jax_idx].root == st_a[0]){
@@ -234,7 +229,7 @@ function onclick_block(){
         }
         else{
 
-            var ed_a = getDomAncestor(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
+            var ed_a = getDomAncestors(rng.endContainer).filter(x => map.has(x)).map(x => map.get(x)).reverse();
 
             for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
                 if(st_a[nest] != ed_a[nest]){
@@ -616,11 +611,11 @@ export function* appendTextBlock(lines: string[]){
 
     typeset_ended = false;
 
-    var div = document.createElement("span");
-    div.innerHTML = make_html_lines(text);
-    div.addEventListener("click", onclick_block);
+    var span = document.createElement("span");
+    span.innerHTML = make_html_lines(text);
+    span.addEventListener("click", onclick_block);
 
-    divMath.lastChild.appendChild(div);
+    divMath.lastChild.appendChild(span);
 
     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
     MathJax.Hub.Queue([ontypeset, "append", 123]);
