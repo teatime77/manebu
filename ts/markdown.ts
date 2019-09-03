@@ -28,6 +28,10 @@ export function makeBlockDiv(block_text: string, ref_node: Node) : HTMLDivElemen
     div.className = "manebu-text-block";
     div.dataset.block_text = block_text;
 
+    div.dataset.block_id = "" + BlockId;
+    div.id = getBlockId(BlockId);
+    BlockId++;
+
     divMath.insertBefore(div, ref_node);
 
     return div;
@@ -79,8 +83,7 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
                     
                     var act = JSON.parse(arg) as SelectionAction;
 
-                    setSelection(act);
-
+                    setSelection(act, false);
                 }
 
                 makeBlockDiv(line, ref_node);

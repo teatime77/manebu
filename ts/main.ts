@@ -18,15 +18,16 @@ var selected_mjx : HTMLElement[] = [];
 export var textMath : HTMLTextAreaElement;
 export var divMath : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
-var blue_style = { "color": "blue" };
-var red_style  = { "color": "red" };
 export var inEditor : boolean;
-var TextBlockId = 0;
+export var BlockId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement = null;
 var mdLines : string[] = [];
 var invBlocks : HTMLDivElement[] = [];
+var changeTime : number = 0;
+const IDX = 0;
+const NODE_NAME = 1;
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -44,13 +45,16 @@ export function msg(text: string){
     }
 }
 
-function set_current_mjx(node : HTMLElement, style:any){
+export function getBlockId(block_id: number) : string {
+    return `manebu-id-${block_id}`;
+}
+
+function set_current_mjx(node : HTMLElement, is_tmp: boolean){
     if(! selected_mjx.includes(node)){
 
         selected_mjx.push(node);
 
-        console.assert(style["color"] != undefined)
-        if(style["color"] == "blue"){
+        if(is_tmp){
 
             // node.style.color = "#00CC00";
             node.style.color = "#8080FF";
@@ -59,7 +63,7 @@ function set_current_mjx(node : HTMLElement, style:any){
         }
         else{
 
-            node.style.color = style["color"];
+            node.style.color = "red";
         }
     }
 }
@@ -141,26 +145,26 @@ function getJaxPath(jax_idx: number, jax_list:JaxNode[], max_nest: number) : any
 
     var parent = jax_list[0];
 
-    path.push({ "idx": jax_idx, "nodeName": parent.nodeName});
+    path.push([jax_idx, parent.nodeName]);
 
     for(var nest = 1; nest <= max_nest; nest++){
         var jax = jax_list[nest];
         var idx = parent.childNodes.indexOf(jax);
         console.assert(idx != -1);
-        path.push({ "idx": idx, "nodeName": jax.nodeName});
+        path.push([ idx, jax.nodeName]);
         parent = jax;
     }
 
     return path;
 }
 
-function getJaxFromPath(all_jax:ElementJax[], path:any[]) : JaxNode {
-    var node = all_jax[path[0]["idx"]].root as JaxNode;
-    console.assert(node.nodeName == path[0]["nodeName"])
+function getJaxFromPath(jaxes:JaxNode[], path:any[]) : JaxNode {
+    var node = jaxes[path[0][IDX]];
+    console.assert(node.nodeName == path[0][NODE_NAME])
 
     for(let obj of path.slice(1)){
-        node = node.childNodes[obj["idx"]];
-        console.assert(node.nodeName == obj["nodeName"])
+        node = node.childNodes[obj[IDX]];
+        console.assert(node.nodeName == obj[NODE_NAME])
     }
 
     return node;
@@ -193,9 +197,9 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
     var [dom2jax, jax2dom] = makeDomJaxMap(jaxes);
 
     function check_path(text: string, path:any[], node_sv: JaxNode){
-        msg(`${text}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-        // var node = getJaxFromPath(jaxes, path);
-        // console.assert(node == node_sv);
+        msg(`${text}: ${path.map(x => `${x[IDX]}:${x[NODE_NAME]}`).join(',')}`);
+        var node = getJaxFromPath(jaxes, path);
+        console.assert(node == node_sv);
     }
 
     var sel = window.getSelection();
@@ -223,7 +227,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
                 var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
                 check_path("path", start_path, last(st_a));
 
-                tmpSelection = new SelectionAction(blue_style, parseInt(div.dataset.block_id), "math", start_path, null);
+                tmpSelection = new SelectionAction(parseInt(div.dataset.block_id), "math", start_path, null);
             }
         }
         else{
@@ -242,7 +246,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
                         var start_path = getJaxPath(jax_idx, st_a, nest - 1);
                         check_path("path", start_path, parent_jax);
 
-                        tmpSelection = new SelectionAction(blue_style, parseInt(div.dataset.block_id), "math", start_path, null);
+                        tmpSelection = new SelectionAction(parseInt(div.dataset.block_id), "math", start_path, null);
                     }
                     else{
 
@@ -252,7 +256,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
                         check_path("path1", start_path, st_a[nest]);
                         check_path("path2", end_path  , ed_a[nest]);
 
-                        tmpSelection = new SelectionAction(blue_style, parseInt(div.dataset.block_id), "math", start_path, end_path);
+                        tmpSelection = new SelectionAction(parseInt(div.dataset.block_id), "math", start_path, end_path);
                     }
                     break;
                 }
@@ -260,7 +264,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
         }
 
         if(tmpSelection != null){
-            setSelection(tmpSelection);
+            setSelection(tmpSelection, true);
         }
     }
 
@@ -268,14 +272,12 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
 }
 
 export class SelectionAction {
-    style : any;
     block_id: number;
     dom_type: string;
     start_path:any[];
     end_path:any[] | null;
 
-    constructor(style: any, block_id: number, dom_type:string, start_path:any[], end_path:any[] | null){
-        this.style = style;
+    constructor(block_id: number, dom_type:string, start_path:any[], end_path:any[] | null){
         this.block_id = block_id;
         this.dom_type = dom_type;
         this.start_path = start_path;
@@ -391,12 +393,10 @@ export function addSelection(){
 
     restore_current_mjx_color();
 
-    tmpSelection.style = red_style;
-
-    var ins_str = '\n@select ' + JSON.stringify(tmpSelection) + '\n';
+    var ins_str = '@select ' + JSON.stringify(tmpSelection) + '\n';
     insertText(ins_str);
 
-    setSelection(tmpSelection);
+    setSelection(tmpSelection, false);
 }
 
 function getHead(lines: string[], blocks: HTMLDivElement[]) : [string[], HTMLDivElement[]] {
@@ -443,7 +443,7 @@ function getTail(lines: string[], blocks: HTMLDivElement[]) : [string[], HTMLDiv
 function textMathMonitor(){
     if(isPlaying){
         return;
-    }
+    }    
 
     if(invBlocks.length != 0){
         for(let block of invBlocks){
@@ -451,6 +451,12 @@ function textMathMonitor(){
         }
         invBlocks = [];
     }
+
+    var t = (new Date()).getTime();
+    if(t - changeTime < 1000){
+        return;
+    }
+    changeTime = t;
 
     var blocks = Array.from(divMath.getElementsByClassName("manebu-text-block")) as HTMLDivElement[];
 
@@ -486,6 +492,73 @@ function textMathMonitor(){
     invBlocks = blocks;
 }
 
+/*
+    HTML要素を作る。
+*/
+export function* appendTextBlock(lines: string[], ref_node: Node, fast_forward: boolean){
+    var text = lines.join('\n');
+
+    msg(`append text block[${text}]`);
+
+    typeset_ended = false;
+
+    var div = makeBlockDiv(text, ref_node);
+    div.innerHTML = make_html_lines(text);
+    div.addEventListener("click", function(ev:MouseEvent){
+        onclick_block(this, ev);
+    });
+
+    div.addEventListener('keydown', (event) => {
+        msg(`key down ${event.key} ${event.ctrlKey}`);
+    }, false);        
+
+    if(! fast_forward){
+
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+        MathJax.Hub.Queue([ontypeset, "append", 123]);
+
+        while(! typeset_ended){
+            yield;
+        }
+    }
+}
+
+export function setSelection(act: SelectionAction, is_tmp: boolean){
+    console.assert(act.dom_type == "math");
+
+    var div = document.getElementById(getBlockId(act.block_id)) as HTMLDivElement;
+    var jaxes = getJaxesInBlock(div);
+
+    var start_jax = getJaxFromPath(jaxes, act.start_path);
+    var st_i = last(act.start_path)[IDX];
+
+    var parent_jax = start_jax.parent;
+    console.assert(getJaxIndex(start_jax) == st_i);
+    console.assert(start_jax.nodeName == last(act.start_path)[NODE_NAME])
+
+    if(act.end_path == null){
+
+        set_current_mjx(getDomFromJax(start_jax), is_tmp);
+    }
+    else{
+
+        var end_jax = getJaxFromPath(jaxes, act.end_path);
+
+        var ed_i = last(act.end_path)[IDX];
+
+        console.assert(getJaxIndex(end_jax) == ed_i);
+        console.assert(end_jax.nodeName == last(act.end_path)[NODE_NAME])
+    
+        var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
+        for(let nd of nodes){
+
+            if(nd != null){
+
+                set_current_mjx(getDomFromJax(nd), is_tmp);
+            }
+        }    
+    }
+}
 
 
 export function init_manebu(in_editor: boolean){
@@ -521,79 +594,9 @@ export function init_manebu(in_editor: boolean){
         }
     }
 
-    setInterval(textMathMonitor, 3000);
+    setInterval(textMathMonitor, 100);
 
     init_shape();
-}
-
-/*
-    HTML要素を作る。
-*/
-export function* appendTextBlock(lines: string[], ref_node: Node, fast_forward: boolean){
-    var text = lines.join('\n');
-
-    msg(`append text block[${text}]`);
-
-    typeset_ended = false;
-
-    var div = makeBlockDiv(text, ref_node);
-    div.innerHTML = make_html_lines(text);
-    div.addEventListener("click", function(ev:MouseEvent){
-        onclick_block(this, ev);
-    });
-
-    div.dataset.block_id = "" + TextBlockId;
-    TextBlockId++;
-
-    div.addEventListener('keydown', (event) => {
-        msg(`key down ${event.key} ${event.ctrlKey}`);
-    }, false);        
-
-    if(! fast_forward){
-
-        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-        MathJax.Hub.Queue([ontypeset, "append", 123]);
-
-        while(! typeset_ended){
-            yield;
-        }
-    }
-}
-
-export function setSelection(act: SelectionAction){
-    console.assert(act.dom_type == "math" && act.style != undefined);
-
-    var all_jax = MathJax.Hub.getAllJax() as ElementJax[];
-
-    var start_jax = getJaxFromPath(all_jax, act.start_path);
-    var st_i = last(act.start_path)["idx"];
-
-    var parent_jax = start_jax.parent;
-    console.assert(getJaxIndex(start_jax) == st_i);
-    console.assert(start_jax.nodeName == last(act.start_path)["nodeName"])
-
-    if(act.end_path == null){
-
-        set_current_mjx(getDomFromJax(start_jax), act.style);
-    }
-    else{
-
-        var end_jax = getJaxFromPath(all_jax, act.end_path);
-
-        var ed_i = last(act.end_path)["idx"];
-
-        console.assert(getJaxIndex(end_jax) == ed_i);
-        console.assert(end_jax.nodeName == last(act.end_path)["nodeName"])
-    
-        var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
-        for(let nd of nodes){
-
-            if(nd != null){
-
-                set_current_mjx(getDomFromJax(nd), act.style);
-            }
-        }    
-    }
 }
 
 }
