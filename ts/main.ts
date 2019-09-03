@@ -107,12 +107,23 @@ function getJaxIndex(node){
     return node.parent.childNodes.indexOf(node);
 }
 
-function makeDomJaxMap() : [ElementJax[], Map<HTMLElement, JaxNode>, Map<JaxNode, HTMLElement>]{
-    var all_jax = MathJax.Hub.getAllJax() as ElementJax[];
+function getJaxesInBlock(span: HTMLSpanElement) : JaxNode[]{
+    var all_jaxes = (MathJax.Hub.getAllJax() as ElementJax[]).map(x => x.root);
+
+    var all_doms = all_jaxes.map(x => getDomFromJax(x));
+
+    var doms_in_span = all_doms.filter(x => getDomAncestors(x).includes(span) );
+
+    var jaxes_in_span = doms_in_span.map(x => all_jaxes[all_doms.indexOf(x)]);
+
+    return jaxes_in_span;
+}
+
+function makeDomJaxMap(jaxes: JaxNode[]) : [Map<HTMLElement, JaxNode>, Map<JaxNode, HTMLElement>]{
     var dom2jax = new Map<HTMLElement, JaxNode>();
     var jax2dom = new Map<JaxNode, HTMLElement>();
-    for(let ej of all_jax){
-        for(let node of getJaxDescendants(ej.root)){
+    for(let ej of jaxes){
+        for(let node of getJaxDescendants(ej)){
 
             var ele = getDomFromJax(node);
             dom2jax.set(ele, node);
@@ -120,7 +131,7 @@ function makeDomJaxMap() : [ElementJax[], Map<HTMLElement, JaxNode>, Map<JaxNode
         }
     }
 
-    return [all_jax, dom2jax, jax2dom];
+    return [dom2jax, jax2dom];
 }
 
 function getJaxPath(jax_idx: number, jax_list:JaxNode[], max_nest: number) : any[]{
@@ -153,7 +164,7 @@ function getJaxFromPath(all_jax:ElementJax[], path:any[]) : JaxNode {
     return node;
 }
 
-function onclick_block(){
+function onclick_block(span: HTMLSpanElement, ev:MouseEvent){
     msg("clicked");
 
     restore_current_mjx_color();
@@ -176,12 +187,13 @@ function onclick_block(){
         return;
     }
 
-    var [all_jax, dom2jax, jax2dom] = makeDomJaxMap();
+    var jaxes = getJaxesInBlock(span);
+    var [dom2jax, jax2dom] = makeDomJaxMap(jaxes);
 
     function check_path(text: string, path:any[], node_sv: JaxNode){
         msg(`${text}: ${path.map(x => `${x["idx"]}:${x["nodeName"]}`).join(',')}`);
-        var node = getJaxFromPath(all_jax, path);
-        console.assert(node == node_sv);
+        // var node = getJaxFromPath(jaxes, path);
+        // console.assert(node == node_sv);
     }
 
     var sel = window.getSelection();
@@ -194,8 +206,8 @@ function onclick_block(){
 
         var st_a = getDomAncestors(rng.startContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
         var jax_idx;
-        for(jax_idx = 0; jax_idx < all_jax.length; jax_idx++){
-            if(all_jax[jax_idx].root == st_a[0]){
+        for(jax_idx = 0; jax_idx < jaxes.length; jax_idx++){
+            if(jaxes[jax_idx] == st_a[0]){
                 break;
             }
         }
@@ -209,7 +221,7 @@ function onclick_block(){
                 var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
                 check_path("path", start_path, last(st_a));
 
-                tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
+                tmpSelection = new SelectionAction(blue_style, parseInt(span.dataset.block_id), "math", start_path, null);
             }
         }
         else{
@@ -228,7 +240,7 @@ function onclick_block(){
                         var start_path = getJaxPath(jax_idx, st_a, nest - 1);
                         check_path("path", start_path, parent_jax);
 
-                        tmpSelection = new SelectionAction(blue_style, "math", start_path, null);
+                        tmpSelection = new SelectionAction(blue_style, parseInt(span.dataset.block_id), "math", start_path, null);
                     }
                     else{
 
@@ -238,7 +250,7 @@ function onclick_block(){
                         check_path("path1", start_path, st_a[nest]);
                         check_path("path2", end_path  , ed_a[nest]);
 
-                        tmpSelection = new SelectionAction(blue_style, "math", start_path, end_path);
+                        tmpSelection = new SelectionAction(blue_style, parseInt(span.dataset.block_id), "math", start_path, end_path);
                     }
                     break;
                 }
@@ -255,12 +267,14 @@ function onclick_block(){
 
 export class SelectionAction {
     style : any;
+    block_id: number;
     dom_type: string;
     start_path:any[];
     end_path:any[] | null;
 
-    constructor(style: any, dom_type:string, start_path:any[], end_path:any[] | null){
+    constructor(style: any, block_id: number, dom_type:string, start_path:any[], end_path:any[] | null){
         this.style = style;
+        this.block_id = block_id;
         this.dom_type = dom_type;
         this.start_path = start_path;
         this.end_path   = end_path;
@@ -439,11 +453,13 @@ export function* appendTextBlock(lines: string[]){
 
     var span = document.createElement("span");
     span.innerHTML = make_html_lines(text);
-    span.addEventListener("click", onclick_block);
+    span.addEventListener("click", function(ev:MouseEvent){
+        onclick_block(this, ev);
+    });
     span.className = "manebu-text-block";
 
+    span.dataset.block_id = "" + TextBlockId;
     TextBlockId++;
-    span.dataset.text_block_idx = "" + TextBlockId;
 
     span.addEventListener('keydown', (event) => {
         msg(`key down ${event.key} ${event.ctrlKey}`);
