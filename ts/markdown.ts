@@ -1,13 +1,18 @@
 /// <reference path="main.ts" />
 namespace manebu {
 
-var lines : string[];
+declare var MathJax:any;
+export var isPlaying: boolean = false;
 var line_idx : number;
 
 function getCommand(line: string) : [string|null, string|null] {
     var line_trim = line.trim();
 
-    for(let cmd of [ "@div", "@speak", "@wait", "@del", "@select", "@us", "@unselect", "@img" ]){
+    if(line_trim == "$$"){
+        return [ "$$", ""];
+    }
+
+    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@img" ]){
         if(line.startsWith(cmd + " ") || line_trim == cmd){
 
             var arg = line.substring(cmd.length + 1).trim();
@@ -18,28 +23,43 @@ function getCommand(line: string) : [string|null, string|null] {
     return [null, null];
 }
 
-function* player(start_pos: number, fast_forward: boolean){
-    var texts : string[] = [];
-    var valid_text : boolean = false;
+export function makeBlockDiv(block_text: string, ref_node: Node) : HTMLDivElement{
+    var div = document.createElement("div");
+    div.className = "manebu-text-block";
+    div.dataset.block_text = block_text;
 
-    divMath.appendChild(document.createElement("div"));
-    for(line_idx = start_pos; line_idx < lines.length; line_idx++){
+    divMath.insertBefore(div, ref_node);
+
+    return div;
+}
+
+function* player(lines: string[], ref_node: Node, start_pos: number, fast_forward: boolean){
+    var texts : string[] = [];
+
+    for(line_idx = start_pos; line_idx < lines.length; ){
 
         var line = lines[line_idx];
 
         var [cmd, arg] = getCommand(line);
         if(cmd != null){
-            if(valid_text){
+            if(texts.length != 0){
 
-                yield* appendTextBlock( texts );
+                yield* appendTextBlock( texts, ref_node, fast_forward );
                 texts = [];
-                valid_text = false;
             }
 
             switch(cmd){
-            case "@div":
-                divMath.appendChild(document.createElement("div"));
-                break;
+            case "$$":
+                var start_line_idx = line_idx;
+                for(line_idx++; line_idx < lines.length; line_idx++){
+                    if(lines[line_idx].trim() == "$$"){
+                        line_idx++;
+                        break;
+                    }
+                }
+                
+                yield* appendTextBlock( lines.slice(start_line_idx, line_idx), ref_node, fast_forward );
+                continue;
 
             case "@speak":
                 if(arg != ""){
@@ -49,61 +69,73 @@ function* player(start_pos: number, fast_forward: boolean){
                         yield* speak(arg);
                     }
 
-                    valid_text = true;
-                    texts.push(arg);
+                    var div = makeBlockDiv(line, ref_node);
+                    div.innerHTML = arg;
                 }
                 break;
 
             case "@select":
-                var act = JSON.parse(arg) as SelectionAction;
+                if(! fast_forward){
+                    
+                    var act = JSON.parse(arg) as SelectionAction;
 
-                setSelection(act);
+                    setSelection(act);
+
+                }
+
+                makeBlockDiv(line, ref_node);
                 break;
 
             case "@us":
-                restore_current_mjx_color();
+                if(! fast_forward){
+                
+                    restore_current_mjx_color();
+                }
+
+                makeBlockDiv(line, ref_node);
                 break;
-
-            case "@del":
-                if(arg == ""){
-                    divMath.innerHTML = "";
-                }
-                else{
-                    var idx = parseInt(arg) - 1;
-
-                    console.assert(0 <= idx && idx < divMath.childNodes.length );
-                    divMath.removeChild(divMath.childNodes[idx]);
-                }
 
             case "@img":
                 addSVG(arg);
-
-                divMath.appendChild(document.createElement("div"));
                 break;
             }
         }
         else{
-            if(! valid_text && line.trim() != ""){
-                valid_text = true;
-            }
             texts.push(line);
         }
+
+        line_idx++;
     }
 
-    if(valid_text){
+    if(texts.length != 0){
 
-        yield* appendTextBlock( texts );
+        yield* appendTextBlock( texts, ref_node, fast_forward );
     }
 
+    if(fast_forward){
+
+        var typeset_done = false;
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+        MathJax.Hub.Queue([function(){
+            typeset_done = true;
+        }]);
+
+        while(! typeset_done){
+            yield;
+        }
+    }
 }
 
-export function playText(text: string, start_pos: number, fast_forward: boolean){
-    lines = text.replace('\r\n', '\n').split('\n');
+export function playText(text: string, ref_node: Node, start_pos: number, fast_forward: boolean){
+    isPlaying = true;
+    var lines = text.replace('\r\n', '\n').split('\n');
 
-    var gen = player(start_pos, fast_forward);
+    var gen = player(lines, ref_node, start_pos, fast_forward);
     var id = setInterval(function(){
         var ret = gen.next();
-        if(ret.done){
+        if(ret.done){        
+
+            isPlaying = false;
             clearInterval(id);
         }
     },100);
@@ -114,6 +146,6 @@ export function preview(start_pos: number, fast_forward: boolean){
         divMath.innerHTML = "";
     }
 
-    playText(textMath.value, start_pos, fast_forward);
+    playText(textMath.value, null, start_pos, fast_forward);
 }
 }

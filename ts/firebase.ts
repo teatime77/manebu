@@ -129,7 +129,7 @@ function showContents(){
                     if (doc.exists) {
                         var doc_data = doc.data() as Doc;
 
-                        playText(doc_data.text, 0, false);
+                        playText(doc_data.text, null, 0, false);
                     } 
                     else {
                         // doc.data() will be undefined in this case

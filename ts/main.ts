@@ -25,6 +25,8 @@ var TextBlockId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement = null;
+var mdLines : string[] = [];
+var invBlocks : HTMLDivElement[] = [];
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -107,12 +109,12 @@ function getJaxIndex(node){
     return node.parent.childNodes.indexOf(node);
 }
 
-function getJaxesInBlock(span: HTMLSpanElement) : JaxNode[]{
+function getJaxesInBlock(div: HTMLDivElement) : JaxNode[]{
     var all_jaxes = (MathJax.Hub.getAllJax() as ElementJax[]).map(x => x.root);
 
     var all_doms = all_jaxes.map(x => getDomFromJax(x));
 
-    var doms_in_span = all_doms.filter(x => getDomAncestors(x).includes(span) );
+    var doms_in_span = all_doms.filter(x => getDomAncestors(x).includes(div) );
 
     var jaxes_in_span = doms_in_span.map(x => all_jaxes[all_doms.indexOf(x)]);
 
@@ -164,7 +166,7 @@ function getJaxFromPath(all_jax:ElementJax[], path:any[]) : JaxNode {
     return node;
 }
 
-function onclick_block(span: HTMLSpanElement, ev:MouseEvent){
+function onclick_block(div: HTMLDivElement, ev:MouseEvent){
     msg("clicked");
 
     restore_current_mjx_color();
@@ -187,7 +189,7 @@ function onclick_block(span: HTMLSpanElement, ev:MouseEvent){
         return;
     }
 
-    var jaxes = getJaxesInBlock(span);
+    var jaxes = getJaxesInBlock(div);
     var [dom2jax, jax2dom] = makeDomJaxMap(jaxes);
 
     function check_path(text: string, path:any[], node_sv: JaxNode){
@@ -221,7 +223,7 @@ function onclick_block(span: HTMLSpanElement, ev:MouseEvent){
                 var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
                 check_path("path", start_path, last(st_a));
 
-                tmpSelection = new SelectionAction(blue_style, parseInt(span.dataset.block_id), "math", start_path, null);
+                tmpSelection = new SelectionAction(blue_style, parseInt(div.dataset.block_id), "math", start_path, null);
             }
         }
         else{
@@ -240,7 +242,7 @@ function onclick_block(span: HTMLSpanElement, ev:MouseEvent){
                         var start_path = getJaxPath(jax_idx, st_a, nest - 1);
                         check_path("path", start_path, parent_jax);
 
-                        tmpSelection = new SelectionAction(blue_style, parseInt(span.dataset.block_id), "math", start_path, null);
+                        tmpSelection = new SelectionAction(blue_style, parseInt(div.dataset.block_id), "math", start_path, null);
                     }
                     else{
 
@@ -250,7 +252,7 @@ function onclick_block(span: HTMLSpanElement, ev:MouseEvent){
                         check_path("path1", start_path, st_a[nest]);
                         check_path("path2", end_path  , ed_a[nest]);
 
-                        tmpSelection = new SelectionAction(blue_style, parseInt(span.dataset.block_id), "math", start_path, end_path);
+                        tmpSelection = new SelectionAction(blue_style, parseInt(div.dataset.block_id), "math", start_path, end_path);
                     }
                     break;
                 }
@@ -397,6 +399,95 @@ export function addSelection(){
     setSelection(tmpSelection);
 }
 
+function getHead(lines: string[], blocks: HTMLDivElement[]) : [string[], HTMLDivElement[]] {
+    while(blocks.length != 0){
+        var block_lines = blocks[0].dataset.block_text.split('\n');
+        if(lines.length < block_lines.length){
+
+            break;
+        }
+
+        if(Array.from(block_lines.entries()).some(x => lines[x[0]] != x[1])){
+            break;
+        }
+
+        lines.splice(0, block_lines.length);
+        blocks.shift();
+    }
+
+    return [lines, blocks];
+}
+
+function getTail(lines: string[], blocks: HTMLDivElement[]) : [string[], HTMLDivElement[], HTMLDivElement] {
+    var last_eq_block = null;
+
+    while(blocks.length != 0){
+        var block_lines = last(blocks).dataset.block_text.split('\n');
+        if(lines.length < block_lines.length){
+
+            break;
+        }
+
+        var tmp_lines = lines.slice(lines.length - block_lines.length);
+        if(Array.from(block_lines.entries()).some(x => tmp_lines[x[0]] != x[1])){
+            break;
+        }
+
+        lines.splice(lines.length - block_lines.length);
+        last_eq_block = blocks.pop();
+    }
+
+    return [lines, blocks, last_eq_block];
+}
+
+function textMathMonitor(){
+    if(isPlaying){
+        return;
+    }
+
+    if(invBlocks.length != 0){
+        for(let block of invBlocks){
+            divMath.removeChild(block);
+        }
+        invBlocks = [];
+    }
+
+    var blocks = Array.from(divMath.getElementsByClassName("manebu-text-block")) as HTMLDivElement[];
+
+    if(blocks.length == 0 && textMath.value == ""){
+        return;
+    }
+
+    var lines = textMath.value.split('\n');
+
+    [lines, blocks] = getHead(lines, blocks);
+
+    var last_eq_block = null;
+    if(blocks.length != 0){
+        [lines, blocks, last_eq_block] = getTail(lines, blocks);
+    }
+
+    if(lines.length != 0){
+
+        var ref_node;
+        if(blocks.length == 0){
+            ref_node = null;
+        }
+        else{
+    
+            ref_node = blocks[0];
+        }
+    
+        var text = lines.join('\n');
+        msg(`ins ${text.length} ${text.substring(0, 50)}`);
+        playText(text, last_eq_block, 0, true);
+    }
+
+    invBlocks = blocks;
+}
+
+
+
 export function init_manebu(in_editor: boolean){
     inEditor = in_editor;
     divMsg = document.getElementById("div-msg") as HTMLDivElement;
@@ -430,48 +521,42 @@ export function init_manebu(in_editor: boolean){
         }
     }
 
+    setInterval(textMathMonitor, 3000);
+
     init_shape();
 }
 
 /*
     HTML要素を作る。
 */
-export function* appendTextBlock(lines: string[]){
-    // 最初の空行を除去する。
-    while(lines.length != 0 && lines[0].trim() == ""){
-        lines.shift();
-    }
-
-    // 末尾の空行を除去する。
-    while(lines.length != 0 && last(lines).trim() == ""){
-        lines.pop();
-    }
-
+export function* appendTextBlock(lines: string[], ref_node: Node, fast_forward: boolean){
     var text = lines.join('\n');
+
+    msg(`append text block[${text}]`);
 
     typeset_ended = false;
 
-    var span = document.createElement("span");
-    span.innerHTML = make_html_lines(text);
-    span.addEventListener("click", function(ev:MouseEvent){
+    var div = makeBlockDiv(text, ref_node);
+    div.innerHTML = make_html_lines(text);
+    div.addEventListener("click", function(ev:MouseEvent){
         onclick_block(this, ev);
     });
-    span.className = "manebu-text-block";
 
-    span.dataset.block_id = "" + TextBlockId;
+    div.dataset.block_id = "" + TextBlockId;
     TextBlockId++;
 
-    span.addEventListener('keydown', (event) => {
+    div.addEventListener('keydown', (event) => {
         msg(`key down ${event.key} ${event.ctrlKey}`);
-      }, false);        
+    }, false);        
 
-    divMath.lastChild.appendChild(span);
+    if(! fast_forward){
 
-    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-    MathJax.Hub.Queue([ontypeset, "append", 123]);
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+        MathJax.Hub.Queue([ontypeset, "append", 123]);
 
-    while(! typeset_ended){
-        yield;
+        while(! typeset_ended){
+            yield;
+        }
     }
 }
 
