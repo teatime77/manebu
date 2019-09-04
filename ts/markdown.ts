@@ -3,6 +3,7 @@ namespace manebu {
 
 declare var MathJax:any;
 export var isPlaying: boolean = false;
+var stopPlaying: boolean = false;
 var line_idx : number;
 
 function getCommand(line: string) : [string|null, string|null] {
@@ -99,7 +100,7 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
                 break;
 
             case "@img":
-                addSVG(arg);
+                addSVG(line, arg);
                 break;
             }
         }
@@ -130,25 +131,78 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
 }
 
 export function playText(text: string, ref_node: Node, start_pos: number, fast_forward: boolean){
-    isPlaying = true;
     var lines = text.replace('\r\n', '\n').split('\n');
 
     var gen = player(lines, ref_node, start_pos, fast_forward);
+    runGenerator(gen);
+}
+
+function runGenerator(gen: IterableIterator<any>){
+    isPlaying = true;
+    stopPlaying = false;
+
     var id = setInterval(function(){
         var ret = gen.next();
-        if(ret.done){        
+        if(ret.done || stopPlaying){        
 
             isPlaying = false;
             clearInterval(id);
+            msg("停止しました。");
         }
     },100);
 }
 
-export function preview(start_pos: number, fast_forward: boolean){
-    if(start_pos == 0){
-        divMath.innerHTML = "";
+export function play(){
+    var gen = play_gen();
+    runGenerator(gen);
+}
+
+export function stop(){
+    stopPlaying = true;
+}
+
+function* play_gen(){
+    for(let nd of divMath.children){
+        (nd as HTMLElement).style.display = "none";
     }
 
-    playText(textMath.value, null, start_pos, fast_forward);
+    for(let nd of divMath.children){
+        var ele = nd as HTMLElement;
+        
+        var block_text = ele.dataset.block_text;
+        console.assert(block_text != undefined);
+
+        var lines = block_text.split('\n');
+        console.assert(lines.length != 0);
+
+        var line = lines[0];
+
+        var [cmd, arg] = getCommand(line);
+        if(cmd != null){
+
+            switch(cmd){
+            case "@speak":
+                yield* speak(arg);
+                break;
+
+            case "@select":
+                var act = JSON.parse(arg) as SelectionAction;
+                setSelection(act, false);
+                break;
+
+            case "@us":
+                restore_current_mjx_color();
+                break;
+            }
+        }
+
+        ele.style.display = "block";
+        divMath.scrollTop = divMath.scrollHeight;
+    }
+
+    while(is_speaking){
+        yield;
+    }
 }
+
 }

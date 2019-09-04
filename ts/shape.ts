@@ -208,12 +208,13 @@ export function init_shape(){
     }
 }
 
-export function addSVG(arg: string){
+export function addSVG(line: string, arg: string){
     var svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
     svg.style.width = "500px";
     svg.style.height = "500px";
     svg.style.borderStyle = "groove";
     svg.style.borderWidth = "3px";
+    svg.dataset.block_text = line;
 
     svg.addEventListener("click", function(ev: MouseEvent){
         if(tool == null){

@@ -4,11 +4,11 @@
 <head>
     <meta charset="utf-8" />
     <title>MathJaxテスト</title>
-    <script type="text/javascript" src="js/main.js?ver=1567511136" ></script>
-    <script type="text/javascript" src="js/firebase.js?ver=1567511136" ></script>
-    <script type="text/javascript" src="js/markdown.js?ver=1567511136" ></script>
-    <script type="text/javascript" src="js/speech.js?ver=1567511136" ></script>
-    <script type="text/javascript" src="js/shape.js?ver=1567511136" ></script>
+    <script type="text/javascript" src="js/main.js?ver=1567564202" ></script>
+    <script type="text/javascript" src="js/firebase.js?ver=1567564202" ></script>
+    <script type="text/javascript" src="js/markdown.js?ver=1567564202" ></script>
+    <script type="text/javascript" src="js/speech.js?ver=1567564202" ></script>
+    <script type="text/javascript" src="js/shape.js?ver=1567564202" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
     <style>
         li {
@@ -47,8 +47,9 @@ $$ -->
           <button onclick="window.location.href='login.html'">ログイン</button>
           <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
           <button onclick="manebu.firebase_update()">更新</button>  
-          <button onclick="manebu.preview(0, false)">再生</button>
-          <button onclick="manebu.preview(0, true)">早送り</button>
+          <button onclick="manebu.play()">再生</button>
+          <button onclick="manebu.stop()">停止</button>
+          <button onclick="manebu.backup()">バックアップ</button>
           &#x1f640;
           <button onclick="manebu.textMath.value = ''">クリア</button>
           <br/>

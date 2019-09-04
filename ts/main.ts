@@ -23,7 +23,6 @@ export var BlockId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement = null;
-var mdLines : string[] = [];
 var invBlocks : HTMLDivElement[] = [];
 var changeTime : number = 0;
 const IDX = 0;
@@ -384,6 +383,9 @@ function ontypeset(text: string, id: number){
 
 export function insertText(ins_str: string){
     textMath.value = textMath.value.substring(0, textMathSelectionEnd) + ins_str + textMath.value.substring(textMathSelectionEnd);
+
+    textMathSelectionStart += ins_str.length;
+    textMathSelectionEnd += ins_str.length;
 }
 
 export function addSelection(){
@@ -503,7 +505,11 @@ export function* appendTextBlock(lines: string[], ref_node: Node, fast_forward: 
     typeset_ended = false;
 
     var div = makeBlockDiv(text, ref_node);
-    div.innerHTML = make_html_lines(text);
+    var html = make_html_lines(text);
+    if(html.indexOf("$$") != -1){
+        html = `${div.id}\n` + html;
+    }
+    div.innerHTML = html; 
     div.addEventListener("click", function(ev:MouseEvent){
         onclick_block(this, ev);
     });

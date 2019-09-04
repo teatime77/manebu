@@ -1,6 +1,6 @@
 /// <reference path="main.ts" />
 namespace manebu {
-var is_speaking = false;
+export var is_speaking = false;
 var voice_list = null;
 var jp_voice : SpeechSynthesisVoice = null;
 var prev_idx = 0;

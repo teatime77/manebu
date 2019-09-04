@@ -1,5 +1,6 @@
 namespace manebu {
 declare var firebase:any;
+declare var navigator;
 
 var textName  : HTMLInputElement;
 var fileTreeView : HTMLUListElement;
@@ -129,6 +130,7 @@ function showContents(){
                     if (doc.exists) {
                         var doc_data = doc.data() as Doc;
 
+                        BlockId = 0;
                         playText(doc_data.text, null, 0, false);
                     } 
                     else {
@@ -316,7 +318,41 @@ function writeFile(file: FileInfo, text: string){
     });
 }
 
+function renumber(){
+    var lines : string[] = [];
+    var map = new Map<number, number>();
+
+    for(let [idx, nd] of Array.from(divMath.children).entries()){
+        var ele = nd as HTMLElement;
+        var block_id = parseInt(ele.dataset.block_id);
+        map.set(block_id, idx);
+
+        ele.dataset.block_id = "" + idx;
+        ele.id = getBlockId(idx);
+
+        var block_lines = ele.dataset.block_text.split('\n');
+        lines.push(...block_lines);
+    }
+
+    BlockId = divMath.children.length;
+
+    console.assert(textMath.value == lines.join('\n'));
+
+    for(let [idx, line] of lines.entries()){
+        if(line.startsWith("@select")){
+            var arg = line.substring(7).trim();
+            var act = JSON.parse(arg) as SelectionAction;
+            act.block_id = map.get(act.block_id);
+
+            lines[idx] = `@select ${JSON.stringify(act)}`;
+        }
+    }
+
+    textMath.value = lines.join('\n');
+}
+
 export function firebase_update(){
+    renumber();
     writeFile(selectedFile, textMath.value);
 }
 
@@ -342,6 +378,7 @@ export function openFile(){
         if (doc.exists) {
             var doc_data = doc.data() as Doc;
 
+            BlockId = 0;
             textMath.value = doc_data.text;
 
             msg(`[${file.id}]${file.name} を読みこみました。`);
@@ -446,13 +483,27 @@ function handleDragOver(evt) {
     evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
 }
 
-function backup(){
-    var docs = [];
+export function backup(){
 
     db.collection('users').doc(login_uid).collection('docs').get()
     .then((querySnapshot) => {
-        querySnapshot.forEach((doc) => {
-            docs.push({ id:doc.id, data: doc.data() });
+        var text: string = "";
+
+        querySnapshot.forEach((dt) => {
+            var doc = dt.data() as Doc;
+
+            text += `id: ${dt.id}\n`;
+            text += `ctime: ${doc.ctime}\n`;
+            text += `mtime: ${doc.mtime}\n`;
+            text += `${doc.text}<<EndOfDocument>>\n\n`;
+        });
+
+        navigator.clipboard.writeText(text).then(
+        function() {
+            msg("copy OK");
+        }, 
+        function() {
+            msg("copy error");
         });
     });    
 }
