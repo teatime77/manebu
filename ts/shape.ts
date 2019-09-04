@@ -208,13 +208,12 @@ export function init_shape(){
     }
 }
 
-export function addSVG(line: string, arg: string){
+export function addSVG(line: string, arg: string, ref_node: Node){
     var svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
     svg.style.width = "500px";
     svg.style.height = "500px";
     svg.style.borderStyle = "groove";
     svg.style.borderWidth = "3px";
-    svg.dataset.block_text = line;
 
     svg.addEventListener("click", function(ev: MouseEvent){
         if(tool == null){
@@ -251,8 +250,6 @@ export function addSVG(line: string, arg: string){
         tool.move(ev.offsetX, ev.offsetY);
     });
 
-    divMath.appendChild(svg);
-
     var img2 = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
     svg.appendChild(img2);
     setSvgImg(img2, arg);
@@ -265,6 +262,9 @@ export function addSVG(line: string, arg: string){
         svg.style.width  = `${rc.width}px`;
         svg.style.height = `${rc.height}px`;
     });
+
+    var div = makeBlockDiv(line, ref_node);
+    div.appendChild(svg);
 }
 
 

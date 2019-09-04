@@ -505,11 +505,7 @@ export function* appendTextBlock(lines: string[], ref_node: Node, fast_forward: 
     typeset_ended = false;
 
     var div = makeBlockDiv(text, ref_node);
-    var html = make_html_lines(text);
-    if(html.indexOf("$$") != -1){
-        html = `${div.id}\n` + html;
-    }
-    div.innerHTML = html; 
+    div.innerHTML = make_html_lines(text);
     div.addEventListener("click", function(ev:MouseEvent){
         onclick_block(this, ev);
     });
