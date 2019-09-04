@@ -39,6 +39,51 @@ class Vec2 {
     }
 }
 
+class Shape {
+    constructor(){}    
+}
+
+class LineShape extends Shape {
+    x1: number;
+    x2: number;
+    y1: number;
+    y2: number;
+
+    constructor(x1: number, x2: number, y1: number, y2: number){
+        super();
+        this.x1 = x1;
+        this.x2 = x2;
+        this.y1 = y1;
+        this.y2 = y2;
+    }
+}
+
+class CircleShape extends Shape {
+    cx: number;
+    cy: number;
+    r : number;
+
+    constructor(cx: number, cy: number, r: number){
+        super();
+        this.cx = cx;
+        this.cy = cy;
+        this.r  = r;
+    }
+}
+
+class ArcShape extends Shape {
+    p1  : Vec2;
+    p2  : Vec2;
+    p3  : Vec2;
+
+    constructor(p1: Vec2, p2: Vec2, p3: Vec2){
+        super();
+        this.p1 = p1;
+        this.p2 = p2;
+        this.p3 = p3;
+    }
+}
+
 class ShapeTool {
     svg: SVGSVGElement;
     finished : boolean = false;
@@ -51,92 +96,102 @@ class ShapeTool {
     click(x: number, y: number){}
 }
 
-class LineShape extends ShapeTool {
-    line : SVGLineElement;
+class LineTool extends ShapeTool {
+    line     : LineShape;
+    svg_line : SVGLineElement;
 
     constructor(svg: SVGSVGElement, x: number, y: number){
         super(svg);
 
-        this.line = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement;
-        this.line.setAttributeNS(null, "x1", "" + x);
-        this.line.setAttributeNS(null, "y1", "" + y);
-        this.line.setAttributeNS(null, "x2", "" + x);
-        this.line.setAttributeNS(null, "y2", "" + y);
-        this.line.setAttributeNS(null, "stroke", "red");
-        this.line.setAttributeNS(null, "fill", "none");
-        this.line.setAttributeNS(null, "stroke-width", "3");
+        this.line = new LineShape(x, y, x, y);
 
-        svg.appendChild(this.line);
+        this.svg_line = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement;
+        this.svg_line.setAttributeNS(null, "x1", "" + x);
+        this.svg_line.setAttributeNS(null, "y1", "" + y);
+        this.svg_line.setAttributeNS(null, "x2", "" + x);
+        this.svg_line.setAttributeNS(null, "y2", "" + y);
+        this.svg_line.setAttributeNS(null, "stroke", "red");
+        this.svg_line.setAttributeNS(null, "fill", "none");
+        this.svg_line.setAttributeNS(null, "stroke-width", "3");
+
+        svg.appendChild(this.svg_line);
     }
 
     move(x: number, y: number){
-        this.line.setAttributeNS(null, "x2", "" + x);
-        this.line.setAttributeNS(null, "y2", "" + y);
+        this.line.x2 = x;
+        this.line.y2 = y;
+
+        this.svg_line.setAttributeNS(null, "x2", "" + x);
+        this.svg_line.setAttributeNS(null, "y2", "" + y);
     }
 
     click(x: number, y: number){
         this.move(x, y);
+
+        var ins_str = '@line ' + JSON.stringify(this.line) + '\n';
+        insertText(ins_str);    
+
         this.finished = true;
     }
 }
 
 
-class CircleShape extends ShapeTool {
-    circle : SVGCircleElement;
-    cx : number;
-    cy : number;
+class CircleTool extends ShapeTool {
+    circle: CircleShape;
+    svg_circle : SVGCircleElement;
 
     constructor(svg: SVGSVGElement, x: number, y: number){
         super(svg);
 
-        this.cx = x;
-        this.cy = y;
+        this.circle = new CircleShape(x, y, 1);
 
-        this.circle = document.createElementNS("http://www.w3.org/2000/svg", "circle") as SVGCircleElement;
-        this.circle.setAttributeNS(null, "cx", "" + this.cx);
-        this.circle.setAttributeNS(null, "cy", "" + this.cy);
-        this.circle.setAttributeNS(null, "r", "1");
-        this.circle.setAttributeNS(null, "stroke", "red");
-        this.circle.setAttributeNS(null, "fill", "none");
-        this.circle.setAttributeNS(null, "stroke-width", "3");
+        this.svg_circle = document.createElementNS("http://www.w3.org/2000/svg", "circle") as SVGCircleElement;
+        this.svg_circle.setAttributeNS(null, "cx", "" + this.circle.cx);
+        this.svg_circle.setAttributeNS(null, "cy", "" + this.circle.cy);
+        this.svg_circle.setAttributeNS(null, "r", "1");
+        this.svg_circle.setAttributeNS(null, "stroke", "red");
+        this.svg_circle.setAttributeNS(null, "fill", "none");
+        this.svg_circle.setAttributeNS(null, "stroke-width", "3");
 
-        svg.appendChild(this.circle);
+        svg.appendChild(this.svg_circle);
     }
 
     move(x: number, y: number){
-        var dx = x - this.cx;
-        var dy = y - this.cy;
+        var dx = x - this.circle.cx;
+        var dy = y - this.circle.cy;
     
-        var r = Math.sqrt(dx * dx + dy * dy);
-        this.circle.setAttributeNS(null, "r", "" + r);
+        this.circle.r = Math.sqrt(dx * dx + dy * dy);
+        this.svg_circle.setAttributeNS(null, "r", "" + this.circle.r);
     }
 
     click(x: number, y: number){
         this.move(x, y);
+
+        var ins_str = '@circle ' + JSON.stringify(this.circle) + '\n';
+        insertText(ins_str);    
+
         this.finished = true;
     }
 }
 
 
-class AngleShape extends ShapeTool {
-    p1  : Vec2;
-    p2  : Vec2 = null;
-    p3  : Vec2 = null;
+class ArcTool extends ShapeTool {
+    arc: ArcShape;
 
-    arc : SVGPathElement;
+    svg_arc : SVGPathElement;
     line : SVGLineElement;
 
     constructor(svg: SVGSVGElement, x: number, y: number){
         super(svg);
 
-        this.p1 = new Vec2(x, y);
+        this.arc = new ArcShape(new Vec2(x, y), null, null);
 
-        this.arc = document.createElementNS("http://www.w3.org/2000/svg", "path") as SVGPathElement;
-        this.arc.setAttributeNS(null, "stroke", "red");
-        this.arc.setAttributeNS(null, "fill", "none");
-        this.arc.setAttributeNS(null, "stroke-width", "3");
+        this.svg_arc = document.createElementNS("http://www.w3.org/2000/svg", "path") as SVGPathElement;
+        this.svg_arc.setAttributeNS(null, "stroke", "red");
+        this.svg_arc.setAttributeNS(null, "fill", "none");
+        this.svg_arc.setAttributeNS(null, "stroke-width", "3");
 
-        svg.appendChild(this.arc);
+        svg.appendChild(this.svg_arc);
 
         this.line = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement;
         this.line.setAttributeNS(null, "x1", "" + x);
@@ -153,24 +208,24 @@ class AngleShape extends ShapeTool {
     draw(x: number, y: number){
         var p3 : Vec2;
 
-        if(this.p3 == null){
+        if(this.arc.p3 == null){
             p3 = new Vec2(x,y);
         }
         else{
-            p3 = this.p3;
+            p3 = this.arc.p3;
         }
 
-        var r  = this.p2.sub(this.p1).len();
+        var r  = this.arc.p2.sub(this.arc.p1).len();
 
-        var p4 = this.p1.add( p3.sub(this.p1).unit().mul(r) );
+        var p4 = this.arc.p1.add( p3.sub(this.arc.p1).unit().mul(r) );
 
-        var d = `M${this.p2.x} ${this.p2.y} A ${r} ${r} 0 0 0 ${p4.x} ${p4.y}`;
+        var d = `M${this.arc.p2.x} ${this.arc.p2.y} A ${r} ${r} 0 0 0 ${p4.x} ${p4.y}`;
 
-        this.arc.setAttribute("d", d);
+        this.svg_arc.setAttribute("d", d);
     }
 
     move(x: number, y: number){
-        if(this.p2 == null){
+        if(this.arc.p2 == null){
 
             this.line.setAttributeNS(null, "x2", "" + x);
             this.line.setAttributeNS(null, "y2", "" + y);
@@ -182,16 +237,20 @@ class AngleShape extends ShapeTool {
     }
 
     click(x: number, y: number){
-        if(this.p2 == null){
+        if(this.arc.p2 == null){
 
-            this.p2 = new Vec2(x, y);
+            this.arc.p2 = new Vec2(x, y);
         }
         else{
-            this.p3 = new Vec2(x, y);
+            this.arc.p3 = new Vec2(x, y);
 
             this.draw(x, y);
     
             this.svg.removeChild(this.line);
+
+            var ins_str = '@arc ' + JSON.stringify(this.arc) + '\n';
+            insertText(ins_str);    
+    
             this.finished = true;
         }
     }
@@ -220,15 +279,15 @@ export function addSVG(line: string, arg: string, ref_node: Node){
 
             switch(toolType){
             case "circle":
-                tool = new CircleShape(svg, ev.offsetX, ev.offsetY);
+                tool = new CircleTool(svg, ev.offsetX, ev.offsetY);
                 break;
 
             case "line":
-                tool = new LineShape(svg, ev.offsetX, ev.offsetY);
+                tool = new LineTool(svg, ev.offsetX, ev.offsetY);
                 break;
 
             case "angle":
-                tool = new AngleShape(svg, ev.offsetX, ev.offsetY);
+                tool = new ArcTool(svg, ev.offsetX, ev.offsetY);
                 break;
             }
         }
