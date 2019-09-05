@@ -10,12 +10,22 @@
     <script type="text/javascript" src="js/speech.js?ver=1567657084" ></script>
     <script type="text/javascript" src="js/shape.js?ver=1567657084" ></script>
     <script type="text/javascript" src="js/mymathjax.js" ></script>
-    <style>
-        li {
-          margin-top: 10px;
-          margin-bottom: 10px;
-        }
-      </style>  
+
+<style>
+
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+}      
+li {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+</style>  
 
 <script type="text/javascript">
 
@@ -41,45 +51,29 @@ function closeDropZone(){
 \newcommand{\U}{{}^\ast U}
 $$ -->
 
-<table border="1" width="100%">
-  <tr>
-      <td valign="top" width="50%">
-          <button onclick="window.location.href='login.html'">ログイン</button>
-          <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
-          <button onclick="manebu.firebase_update()">更新</button>  
-          <button onclick="manebu.play()">再生</button>
-          <button onclick="manebu.stop()">停止</button>
-          <button onclick="manebu.backup()">バックアップ</button>
-          &#x1f640;
-          <button onclick="manebu.textMath.value = ''">クリア</button>
-          <br/>
-          <textarea id="txt-math" spellcheck="false" style="width: 99%; height: 700px; overflow-x: visible; white-space: pre; font-size: large; font-weight: bold;" ></textarea>
-      </td>
-      <td valign="top" width="50%">
+<div style="display: grid; grid-template-rows:30px 1fr 150px; grid-template-columns: 1fr 1fr; height: 100%;">
+    <div style="grid-row: 1; grid-column: 1 / span 2;">
+        <button onclick="window.location.href='login.html'">ログイン</button>
+        <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
+        <button onclick="manebu.firebase_update()">更新</button>  
+        <button onclick="manebu.play()">再生</button>
+        <button onclick="manebu.stop()">停止</button>
+        <button onclick="manebu.backup()">バックアップ</button>
+        &#x1f640;
+        <button onclick="manebu.textMath.value = ''">クリア</button>
         <button onclick="manebu.addSelection()">テキストを選択</button>
         <button onclick="openDropZone()" >画像を挿入</button>
         <input type="radio" name="shape-tool" id="tool-move" value="move" />移動
         <input type="radio" name="shape-tool" id="tool-line" value="line" />線
         <input type="radio" name="shape-tool" id="tool-circle" value="circle" />円
         <input type="radio" name="shape-tool" id="tool-circle" value="angle" />角度
-        <br/>
-        <div id="div-math" style="height: 700px; overflow: scroll; border-style:inset; border-width: 3px;" ></div>
-        <!-- <div >
-        </div> -->
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2">
-          <pre id="div-msg" style="height: 200px; overflow: scroll; border-style:inset; border-width: 3px;" ></pre>
-      </td>
-    </tr>
-</table>
+        <span style="font-family: 'Segoe UI Emoji' ">🖍</span>
+    </div>
 
+    <textarea id="txt-math" spellcheck="false" style="grid-row: 2; grid-column: 1; overflow-x: visible; white-space: pre; font-size: large; font-weight: bold;" ></textarea>
+    <div id="div-math" style="grid-row: 2; grid-column: 2; overflow: scroll; border-style:inset; border-width: 3px;" ></div>
 
-
-<div contenteditable="true">
-    <span style="font-family: 'Segoe UI Emoji' ">🖍</span>  
-    このテキストは閲覧者が編集することができます。 🖍 🖍    
+    <pre id="div-msg" style="grid-row: 3; grid-column: 1/ span 2; ; overflow: scroll; border-style:inset; border-width: 3px;" ></pre>
 </div>
 
 <div id="dlg-Folder" style="display: none; position:fixed; border-style:outset; border-width: 5px; background-color: cornsilk;">
