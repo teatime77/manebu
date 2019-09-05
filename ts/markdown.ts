@@ -13,7 +13,7 @@ function getCommand(line: string) : [string|null, string|null] {
         return [ "$$", ""];
     }
 
-    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@img" ]){
+    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@img", "@line", "@circle", "@arc" ]){
         if(line.startsWith(cmd + " ") || line_trim == cmd){
 
             var arg = line.substring(cmd.length + 1).trim();
@@ -108,6 +108,14 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
 
             case "@img":
                 addSVG(line, arg, ref_node);
+                break;
+
+            case "@line":
+            case "@circle":
+            case "@arc":
+                var data = JSON.parse(arg) as ShapeData;
+                addShapeFromData(cmd, data);
+                makeBlockDiv(line, ref_node);
                 break;
             }
         }

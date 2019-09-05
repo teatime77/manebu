@@ -39,18 +39,21 @@ class Vec2 {
     }
 }
 
-class Shape {
-    constructor(){}    
+export class ShapeData {
+    block_id: number
+    constructor(svg: SVGSVGElement){
+        this.block_id = parseInt(svg.parentElement.dataset.block_id);
+    }    
 }
 
-class LineShape extends Shape {
+class LineData extends ShapeData {
     x1: number;
     x2: number;
     y1: number;
     y2: number;
 
-    constructor(x1: number, x2: number, y1: number, y2: number){
-        super();
+    constructor(svg: SVGSVGElement, x1: number, y1: number, x2: number, y2: number){
+        super(svg);
         this.x1 = x1;
         this.x2 = x2;
         this.y1 = y1;
@@ -58,26 +61,26 @@ class LineShape extends Shape {
     }
 }
 
-class CircleShape extends Shape {
+class CircleData extends ShapeData {
     cx: number;
     cy: number;
     r : number;
 
-    constructor(cx: number, cy: number, r: number){
-        super();
+    constructor(svg: SVGSVGElement, cx: number, cy: number, r: number){
+        super(svg);
         this.cx = cx;
         this.cy = cy;
         this.r  = r;
     }
 }
 
-class ArcShape extends Shape {
+class ArcData extends ShapeData {
     p1  : Vec2;
     p2  : Vec2;
     p3  : Vec2;
 
-    constructor(p1: Vec2, p2: Vec2, p3: Vec2){
-        super();
+    constructor(svg: SVGSVGElement, p1: Vec2, p2: Vec2, p3: Vec2){
+        super(svg);
         this.p1 = p1;
         this.p2 = p2;
         this.p3 = p3;
@@ -97,19 +100,19 @@ class ShapeTool {
 }
 
 class LineTool extends ShapeTool {
-    line     : LineShape;
+    line     : LineData;
     svg_line : SVGLineElement;
 
-    constructor(svg: SVGSVGElement, x: number, y: number){
+    constructor(svg: SVGSVGElement, line: LineData){
         super(svg);
 
-        this.line = new LineShape(x, y, x, y);
+        this.line = line;
 
         this.svg_line = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement;
-        this.svg_line.setAttributeNS(null, "x1", "" + x);
-        this.svg_line.setAttributeNS(null, "y1", "" + y);
-        this.svg_line.setAttributeNS(null, "x2", "" + x);
-        this.svg_line.setAttributeNS(null, "y2", "" + y);
+        this.svg_line.setAttributeNS(null, "x1", "" + line.x1);
+        this.svg_line.setAttributeNS(null, "y1", "" + line.y1);
+        this.svg_line.setAttributeNS(null, "x2", "" + line.x2);
+        this.svg_line.setAttributeNS(null, "y2", "" + line.y2);
         this.svg_line.setAttributeNS(null, "stroke", "red");
         this.svg_line.setAttributeNS(null, "fill", "none");
         this.svg_line.setAttributeNS(null, "stroke-width", "3");
@@ -128,6 +131,8 @@ class LineTool extends ShapeTool {
     click(x: number, y: number){
         this.move(x, y);
 
+        this.svg.removeChild(this.svg_line);
+
         var ins_str = '@line ' + JSON.stringify(this.line) + '\n';
         insertText(ins_str);    
 
@@ -137,18 +142,18 @@ class LineTool extends ShapeTool {
 
 
 class CircleTool extends ShapeTool {
-    circle: CircleShape;
+    circle: CircleData;
     svg_circle : SVGCircleElement;
 
-    constructor(svg: SVGSVGElement, x: number, y: number){
+    constructor(svg: SVGSVGElement, circle: CircleData){
         super(svg);
 
-        this.circle = new CircleShape(x, y, 1);
+        this.circle = circle;
 
         this.svg_circle = document.createElementNS("http://www.w3.org/2000/svg", "circle") as SVGCircleElement;
         this.svg_circle.setAttributeNS(null, "cx", "" + this.circle.cx);
         this.svg_circle.setAttributeNS(null, "cy", "" + this.circle.cy);
-        this.svg_circle.setAttributeNS(null, "r", "1");
+        this.svg_circle.setAttributeNS(null, "r", "" + this.circle.r);
         this.svg_circle.setAttributeNS(null, "stroke", "red");
         this.svg_circle.setAttributeNS(null, "fill", "none");
         this.svg_circle.setAttributeNS(null, "stroke-width", "3");
@@ -176,15 +181,15 @@ class CircleTool extends ShapeTool {
 
 
 class ArcTool extends ShapeTool {
-    arc: ArcShape;
+    arc: ArcData;
 
     svg_arc : SVGPathElement;
     line : SVGLineElement;
 
-    constructor(svg: SVGSVGElement, x: number, y: number){
+    constructor(svg: SVGSVGElement, arc: ArcData){
         super(svg);
 
-        this.arc = new ArcShape(new Vec2(x, y), null, null);
+        this.arc = arc;
 
         this.svg_arc = document.createElementNS("http://www.w3.org/2000/svg", "path") as SVGPathElement;
         this.svg_arc.setAttributeNS(null, "stroke", "red");
@@ -193,16 +198,22 @@ class ArcTool extends ShapeTool {
 
         svg.appendChild(this.svg_arc);
 
-        this.line = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement;
-        this.line.setAttributeNS(null, "x1", "" + x);
-        this.line.setAttributeNS(null, "y1", "" + y);
-        this.line.setAttributeNS(null, "x2", "" + x);
-        this.line.setAttributeNS(null, "y2", "" + y);
-        this.line.setAttributeNS(null, "stroke", "red");
-        this.line.setAttributeNS(null, "fill", "none");
-        this.line.setAttributeNS(null, "stroke-width", "3");
+        if(arc.p3 == null){
+            this.line = document.createElementNS("http://www.w3.org/2000/svg", "line") as SVGLineElement;
+            this.line.setAttributeNS(null, "x1", "" + arc.p1.x);
+            this.line.setAttributeNS(null, "y1", "" + arc.p1.y);
+            this.line.setAttributeNS(null, "x2", "" + arc.p1.x);
+            this.line.setAttributeNS(null, "y2", "" + arc.p1.y);
+            this.line.setAttributeNS(null, "stroke", "red");
+            this.line.setAttributeNS(null, "fill", "none");
+            this.line.setAttributeNS(null, "stroke-width", "3");
 
-        svg.appendChild(this.line);
+            svg.appendChild(this.line);
+        }
+        else{
+
+            this.draw(undefined, undefined);
+        }
     }
 
     draw(x: number, y: number){
@@ -279,15 +290,15 @@ export function addSVG(line: string, arg: string, ref_node: Node){
 
             switch(toolType){
             case "circle":
-                tool = new CircleTool(svg, ev.offsetX, ev.offsetY);
+                tool = new CircleTool(svg, new CircleData(svg, ev.offsetX, ev.offsetY, 1));
                 break;
 
             case "line":
-                tool = new LineTool(svg, ev.offsetX, ev.offsetY);
+                tool = new LineTool(svg, new LineData(svg, ev.offsetX, ev.offsetY, ev.offsetX, ev.offsetY));
                 break;
 
             case "angle":
-                tool = new ArcTool(svg, ev.offsetX, ev.offsetY);
+                tool = new ArcTool(svg, new ArcData(svg, new Vec2(ev.offsetX, ev.offsetY), null, null));
                 break;
             }
         }
@@ -326,6 +337,27 @@ export function addSVG(line: string, arg: string, ref_node: Node){
     div.appendChild(svg);
 }
 
+export function addShapeFromData(cmd: string, data: ShapeData){
+    var id = getBlockId(data.block_id);
+    var div = document.getElementById(id) as HTMLDivElement;
+    var svg = div.firstChild as SVGSVGElement;
+
+    switch(cmd){
+    case "@line":
+        new LineTool(svg, data as LineData);
+        break;
+    case "@circle":
+        new CircleTool(svg, data as CircleData);
+        break;
+    case "@arc":
+        var ad = data as ArcData;
+        ad.p1 = new Vec2(ad.p1.x, ad.p1.y);
+        ad.p2 = new Vec2(ad.p2.x, ad.p2.y);
+        ad.p3 = new Vec2(ad.p3.x, ad.p3.y);
+        new ArcTool(svg, ad);
+        break;
+    }
+}
 
 
 
