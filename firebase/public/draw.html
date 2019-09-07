@@ -22,23 +22,47 @@ var exports = {};
 </script>
 <script type="text/javascript"  src="js/util.js?ver=1567822786" ></script>
 <script type="text/javascript"  src="js/draw.js?ver=1567822786" ></script>
+<script type="text/javascript" src="js/main.js?ver=1567822786" ></script>
+<script type="text/javascript" src="js/firebase.js?ver=1567822786" ></script>
+<script type="text/javascript" src="js/markdown.js?ver=1567822786" ></script>
+<script type="text/javascript" src="js/speech.js?ver=1567822786" ></script>
+<script type="text/javascript" src="js/shape.js?ver=1567822786" ></script>
+<script type="text/javascript" src="js/mymathjax.js" ></script>
+
 <script type="text/javascript">
 
 function body_onload(){
     console.log("body load");
+    manebu.init_manebu(true);
     manebu.init_draw();
 }
+
+function openDropZone(){
+    manebu.dropZone.style.display = "inline-block";
+}
+
+function closeDropZone(){
+    manebu.dropZone.style.display = "none";
+}
+
 </script>
 
 <style type="text/css">
 html {
+    width: 100%;
     height: 100%;
 }
 
 body {
+    width: 100%;
     height: 100%;
     margin: 0;
 }      
+
+li {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
 
 
 .popup_label {
@@ -62,8 +86,25 @@ path {
 </head>
 
 <body onload="body_onload()">
-<div style="display: grid; grid-template-rows:30px 1fr 150px; grid-template-columns:150px 1fr 200px; height: 100%;">
+<div style="display: grid; grid-template-rows:50px 1fr 1fr 150px 100px; grid-template-columns:150px 1fr 300px; width: 100%; height: 100%;">
     <div style="grid-row: 1; grid-column: 1/span 3; background-color: cornsilk; ">
+        <button onclick="window.location.href='login.html'">ログイン</button>
+        <button onclick="window.location.href='draw.html'">作図</button>
+        <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
+        <button onclick="manebu.firebase_update()">更新</button>  
+        <button onclick="manebu.play()">再生</button>
+        <button onclick="manebu.stop()">停止</button>
+        <button onclick="manebu.backup()">バックアップ</button>
+        &#x1f640;
+        <button onclick="manebu.textMath.value = ''">クリア</button>
+        <button onclick="manebu.addSelection()">テキストを選択</button>
+        <button onclick="openDropZone()" >画像を挿入</button>
+        <input type="radio" name="shape-tool" id="tool-move" value="move" />移動
+        <input type="radio" name="shape-tool" id="tool-line" value="line" />線
+        <input type="radio" name="shape-tool" id="tool-circle" value="circle" />円
+        <input type="radio" name="shape-tool" id="tool-circle" value="angle" />角度
+        <span style="font-family: 'Segoe UI Emoji' ">🖍</span>
+        <br/>
         <input type="radio" name="tool-type" value="select" />選択
         <input type="radio" name="tool-type" value="Point" />点
         <input type="radio" name="tool-type" value="LineSegment"  checked />線分
@@ -79,14 +120,19 @@ path {
         <input type="radio" name="tool-type" value="Angle" />角度
         <input type="radio" name="tool-type" value="TextBox" />テキスト
     </div>
-    <div style="grid-row: 2; grid-column: 1; background-color:lavender;"></div>
-    <div style="grid-row: 2; grid-column: 2;" >
-        <svg id="main-svg" style="background-color:wheat; width: 400px;  height: 400px; border-style: ridge; border-width: 3px;" viewBox="-10 -10 20 20" xmlns="http://www.w3.org/2000/svg" ></svg>
-    </div>
+    <div id="div-actions" style="grid-row: 2; grid-column: 1; background-color:lavender;"></div>
+
+    <div id="div-math" style="grid-row: 2; grid-column: 2; overflow: scroll; border-style:inset; border-width: 3px;" ></div>
+    <textarea id="txt-math" spellcheck="false" style="grid-row: 3; grid-column: 2; overflow-x: visible; white-space: pre; font-size: large; font-weight: bold;" ></textarea>
+
+
     <div id="property-div" style="grid-row: 2; grid-column: 3; background-color:lavender;"></div>
-    <div id="timeline" style="grid-row: 3; grid-column: 1/span 3; background-color: cornsilk; display: grid; grid-template-rows:1fr; grid-template-columns:1fr 200px; height: 100%;" >
+    <svg id="main-svg" style="grid-row: 3; grid-column: 3;  background-color:wheat; border-style: ridge; border-width: 3px;" viewBox="-10 -10 20 20" xmlns="http://www.w3.org/2000/svg" ></svg>
+
+    <div id="timeline" style="grid-row: 4; grid-column: 1/span 3; background-color: cornsilk; display: grid; grid-template-rows:1fr; grid-template-columns:1fr 200px; height: 100%;" >
         <input type="range" style="grid-auto-rows: 1; grid-column: 1;" />
     </div>
+    <pre id="div-msg" style="grid-row: 5; grid-column: 2; ; overflow: scroll; border-style:inset; border-width: 3px;" ></pre>
 </div>
 
 
@@ -103,6 +149,30 @@ $$</textarea><br/>
     色 <input id="angle-dlg-color" type="text" /><br/>
     <input id="angle-dlg-ok" type="button" value="OK" />
 </dialog>
+
+<div id="dlg-Folder" style="display: none; position:fixed; border-style:outset; border-width: 5px; background-color: cornsilk;">
+    名前:
+    <input id="text-name" type="text" size=20 value="" /><br/>
+    <button onclick="manebu.make_folder()">フォルダーを作成</button>  
+    <button onclick="manebu.make_file()">ファイルを作成</button>  
+  
+    <ul id="file-tree-view"></ul>
+  
+    <button onclick="manebu.openFile()">開く</button>  
+    <button onclick="manebu.saveFolder()">保存</button>  
+    <button onclick="manebu.closeFolder()">閉じる</button>  
+</div>
+  
+<div id="drop_zone" style="display:none; position:fixed; left: 50px; top: 50px; width: 300px; height: 200px; border-style: groove; border-width: 3px;">
+    <p>&nbsp;</p>
+    <span>画像ファイルをドロップしてください。</span>
+    <p>&nbsp;</p>
+    <button onclick="closeDropZone()" >閉じる</button>
+</div>
+  
+
+
+
 
 <!-- The core Firebase JS SDK is always required and must be listed first -->
 <script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>
