@@ -31,6 +31,16 @@ function body_onload(){
 </script>
 
 <style type="text/css">
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+}      
+
+
 .popup_label {
     margin: 0px;
     padding: 0px;
@@ -52,7 +62,8 @@ path {
 </head>
 
 <body onload="body_onload()">
-    <span>
+<div style="display: grid; grid-template-rows:30px 1fr 150px; grid-template-columns:150px 1fr 200px; height: 100%;">
+    <div style="grid-row: 1; grid-column: 1/span 3; background-color: cornsilk; ">
         <input type="radio" name="tool-type" value="select" />選択
         <input type="radio" name="tool-type" value="Point" />点
         <input type="radio" name="tool-type" value="LineSegment"  checked />線分
@@ -67,26 +78,31 @@ path {
         <input type="radio" name="tool-type" value="Intersection" />交点
         <input type="radio" name="tool-type" value="Angle" />角度
         <input type="radio" name="tool-type" value="TextBox" />テキスト
-    </span>
-    <br/>
-    <svg id="main-svg" viewBox="-10 -10 20 20" xmlns="http://www.w3.org/2000/svg" style="width:1000px; height:1000px; background-color:wheat" ></svg>
+    </div>
+    <div style="grid-row: 2; grid-column: 1; background-color:lavender;"></div>
+    <div style="grid-row: 2; grid-column: 2;" >
+        <svg id="main-svg" style="background-color:wheat; width: 400px;  height: 400px; border-style: ridge; border-width: 3px;" viewBox="-10 -10 20 20" xmlns="http://www.w3.org/2000/svg" ></svg>
+    </div>
+    <div id="property-div" style="grid-row: 2; grid-column: 3; background-color:lavender;"></div>
+    <div id="timeline" style="grid-row: 3; grid-column: 1/span 3; background-color: cornsilk; display: grid; grid-template-rows:1fr; grid-template-columns:1fr 200px; height: 100%;" >
+        <input type="range" style="grid-auto-rows: 1; grid-column: 1;" />
+    </div>
+</div>
 
-    <div id="property-div" style="width:200px;"></div>
 
-    <dialog id="text-box-dlg">
-        <textarea id="text-box-text" rows="10" cols="80" >$$
+<dialog id="text-box-dlg">
+    <textarea id="text-box-text" rows="10" cols="80" >$$
 \frac{1}{2 \pi \sigma^2} \int_{-\infty}^\infty \exp^{ - \frac{{(x - \mu)}^2}{2 \sigma^2}  } dx
 $$</textarea><br/>
-        <span>
-            <input id="text-box-ok" type="button" value="OK" />
-        </span>
-    </dialog>
+    <span>
+        <input id="text-box-ok" type="button" value="OK" />
+    </span>
+</dialog>
 
-    <dialog id="angle-dlg">
-        色 <input id="angle-dlg-color" type="text" /><br/>
-        <input id="angle-dlg-ok" type="button" value="OK" />
-    </dialog>
-
+<dialog id="angle-dlg">
+    色 <input id="angle-dlg-color" type="text" /><br/>
+    <input id="angle-dlg-ok" type="button" value="OK" />
+</dialog>
 
 <!-- The core Firebase JS SDK is always required and must be listed first -->
 <script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>
@@ -112,7 +128,6 @@ $$</textarea><br/>
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
 </script>
-
 
 </body>
 </html>
