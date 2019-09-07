@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta charset="utf-8" />
+<title>作図</title>
+
+<script src="https://www.gstatic.com/firebasejs/5.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.10.1/firebase-firestore.js"></script>
+<script>
+// Initialize Firebase
+var config = {
+    apiKey: "AIzaSyA793YhUFWCJTI7s37BrLQN5HR5qDQGv_c",
+    authDomain: "hip-rig-238101.firebaseapp.com",
+    databaseURL: "https://hip-rig-238101.firebaseio.com",
+    projectId: "hip-rig-238101",
+    storageBucket: "hip-rig-238101.appspot.com",
+    messagingSenderId: "802290277030"
+};
+
+firebase.initializeApp(config);
+
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        extensions: ["tex2jax.js"],
+        jax: ["input/TeX","output/SVG"],
+        tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]}
+    });
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_SVG' async></script>
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+<script type="text/javascript">
+var exports = {};
+</script>
+<script type="text/javascript"  src="js/util.js?v=1" defer></script>
+<script type="text/javascript"  src="js/draw.js?v=1" defer></script>
+<script type="text/javascript">
+
+function body_onload(){
+    console.log("body load");
+    MathMemo.init_draw();
+}
+</script>
+
+<style type="text/css">
+.popup_label {
+    margin: 0px;
+    padding: 0px;
+}
+.popup_ul {
+    list-style: none;
+    padding-left: 0px; 
+    margin: 0px;
+    /* position: absolute;    */
+}
+.popup_li {
+    margin-left: 10px;
+}
+
+path {
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body onload="body_onload()">
+    <span>
+        <input type="radio" name="tool-type" value="select" />選択
+        <input type="radio" name="tool-type" value="Point" />点
+        <input type="radio" name="tool-type" value="LineSegment"  checked />線分
+        <input type="radio" name="tool-type" value="Rect.1" />長方形
+        <input type="radio" name="tool-type" value="Rect.2" />正方形
+        <input type="radio" name="tool-type" value="Circle.1" />円1
+        <input type="radio" name="tool-type" value="Circle.2" />円2
+        <input type="radio" name="tool-type" value="Triangle" />三角形
+        <input type="radio" name="tool-type" value="Midpoint" />中点
+        <input type="radio" name="tool-type" value="Perpendicular" />垂線
+        <input type="radio" name="tool-type" value="ParallelLine" />平行線
+        <input type="radio" name="tool-type" value="Intersection" />交点
+        <input type="radio" name="tool-type" value="Angle" />角度
+        <input type="radio" name="tool-type" value="TextBox" />テキスト
+    </span>
+    <br/>
+    <svg id="main-svg" viewBox="-10 -10 20 20" xmlns="http://www.w3.org/2000/svg" style="width:1000px; height:1000px; background-color:wheat" ></svg>
+
+    <div id="property-div" style="width:200px;"></div>
+
+    <dialog id="text-box-dlg">
+        <textarea id="text-box-text" rows="10" cols="80" >$$
+\frac{1}{2 \pi \sigma^2} \int_{-\infty}^\infty \exp^{ - \frac{{(x - \mu)}^2}{2 \sigma^2}  } dx
+$$</textarea><br/>
+        <span>
+            <input id="text-box-ok" type="button" value="OK" />
+        </span>
+    </dialog>
+
+    <dialog id="angle-dlg">
+        色 <input id="angle-dlg-color" type="text" /><br/>
+        <input id="angle-dlg-ok" type="button" value="OK" />
+    </dialog>
+</body>
+</html>
