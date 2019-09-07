@@ -339,12 +339,19 @@ function renumber(){
     console.assert(textMath.value == lines.join('\n'));
 
     for(let [idx, line] of lines.entries()){
-        if(line.startsWith("@select")){
-            var arg = line.substring(7).trim();
+        var [cmd, arg] = getCommand(line);
+
+        switch(cmd){
+        case "@select":
             var act = JSON.parse(arg) as SelectionAction;
             act.block_id = map.get(act.block_id);
 
             lines[idx] = `@select ${JSON.stringify(act)}`;
+            break;
+
+        case "@del":
+            lines[idx] = `@del ${map.get(parseInt(arg))}`;
+            break;
         }
     }
 

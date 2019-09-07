@@ -6,14 +6,14 @@ export var isPlaying: boolean = false;
 var stopPlaying: boolean = false;
 var line_idx : number;
 
-function getCommand(line: string) : [string|null, string|null] {
+export function getCommand(line: string) : [string|null, string|null] {
     var line_trim = line.trim();
 
     if(line_trim == "$$"){
         return [ "$$", ""];
     }
 
-    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@img", "@line", "@circle", "@arc" ]){
+    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@del", "@img", "@line", "@circle", "@arc" ]){
         if(line.startsWith(cmd + " ") || line_trim == cmd){
 
             var arg = line.substring(cmd.length + 1).trim();
@@ -41,6 +41,17 @@ export function makeBlockDiv(block_text: string, ref_node: Node) : HTMLDivElemen
     div.className = "manebu-text-block";
 
     makeDom(div, block_text, ref_node);
+
+    div.addEventListener("keydown", function(ev: KeyboardEvent){
+        msg(`key down:${ev.key}`);
+
+        if(ev.key == "Delete"){
+
+            var ins_str = `@del ${div.dataset.block_id}\n`;
+            insertText(ins_str);
+        }
+    });
+    div.tabIndex = 0;
 
     return div;
 }
@@ -101,6 +112,20 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
                 if(! fast_forward){
                 
                     restore_current_mjx_color();
+                }
+
+                makeBlockDiv(line, ref_node);
+                break;
+
+            case "@del":
+                var del_ele = document.getElementById(getBlockId(parseInt(arg)));
+                if(inEditor){
+
+                    del_ele.style.backgroundColor = "gainsboro";
+                }
+                else{
+
+                    del_ele.style.display = "none";
                 }
 
                 makeBlockDiv(line, ref_node);
