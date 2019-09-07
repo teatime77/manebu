@@ -6,23 +6,6 @@
 <meta charset="utf-8" />
 <title>作図</title>
 
-<script src="https://www.gstatic.com/firebasejs/5.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/5.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/5.10.1/firebase-firestore.js"></script>
-<script>
-// Initialize Firebase
-var config = {
-    apiKey: "AIzaSyA793YhUFWCJTI7s37BrLQN5HR5qDQGv_c",
-    authDomain: "hip-rig-238101.firebaseapp.com",
-    databaseURL: "https://hip-rig-238101.firebaseio.com",
-    projectId: "hip-rig-238101",
-    storageBucket: "hip-rig-238101.appspot.com",
-    messagingSenderId: "802290277030"
-};
-
-firebase.initializeApp(config);
-
-</script>
 
 <script type="text/x-mathjax-config">
     MathJax.Hub.Config({
@@ -37,13 +20,13 @@ firebase.initializeApp(config);
 <script type="text/javascript">
 var exports = {};
 </script>
-<script type="text/javascript"  src="js/util.js?v=1" defer></script>
-<script type="text/javascript"  src="js/draw.js?v=1" defer></script>
+<script type="text/javascript"  src="js/util.js?ver=1567822786" ></script>
+<script type="text/javascript"  src="js/draw.js?ver=1567822786" ></script>
 <script type="text/javascript">
 
 function body_onload(){
     console.log("body load");
-    MathMemo.init_draw();
+    manebu.init_draw();
 }
 </script>
 
@@ -103,5 +86,33 @@ $$</textarea><br/>
         色 <input id="angle-dlg-color" type="text" /><br/>
         <input id="angle-dlg-ok" type="button" value="OK" />
     </dialog>
+
+
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-app.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.4.2/firebase-storage.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#config-web-app -->
+
+<script>
+  // Your web app's Firebase configuration
+  var firebaseConfig = {
+    apiKey: "AIzaSyBrlDYj-nxqzVIkOyByXoKy7XOTVWSTxt8",
+    authDomain: "manebu-6d038.firebaseapp.com",
+    databaseURL: "https://manebu-6d038.firebaseio.com",
+    projectId: "manebu-6d038",
+    storageBucket: "manebu-6d038.appspot.com",
+    messagingSenderId: "251130880062",
+    appId: "1:251130880062:web:509513c72997552c"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+</script>
+
+
 </body>
 </html>

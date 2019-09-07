@@ -1,4 +1,4 @@
-namespace MathMemo{
+namespace manebu{
 export var padding = 10;
 
 export function array_last<T>(arr:T[]) : T{
@@ -100,37 +100,6 @@ export function make_html_lines(text: string){
     }
 
     return html_lines.join("\n");
-}
-
-
-export function get_size(ele: HTMLDivElement){
-    var spans = ele.getElementsByTagName("span");
-
-    var min_x = Number.MAX_VALUE, min_y = Number.MAX_VALUE;
-    var max_x = 0, max_y = 0;
-    for(let span of spans){
-        if(span.className == "MathJax_Preview" || span.className == "MJX_Assistive_MathML MJX_Assistive_MathML_Block"){
-            continue;
-        }
-        var rc = span.getBoundingClientRect();
-        // console.log(`${span.className} rc:${rc.x},${rc.y},${rc.width},${rc.height}, ${span.innerText.replace('\n', ' ')}`);
-        if(span.className == "MathJax_SVG"){
-
-            max_x = Math.max(max_x, rc.width);
-        }
-        else{
-
-            min_x = Math.min(min_x, rc.left);
-            max_x = Math.max(max_x, rc.right);
-        }
-        min_y = Math.min(min_y, rc.top);
-        max_y = Math.max(max_y, rc.bottom);
-    }
-    if(min_x == Number.MAX_VALUE){
-        min_x = 0;
-    }
-
-    return [max_x - min_x, max_y - min_y]
 }
 
 }

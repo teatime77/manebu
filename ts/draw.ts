@@ -1,5 +1,5 @@
 /// <reference path="util.ts" />
-namespace MathMemo{
+namespace manebu{
 
 const infinity = 20;
 
