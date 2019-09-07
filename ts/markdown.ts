@@ -4,7 +4,6 @@ namespace manebu {
 declare var MathJax:any;
 export var isPlaying: boolean = false;
 var stopPlaying: boolean = false;
-var line_idx : number;
 
 export function getCommand(line: string) : [string|null, string|null] {
     var line_trim = line.trim();
@@ -24,50 +23,20 @@ export function getCommand(line: string) : [string|null, string|null] {
     return [null, null];
 }
 
-export function makeDom(ele: HTMLElement, block_text: string, ref_node: Node){
-    ele.id = getBlockId(BlockId);
-    ele.title = ele.id
+function parseActionText(action_text: string){
+    var lines = action_text.replace('\r\n', '\n').split('\n');
 
-    ele.dataset.block_text = block_text;
-    ele.dataset.block_id = "" + BlockId;
-
-    BlockId++;
-
-    divMath.insertBefore(ele, ref_node);
-}
-
-export function makeBlockDiv(block_text: string, ref_node: Node) : HTMLDivElement{
-    var div = document.createElement("div");
-    div.className = "manebu-text-block";
-
-    makeDom(div, block_text, ref_node);
-
-    div.addEventListener("keydown", function(ev: KeyboardEvent){
-        msg(`key down:${ev.key}`);
-
-        if(ev.key == "Delete"){
-
-            var ins_str = `@del ${div.dataset.block_id}\n`;
-            insertText(ins_str);
-        }
-    });
-    div.tabIndex = 0;
-
-    return div;
-}
-
-function* player(lines: string[], ref_node: Node, start_pos: number, fast_forward: boolean){
     var texts : string[] = [];
 
-    for(line_idx = start_pos; line_idx < lines.length; ){
+    ActionId = 0;
+    for(var line_idx = 0; line_idx < lines.length; ){
 
         var line = lines[line_idx];
 
         var [cmd, arg] = getCommand(line);
         if(cmd != null){
             if(texts.length != 0){
-
-                yield* appendTextBlock( texts, ref_node, fast_forward );
+                actions.push(new TextBlockAction(texts));
                 texts = [];
             }
 
@@ -81,66 +50,35 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
                     }
                 }
                 
-                yield* appendTextBlock( lines.slice(start_line_idx, line_idx), ref_node, fast_forward );
+                actions.push(new TextBlockAction(lines.slice(start_line_idx, line_idx)));
                 continue;
 
             case "@speak":
-                if(arg != ""){
-
-                    if(! fast_forward){
-
-                        yield* speak(arg);
-                    }
-
-                    var div = makeBlockDiv(line, ref_node);
-                    div.innerHTML = arg;
-                }
+                actions.push(new SpeechAction(arg));
                 break;
 
             case "@select":
-                if(! fast_forward){
-                    
-                    var act = JSON.parse(arg) as SelectionAction;
-
-                    setSelection(act, false);
-                }
-
-                makeBlockDiv(line, ref_node);
+                var dt = JSON.parse(arg) as SelectionAction;
+                actions.push(new SelectionAction(dt.block_id, dt.dom_type, dt.start_path, dt.end_path));
                 break;
 
             case "@us":
-                if(! fast_forward){
-                
-                    restore_current_mjx_color();
-                }
-
-                makeBlockDiv(line, ref_node);
+                actions.push(new UnselectionAction());
                 break;
 
             case "@del":
-                var del_ele = document.getElementById(getBlockId(parseInt(arg)));
-                if(inEditor){
-
-                    del_ele.style.backgroundColor = "gainsboro";
-                }
-                else{
-
-                    del_ele.style.display = "none";
-                }
-
-                makeBlockDiv(line, ref_node);
+                actions.push(new EndAction(parseInt(arg)));
                 break;
 
             case "@img":
-                addSVG(line, arg, ref_node);
+                actions.push(new ImgAction(arg));
                 break;
 
             case "@line":
             case "@circle":
             case "@arc":
                 var data = JSON.parse(arg) as ShapeData;
-                addShapeFromData(cmd, data);
-                makeBlockDiv(line, ref_node);
+                actions.push(new ShapeAction(cmd, data));
                 break;
             }
         }
@@ -153,7 +91,13 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
 
     if(texts.length != 0){
 
-        yield* appendTextBlock( texts, ref_node, fast_forward );
+        actions.push(new TextBlockAction(texts));
+    }
+}
+
+function* player(fast_forward: boolean){
+    for(let act of actions){
+        yield* act.play(fast_forward);
     }
 
     if(fast_forward){
@@ -168,13 +112,6 @@ function* player(lines: string[], ref_node: Node, start_pos: number, fast_forwar
             yield;
         }
     }
-}
-
-export function playText(text: string, ref_node: Node, start_pos: number, fast_forward: boolean){
-    var lines = text.replace('\r\n', '\n').split('\n');
-
-    var gen = player(lines, ref_node, start_pos, fast_forward);
-    runGenerator(gen);
 }
 
 function runGenerator(gen: IterableIterator<any>){
@@ -192,57 +129,20 @@ function runGenerator(gen: IterableIterator<any>){
     },100);
 }
 
-export function play(){
-    var gen = play_gen();
+export function playText(action_text: string, ref_node: Node, start_pos: number, fast_forward: boolean){
+    parseActionText(action_text);
+
+    var gen = player(fast_forward);
     runGenerator(gen);
+}
+
+export function play(){
+    playText(textMath.value, null, 0, false);
 }
 
 export function stop(){
     stopPlaying = true;
 }
 
-function* play_gen(){
-    for(let nd of divMath.children){
-        (nd as HTMLElement).style.display = "none";
-    }
-
-    for(let nd of divMath.children){
-        var ele = nd as HTMLElement;
-        
-        var block_text = ele.dataset.block_text;
-        console.assert(block_text != undefined);
-
-        var lines = block_text.split('\n');
-        console.assert(lines.length != 0);
-
-        var line = lines[0];
-
-        var [cmd, arg] = getCommand(line);
-        if(cmd != null){
-
-            switch(cmd){
-            case "@speak":
-                yield* speak(arg);
-                break;
-
-            case "@select":
-                var act = JSON.parse(arg) as SelectionAction;
-                setSelection(act, false);
-                break;
-
-            case "@us":
-                restore_current_mjx_color();
-                break;
-            }
-        }
-
-        ele.style.display = "block";
-        divMath.scrollTop = divMath.scrollHeight;
-    }
-
-    while(is_speaking){
-        yield;
-    }
-}
 
 }

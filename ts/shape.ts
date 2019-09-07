@@ -42,7 +42,7 @@ class Vec2 {
 export class ShapeData {
     block_id: number
     constructor(svg: SVGSVGElement){
-        this.block_id = parseInt(svg.parentElement.dataset.block_id);
+        this.block_id = getActionId(svg.id);
     }    
 }
 
@@ -278,7 +278,7 @@ export function init_shape(){
     }
 }
 
-export function addSVG(line: string, arg: string, ref_node: Node){
+export function addSVG(arg: string, ref_node: Node){
     var svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
     svg.style.width = "500px";
     svg.style.height = "500px";
@@ -332,15 +332,10 @@ export function addSVG(line: string, arg: string, ref_node: Node){
         svg.style.width  = `${rc.width}px`;
         svg.style.height = `${rc.height}px`;
     });
-
-    var div = makeBlockDiv(line, ref_node);
-    div.appendChild(svg);
 }
 
 export function addShapeFromData(cmd: string, data: ShapeData){
-    var id = getBlockId(data.block_id);
-    var div = document.getElementById(id) as HTMLDivElement;
-    var svg = div.firstChild as SVGSVGElement;
+    var svg = document.getElementById(getBlockId(data.block_id)) as any as SVGSVGElement;
 
     switch(cmd){
     case "@line":

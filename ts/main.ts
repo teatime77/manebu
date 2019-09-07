@@ -19,7 +19,7 @@ export var textMath : HTMLTextAreaElement;
 export var divMath : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
 export var inEditor : boolean;
-export var BlockId = 0;
+export var ActionId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement = null;
@@ -46,6 +46,11 @@ export function msg(text: string){
 
 export function getBlockId(block_id: number) : string {
     return `manebu-id-${block_id}`;
+}
+
+export function getActionId(id: string) : number {
+    console.assert(id.startsWith("manebu-id-"));
+    return parseInt(id.substring(10));
 }
 
 function set_current_mjx(node : HTMLElement, is_tmp: boolean){
@@ -226,7 +231,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
                 var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
                 check_path("path", start_path, last(st_a));
 
-                tmpSelection = new SelectionAction(parseInt(div.dataset.block_id), "math", start_path, null);
+                tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, null);
             }
         }
         else{
@@ -245,7 +250,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
                         var start_path = getJaxPath(jax_idx, st_a, nest - 1);
                         check_path("path", start_path, parent_jax);
 
-                        tmpSelection = new SelectionAction(parseInt(div.dataset.block_id), "math", start_path, null);
+                        tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, null);
                     }
                     else{
 
@@ -255,7 +260,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
                         check_path("path1", start_path, st_a[nest]);
                         check_path("path2", end_path  , ed_a[nest]);
 
-                        tmpSelection = new SelectionAction(parseInt(div.dataset.block_id), "math", start_path, end_path);
+                        tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, end_path);
                     }
                     break;
                 }
@@ -270,17 +275,174 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
     window.getSelection().removeAllRanges();
 }
 
-export class SelectionAction {
+export class Action {
+    action_id: number;
+    class_name: string;
+
+    constructor(){
+        this.action_id = ActionId;
+        ActionId++;
+
+        this.class_name = this.constructor.name;
+    }
+
+    *play(fast_forward: boolean){
+        console.assert(false);
+        yield;
+    }
+}
+
+export var actions : Action[] = [];
+
+function makeTextDiv(action_id:number, text: string) : HTMLDivElement {
+    var div = document.createElement("div");
+    div.className = "manebu-text-block";
+
+    div.id = getBlockId(action_id);
+    div.title = div.id
+
+    divMath.insertBefore(div, null);
+
+    div.tabIndex = 0;
+
+    div.innerHTML = make_html_lines(text);
+
+    return div;
+}
+
+export class TextBlockAction extends Action {
+    lines: string[];
+
+    constructor(lines: string[]){
+        super();
+        this.lines = lines;
+    }
+
+    *play(fast_forward: boolean){
+        var text = this.lines.join('\n');
+
+        msg(`append text block[${text}]`);
+    
+        typeset_ended = false;
+
+        var div = makeTextDiv(this.action_id, text);
+        div.addEventListener("click", function(ev:MouseEvent){
+            onclick_block(this, ev);
+        });
+    
+        div.addEventListener('keydown', (event) => {
+            msg(`key down ${event.key} ${event.ctrlKey}`);
+        }, false);        
+    
+        if(! fast_forward){
+    
+            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+            MathJax.Hub.Queue([ontypeset, "append", 123]);
+    
+            while(! typeset_ended){
+                yield;
+            }
+        }
+    }
+}
+
+export class SpeechAction extends Action {
+    text: string;
+
+    constructor(text: string){
+        super();
+        this.text = text;
+    }
+
+    *play(fast_forward: boolean){
+        if(! fast_forward){
+
+            yield* speak(this.text);
+            makeTextDiv(this.action_id, this.text);
+        }
+    }
+}
+
+export class SelectionAction extends Action {
     block_id: number;
     dom_type: string;
     start_path:any[];
     end_path:any[] | null;
 
     constructor(block_id: number, dom_type:string, start_path:any[], end_path:any[] | null){
+        super();
         this.block_id = block_id;
         this.dom_type = dom_type;
         this.start_path = start_path;
         this.end_path   = end_path;
+    }
+
+    *play(fast_forward: boolean){
+        if(! fast_forward){
+                    
+            setSelection(this, false);
+        }
+    }
+}
+
+export class UnselectionAction extends Action {
+    constructor(){
+        super();
+    }
+
+    *play(fast_forward: boolean){
+        if(! fast_forward){
+                
+            restore_current_mjx_color();
+        }
+    }
+}
+
+export class EndAction extends Action {
+    constructor(action_id: number){
+        super();
+    }
+
+    *play(fast_forward: boolean){
+
+        var del_ele = document.getElementById(getBlockId(this.action_id));
+        if(inEditor){
+
+            del_ele.style.backgroundColor = "gainsboro";
+        }
+        else{
+
+            del_ele.style.display = "none";
+        }
+
+    }
+}
+
+export class ImgAction extends Action {
+    file_name: string;
+
+    constructor(file_name: string){
+        super();
+        this.file_name = file_name;
+    }
+
+    *play(fast_forward: boolean){
+        addSVG(this.file_name, null);
+    }
+}
+
+export class ShapeAction extends Action {
+    cmd: string;
+    data: ShapeData;
+
+    constructor(cmd: string, data: ShapeData){
+        super();
+        this.cmd = cmd;
+        this.data = data;
+    }
+
+    *play(fast_forward: boolean){
+        addShapeFromData(this.cmd, this.data);
     }
 }
 
@@ -311,130 +473,6 @@ export function addSelection(){
     insertText(ins_str);
 
     setSelection(tmpSelection, false);
-}
-
-function getHead(lines: string[], blocks: HTMLDivElement[]) : [string[], HTMLDivElement[]] {
-    while(blocks.length != 0){
-        var block_lines = blocks[0].dataset.block_text.split('\n');
-        if(lines.length < block_lines.length){
-
-            break;
-        }
-
-        if(Array.from(block_lines.entries()).some(x => lines[x[0]] != x[1])){
-            break;
-        }
-
-        lines.splice(0, block_lines.length);
-        blocks.shift();
-    }
-
-    return [lines, blocks];
-}
-
-function getTail(lines: string[], blocks: HTMLDivElement[]) : [string[], HTMLDivElement[], HTMLDivElement] {
-    var last_eq_block = null;
-
-    while(blocks.length != 0){
-        var block_lines = last(blocks).dataset.block_text.split('\n');
-        if(lines.length < block_lines.length){
-
-            break;
-        }
-
-        var tmp_lines = lines.slice(lines.length - block_lines.length);
-        if(Array.from(block_lines.entries()).some(x => tmp_lines[x[0]] != x[1])){
-            break;
-        }
-
-        lines.splice(lines.length - block_lines.length);
-        last_eq_block = blocks.pop();
-    }
-
-    return [lines, blocks, last_eq_block];
-}
-
-function textMathMonitor(){
-    if(isPlaying){
-        return;
-    }    
-
-    if(invBlocks.length != 0){
-        for(let block of invBlocks){
-            divMath.removeChild(block);
-        }
-        invBlocks = [];
-    }
-
-    var t = (new Date()).getTime();
-    if(t - changeTime < 1000){
-        return;
-    }
-    changeTime = t;
-
-    var blocks = Array.from(divMath.getElementsByClassName("manebu-text-block")) as HTMLDivElement[];
-
-    if(blocks.length == 0 && textMath.value == ""){
-        return;
-    }
-
-    var lines = textMath.value.split('\n');
-
-    [lines, blocks] = getHead(lines, blocks);
-
-    var last_eq_block = null;
-    if(blocks.length != 0){
-        [lines, blocks, last_eq_block] = getTail(lines, blocks);
-    }
-
-    if(lines.length != 0){
-
-        var ref_node;
-        if(blocks.length == 0){
-            ref_node = null;
-        }
-        else{
-    
-            ref_node = blocks[0];
-        }
-    
-        var text = lines.join('\n');
-        msg(`ins ${text.length} ${text.substring(0, 50)}`);
-        playText(text, last_eq_block, 0, true);
-    }
-
-    invBlocks = blocks;
-}
-
-/*
-    HTML要素を作る。
-*/
-export function* appendTextBlock(lines: string[], ref_node: Node, fast_forward: boolean){
-    var text = lines.join('\n');
-
-    msg(`append text block[${text}]`);
-
-    typeset_ended = false;
-
-    var div = makeBlockDiv(text, ref_node);
-    div.innerHTML = make_html_lines(text);
-    div.addEventListener("click", function(ev:MouseEvent){
-        onclick_block(this, ev);
-    });
-
-    div.addEventListener('keydown', (event) => {
-        msg(`key down ${event.key} ${event.ctrlKey}`);
-    }, false);        
-
-    if(! fast_forward){
-
-        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-        MathJax.Hub.Queue([ontypeset, "append", 123]);
-
-        while(! typeset_ended){
-            yield;
-        }
-    }
 }
 
 export function setSelection(act: SelectionAction, is_tmp: boolean){
@@ -507,8 +545,6 @@ export function init_manebu(in_editor: boolean){
             }        
         }
     }
-
-    setInterval(textMathMonitor, 100);
 
     init_shape();
 }
