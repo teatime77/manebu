@@ -15,6 +15,7 @@ class ElementJax {
 }
 
 var selected_mjx : HTMLElement[] = [];
+export var divActions : HTMLDivElement;
 export var textMath : HTMLTextAreaElement;
 export var divMath : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
@@ -290,6 +291,43 @@ export class Action {
         console.assert(false);
         yield;
     }
+
+    summary() : string {
+        console.assert(false);
+        return "";
+    }
+
+    summaryDom() : HTMLSpanElement {
+        var span = document.createElement("span");
+        span.innerText = this.summary();
+        span.tabIndex = 0;
+        span.addEventListener("keydown", function(ev:KeyboardEvent){
+            if(ev.key == "ArrowDown" || ev.key == "ArrowUp"){
+                console.log(`key down:${ev.key}`);
+
+                ev.stopPropagation();
+                ev.preventDefault();
+
+                var spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
+                var idx = spans.indexOf(this);
+                console.assert(idx != -1);
+                if(ev.key == "ArrowDown"){
+
+                    if(idx + 1 < spans.length){
+                        spans[idx + 1].focus();
+                    }
+                }
+                else{
+                    if(0 < idx){
+                        spans[idx - 1].focus();
+                    }
+                }
+            }
+        });
+
+        return span;
+    }
+    
 }
 
 export var actions : Action[] = [];
@@ -344,6 +382,10 @@ export class TextBlockAction extends Action {
             }
         }
     }
+
+    summary() : string {
+        return `テキスト ${this.lines[0]}`;
+    }
 }
 
 export class SpeechAction extends Action {
@@ -358,8 +400,12 @@ export class SpeechAction extends Action {
         if(! fast_forward){
 
             yield* speak(this.text);
-            makeTextDiv(this.action_id, this.text);
         }
+        makeTextDiv(this.action_id, this.text);
+    }
+
+    summary() : string {
+        return `音声 ${this.text}`;
     }
 }
 
@@ -383,6 +429,10 @@ export class SelectionAction extends Action {
             setSelection(this, false);
         }
     }
+
+    summary() : string {
+        return "選択";
+    }
 }
 
 export class UnselectionAction extends Action {
@@ -395,6 +445,10 @@ export class UnselectionAction extends Action {
                 
             restore_current_mjx_color();
         }
+    }
+
+    summary() : string {
+        return "非選択";
     }
 }
 
@@ -416,6 +470,10 @@ export class EndAction extends Action {
         }
 
     }
+
+    summary() : string {
+        return "終了";
+    }
 }
 
 export class ImgAction extends Action {
@@ -428,6 +486,10 @@ export class ImgAction extends Action {
 
     *play(fast_forward: boolean){
         addSVG(this.file_name, null);
+    }
+
+    summary() : string {
+        return "画像";
     }
 }
 
@@ -443,6 +505,10 @@ export class ShapeAction extends Action {
 
     *play(fast_forward: boolean){
         addShapeFromData(this.cmd, this.data);
+    }
+
+    summary() : string {
+        return "図形";
     }
 }
 
@@ -517,6 +583,7 @@ export function init_manebu(in_editor: boolean){
     inEditor = in_editor;
     divMsg = document.getElementById("div-msg") as HTMLDivElement;
     divMath = document.getElementById("div-math") as HTMLDivElement;
+    divActions = document.getElementById("div-actions") as HTMLDivElement;
 
     msg("body loaded");
 

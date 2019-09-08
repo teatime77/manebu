@@ -23,7 +23,7 @@ export function getCommand(line: string) : [string|null, string|null] {
     return [null, null];
 }
 
-function parseActionText(action_text: string){
+export function parseActionText(action_text: string){
     var lines = action_text.replace('\r\n', '\n').split('\n');
 
     var texts : string[] = [];
@@ -93,6 +93,10 @@ function parseActionText(action_text: string){
 
         actions.push(new TextBlockAction(texts));
     }
+
+    for(let act of actions){
+        divActions.appendChild(act.summaryDom());
+    }
 }
 
 function* player(fast_forward: boolean){
@@ -114,7 +118,7 @@ function* player(fast_forward: boolean){
     }
 }
 
-function runGenerator(gen: IterableIterator<any>){
+export function runGenerator(gen: IterableIterator<any>){
     isPlaying = true;
     stopPlaying = false;
 
@@ -129,7 +133,7 @@ function runGenerator(gen: IterableIterator<any>){
     },100);
 }
 
-export function playText(action_text: string, ref_node: Node, start_pos: number, fast_forward: boolean){
+export function playText(action_text: string, fast_forward: boolean){
     parseActionText(action_text);
 
     var gen = player(fast_forward);
@@ -137,7 +141,7 @@ export function playText(action_text: string, ref_node: Node, start_pos: number,
 }
 
 export function play(){
-    playText(textMath.value, null, 0, false);
+    playText(textMath.value, false);
 }
 
 export function stop(){

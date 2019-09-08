@@ -130,7 +130,7 @@ function showContents(){
                     if (doc.exists) {
                         var doc_data = doc.data() as Doc;
 
-                        playText(doc_data.text, null, 0, false);
+                        playText(doc_data.text, true);
                     } 
                     else {
                         // doc.data() will be undefined in this case
@@ -345,6 +345,8 @@ export function openFile(){
 
             ActionId = 0;
             textMath.value = doc_data.text;
+
+            playText(doc_data.text, true);       
 
             msg(`[${file.id}]${file.name} を読みこみました。`);
 
