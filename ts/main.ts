@@ -14,7 +14,6 @@ class ElementJax {
     Rerender(){}
 }
 
-var selected_mjx : HTMLElement[] = [];
 export var divActions : HTMLDivElement;
 export var textMath : HTMLTextAreaElement;
 export var divMath : HTMLDivElement;
@@ -24,8 +23,7 @@ export var ActionId = 0;
 var textMathSelectionStart : number = 0;
 var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement = null;
-var invBlocks : HTMLDivElement[] = [];
-var changeTime : number = 0;
+var focusedActionIdx : number = -1;
 const IDX = 0;
 const NODE_NAME = 1;
 
@@ -52,36 +50,6 @@ export function getBlockId(block_id: number) : string {
 export function getActionId(id: string) : number {
     console.assert(id.startsWith("manebu-id-"));
     return parseInt(id.substring(10));
-}
-
-function set_current_mjx(node : HTMLElement, is_tmp: boolean){
-    if(! selected_mjx.includes(node)){
-
-        selected_mjx.push(node);
-
-        if(is_tmp){
-
-            // node.style.color = "#00CC00";
-            node.style.color = "#8080FF";
-            // node.style.textDecoration = "wavy underline red"
-            node.style.backgroundColor = "#C0C0C0";
-        }
-        else{
-
-            node.style.color = "red";
-        }
-    }
-}
-
-export function restore_current_mjx_color(){
-    for(let node of selected_mjx){
-
-        node.style.color = "unset";
-        // node.style.textDecoration = "unset"
-        node.style.backgroundColor = "unset";
-    }
-
-    selected_mjx = [];
 }
 
 function* getJaxDescendants(node:JaxNode){
@@ -178,7 +146,10 @@ function getJaxFromPath(jaxes:JaxNode[], path:any[]) : JaxNode {
 function onclick_block(div: HTMLDivElement, ev:MouseEvent){
     msg("clicked");
 
-    restore_current_mjx_color();
+    if(tmpSelection != null){
+        tmpSelection.disable();
+        tmpSelection = null;
+    }
 
     var ev = window.event as MouseEvent;
     ev.stopPropagation();
@@ -269,7 +240,9 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
         }
 
         if(tmpSelection != null){
-            setSelection(tmpSelection, true);
+            tmpSelection.isTmp = true;
+            tmpSelection.setSelectedDoms();
+            tmpSelection.enable();
         }
     }
 
@@ -287,8 +260,25 @@ export class Action {
         this.class_name = this.constructor.name;
     }
 
-    *play(fast_forward: boolean){
-        console.assert(false);
+    init(){        
+    }
+
+    enable(){
+    }
+
+    disable(){
+    }
+
+    setEnable(enable: boolean){
+        if(enable){
+            this.enable();
+        }
+        else{
+            this.disable();
+        }
+    }
+
+    *play(){
         yield;
     }
 
@@ -299,6 +289,7 @@ export class Action {
 
     summaryDom() : HTMLSpanElement {
         var span = document.createElement("span");
+        span.dataset.action_id = "" + this.action_id;
         span.innerText = this.summary();
         span.tabIndex = 0;
         span.addEventListener("keydown", function(ev:KeyboardEvent){
@@ -325,12 +316,38 @@ export class Action {
             }
         });
 
+        span.addEventListener("focus", function(ev:FocusEvent){
+            msg("focus");
+            var spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
+            var idx = spans.indexOf(this);
+            console.assert(idx != -1);
+    
+            if(focusedActionIdx == -1){
+                for(let [i, act] of actions.entries()){
+                    act.setEnable(i <= idx);
+                }
+            }
+            else{
+                var min_idx = Math.min(idx, focusedActionIdx);
+                var max_idx = Math.max(idx, focusedActionIdx);
+                for(var i = min_idx; i <= max_idx; i++){
+                    actions[i].setEnable(i <= idx);
+                }
+            }
+
+            divMath.scrollTop = divMath.scrollHeight;
+    
+            focusedActionIdx = idx;
+        });
+    
+
         return span;
     }
     
 }
 
 export var actions : Action[] = [];
+export var selections : SelectionAction[] = [];
 
 function makeTextDiv(action_id:number, text: string) : HTMLDivElement {
     var div = document.createElement("div");
@@ -348,7 +365,19 @@ function makeTextDiv(action_id:number, text: string) : HTMLDivElement {
     return div;
 }
 
-export class TextBlockAction extends Action {
+class DivAction extends Action {
+    div: HTMLDivElement;
+
+    enable(){
+        this.div.style.display = "block";
+    }
+
+    disable(){
+        this.div.style.display = "none";
+    }
+}
+
+export class TextBlockAction extends DivAction {
     lines: string[];
 
     constructor(lines: string[]){
@@ -356,31 +385,19 @@ export class TextBlockAction extends Action {
         this.lines = lines;
     }
 
-    *play(fast_forward: boolean){
+    init(){        
         var text = this.lines.join('\n');
 
         msg(`append text block[${text}]`);
     
-        typeset_ended = false;
-
-        var div = makeTextDiv(this.action_id, text);
-        div.addEventListener("click", function(ev:MouseEvent){
+        this.div = makeTextDiv(this.action_id, text);
+        this.div.addEventListener("click", function(ev:MouseEvent){
             onclick_block(this, ev);
         });
     
-        div.addEventListener('keydown', (event) => {
+        this.div.addEventListener('keydown', (event) => {
             msg(`key down ${event.key} ${event.ctrlKey}`);
         }, false);        
-    
-        if(! fast_forward){
-    
-            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-            MathJax.Hub.Queue([ontypeset, "append", 123]);
-    
-            while(! typeset_ended){
-                yield;
-            }
-        }
     }
 
     summary() : string {
@@ -388,7 +405,7 @@ export class TextBlockAction extends Action {
     }
 }
 
-export class SpeechAction extends Action {
+export class SpeechAction extends DivAction {
     text: string;
 
     constructor(text: string){
@@ -396,12 +413,12 @@ export class SpeechAction extends Action {
         this.text = text;
     }
 
-    *play(fast_forward: boolean){
-        if(! fast_forward){
+    init(){        
+        this.div = makeTextDiv(this.action_id, this.text);
+    }
 
-            yield* speak(this.text);
-        }
-        makeTextDiv(this.action_id, this.text);
+    *play(){
+        yield* speak(this.text);
     }
 
     summary() : string {
@@ -414,6 +431,8 @@ export class SelectionAction extends Action {
     dom_type: string;
     start_path:any[];
     end_path:any[] | null;
+    selectedDoms : HTMLElement[];
+    isTmp: boolean = false;
 
     constructor(block_id: number, dom_type:string, start_path:any[], end_path:any[] | null){
         super();
@@ -423,27 +442,101 @@ export class SelectionAction extends Action {
         this.end_path   = end_path;
     }
 
-    *play(fast_forward: boolean){
-        if(! fast_forward){
-                    
-            setSelection(this, false);
+    init(){
+        selections.push(this);
+    }
+
+    enable(){
+        for(let dom of this.selectedDoms){
+
+            if(this.isTmp){
+
+                // node.style.color = "#00CC00";
+                dom.style.color = "#8080FF";
+                // node.style.textDecoration = "wavy underline red"
+                dom.style.backgroundColor = "#C0C0C0";
+            }
+            else{
+    
+                dom.style.color = "red";
+            }
         }
+    }
+
+    disable(){
+        for(let dom of this.selectedDoms){
+            dom.style.color = "unset";
+            dom.style.backgroundColor = "unset";
+        }    
     }
 
     summary() : string {
         return "選択";
     }
+
+
+    setSelectedDoms(){
+        console.assert(this.dom_type == "math");
+
+        this.selectedDoms = [];
+    
+        var div = document.getElementById(getBlockId(this.block_id)) as HTMLDivElement;
+        var jaxes = getJaxesInBlock(div);
+    
+        var start_jax = getJaxFromPath(jaxes, this.start_path);
+        var st_i = last(this.start_path)[IDX];
+    
+        var parent_jax = start_jax.parent;
+        console.assert(getJaxIndex(start_jax) == st_i);
+        console.assert(start_jax.nodeName == last(this.start_path)[NODE_NAME])
+    
+        if(this.end_path == null){
+    
+            this.selectedDoms.push(getDomFromJax(start_jax));
+        }
+        else{
+    
+            var end_jax = getJaxFromPath(jaxes, this.end_path);
+    
+            var ed_i = last(this.end_path)[IDX];
+    
+            console.assert(getJaxIndex(end_jax) == ed_i);
+            console.assert(end_jax.nodeName == last(this.end_path)[NODE_NAME])
+        
+            var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
+            for(let nd of nodes){
+    
+                if(nd != null){
+    
+                    this.selectedDoms.push(getDomFromJax(nd));
+                }
+            }    
+        }
+    }
 }
 
 export class UnselectionAction extends Action {
+    unselections : SelectionAction[] = null;
+
     constructor(){
         super();
     }
 
-    *play(fast_forward: boolean){
-        if(! fast_forward){
-                
-            restore_current_mjx_color();
+    init(){
+        this.unselections = selections;
+        selections = [];
+    }
+
+
+    enable(){
+        for(let act of this.unselections){
+            act.disable();
+        }
+    }
+
+    disable(){
+        for(let act of this.unselections){
+            act.enable();
         }
     }
 
@@ -457,7 +550,7 @@ export class EndAction extends Action {
         super();
     }
 
-    *play(fast_forward: boolean){
+    *play(){
 
         var del_ele = document.getElementById(getBlockId(this.action_id));
         if(inEditor){
@@ -484,8 +577,11 @@ export class ImgAction extends Action {
         this.file_name = file_name;
     }
 
-    *play(fast_forward: boolean){
+    init(){        
         addSVG(this.file_name, null);
+    }
+
+    *play(){
     }
 
     summary() : string {
@@ -503,22 +599,16 @@ export class ShapeAction extends Action {
         this.data = data;
     }
 
-    *play(fast_forward: boolean){
+    init(){        
         addShapeFromData(this.cmd, this.data);
+    }
+
+    *play(){
     }
 
     summary() : string {
         return "図形";
     }
-}
-
-var typeset_ended = false;
-function ontypeset(text: string, id: number){
-    msg(`${text} ${id}`);
-
-    typeset_ended = true;
-
-    divMath.scrollTop = divMath.scrollHeight;
 }
 
 export function insertText(ins_str: string){
@@ -533,51 +623,12 @@ export function addSelection(){
         return;
     }
 
-    restore_current_mjx_color();
-
     var ins_str = '@select ' + JSON.stringify(tmpSelection) + '\n';
     insertText(ins_str);
 
-    setSelection(tmpSelection, false);
+    tmpSelection.isTmp = false;
+    tmpSelection.enable();
 }
-
-export function setSelection(act: SelectionAction, is_tmp: boolean){
-    console.assert(act.dom_type == "math");
-
-    var div = document.getElementById(getBlockId(act.block_id)) as HTMLDivElement;
-    var jaxes = getJaxesInBlock(div);
-
-    var start_jax = getJaxFromPath(jaxes, act.start_path);
-    var st_i = last(act.start_path)[IDX];
-
-    var parent_jax = start_jax.parent;
-    console.assert(getJaxIndex(start_jax) == st_i);
-    console.assert(start_jax.nodeName == last(act.start_path)[NODE_NAME])
-
-    if(act.end_path == null){
-
-        set_current_mjx(getDomFromJax(start_jax), is_tmp);
-    }
-    else{
-
-        var end_jax = getJaxFromPath(jaxes, act.end_path);
-
-        var ed_i = last(act.end_path)[IDX];
-
-        console.assert(getJaxIndex(end_jax) == ed_i);
-        console.assert(end_jax.nodeName == last(act.end_path)[NODE_NAME])
-    
-        var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
-        for(let nd of nodes){
-
-            if(nd != null){
-
-                set_current_mjx(getDomFromJax(nd), is_tmp);
-            }
-        }    
-    }
-}
-
 
 export function init_manebu(in_editor: boolean){
     inEditor = in_editor;

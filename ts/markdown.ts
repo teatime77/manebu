@@ -99,23 +99,18 @@ export function parseActionText(action_text: string){
     }
 }
 
-function* player(fast_forward: boolean){
-    for(let act of actions){
-        yield* act.play(fast_forward);
+function* waitActions(){
+    var typeset_done = false;
+    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    MathJax.Hub.Queue([function(){
+        typeset_done = true;
+    }]);
+
+    while(! typeset_done){
+        yield;
     }
 
-    if(fast_forward){
-
-        var typeset_done = false;
-        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-        MathJax.Hub.Queue([function(){
-            typeset_done = true;
-        }]);
-
-        while(! typeset_done){
-            yield;
-        }
-    }
+    divMath.scrollTop = divMath.scrollHeight;
 }
 
 export function runGenerator(gen: IterableIterator<any>){
@@ -133,15 +128,32 @@ export function runGenerator(gen: IterableIterator<any>){
     },100);
 }
 
-export function playText(action_text: string, fast_forward: boolean){
+export function openActionData(action_text: string){
     parseActionText(action_text);
 
-    var gen = player(fast_forward);
-    runGenerator(gen);
+    for(let act of actions){
+        act.init();
+    }
+
+    function* fnc(){
+        yield* waitActions(); 
+
+        for(let act of actions.filter(x => x.class_name == "SelectionAction")){
+            (act as SelectionAction).setSelectedDoms();
+        }
+    }
+
+    runGenerator(fnc());
 }
 
-export function play(){
-    playText(textMath.value, false);
+export function playActions(){
+    function* fnc(){
+        for(let act of actions){
+            yield* act.play();
+        }        
+    }
+
+    runGenerator(fnc());
 }
 
 export function stop(){
