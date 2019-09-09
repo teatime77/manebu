@@ -1,4 +1,5 @@
 /// <reference path="util.ts" />
+/// <reference path="main.ts" />
 namespace manebu{
 
 const infinity = 20;
@@ -387,6 +388,24 @@ function calc_foot_of_perpendicular(pos:Vec2, line: LineSegment) : Vec2 {
     var foot = p1.add(e.mul(h));
 
     return foot;
+}
+
+class SvgAction extends Action {
+    svg: SVGSVGElement;
+
+    constructor(){
+        super();
+    }
+
+    init(){
+        this.svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
+        this.svg.style.width = "500px";
+        this.svg.style.height = "500px";
+        this.svg.style.borderStyle = "groove";
+        this.svg.style.borderWidth = "3px";
+    
+        divMath.appendChild(svg);
+    }
 }
 
 class Point extends Shape {
@@ -1610,6 +1629,13 @@ function redo(){
     }
 
     shapes_lens.push(shapes.size);
+}
+
+export function addShape(){
+    var act = new SvgAction();
+    actions.push(act);
+
+    act.init();
 }
 
 export function init_draw(){
