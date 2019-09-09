@@ -63,6 +63,7 @@ class View {
 
 var view : View;
 
+var tblProperty : HTMLTableElement;
 var angle_dlg : HTMLDialogElement;
 var angle_dlg_ok : HTMLInputElement;
 var angle_dlg_color : HTMLInputElement;
@@ -1574,8 +1575,52 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
     } 
 }
 
+function showProperty(){
+    var name_value_fnc = [
+        [ "width", `${view.svg.style.width}`, function(){ 
+            view.svg.style.width = (this as HTMLInputElement).value; 
+        }]
+        ,
+        [ "height", `${view.svg.style.height}`, function(){
+            view.svg.style.height = (this as HTMLInputElement).value;
+        }]
+        ,
+        [ "viewBox", `${view.svg.getAttribute("viewBox")}`, function(){
+            view.svg.setAttribute("viewBox", (this as HTMLInputElement).value);
+        }],
+    ];
+
+    for(let [name, value, fnc] of name_value_fnc){
+
+        var tr = document.createElement("tr");
+
+        var name_td = document.createElement("td");
+        name_td.innerText = name as string;
+
+        var value_td = document.createElement("td");
+
+        var inp = document.createElement("input");
+        inp.type = "text";
+        inp.value = value as string;
+        inp.addEventListener("blur", fnc as any);
+
+        value_td.appendChild(inp);
+
+        tr.appendChild(name_td);
+        tr.appendChild(value_td);
+
+        tblProperty.appendChild(tr);
+    }
+}
+
 function svg_click(ev: MouseEvent){
-    if(view.capture != null || view.tool_type == "select"){
+    if(view.capture != null){
+        return;
+    }
+
+    if(view.tool_type == "select"){
+
+        showProperty();
         return;
     }
 
@@ -1677,6 +1722,8 @@ export function addShape(){
 }
 
 export function init_draw(){
+    tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
+
     var svg = document.getElementById("main-svg") as unknown as SVGSVGElement;
     view = new View(svg);
     setToolType();        
