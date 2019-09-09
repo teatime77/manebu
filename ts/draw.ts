@@ -3,37 +3,61 @@
 namespace manebu{
 
 const infinity = 20;
+const stroke_width = 4;
+const this_stroke_width = 2;
 
 declare var MathJax:any;
-var capture: Point|null = null
 
-var svg : SVGSVGElement;
-var G0 : SVGGElement;
-var G1 : SVGGElement;
-var G2 : SVGGElement;
+class View {
+    svg : SVGSVGElement;
+    G0 : SVGGElement;
+    G1 : SVGGElement;
+    G2 : SVGGElement;
+    CTM : DOMMatrix;
+    CTMInv : DOMMatrix;
+    svg_ratio: number;
+    shapes: Map<number, Shape> = new Map<number, Shape>();
+    shapes_lens: number[] = [0];
+    tool_type = "";
+    undo_lens: number[] = [];
+    selected_shapes: Shape[] = [];
+    undos: any[] = [];
+    new_by_redo = false;
+    tool : Shape | null = null;
+    event_queue : EventQueue = new EventQueue();
+    capture: Point|null = null;
 
-var CTM : DOMMatrix;
-var CTMInv : DOMMatrix;
-var svg_ratio: number;
+    constructor(){
+        this.svg = document.getElementById("main-svg") as unknown as SVGSVGElement;
+
+        this.CTM = this.svg.getCTM()!;
+        this.CTMInv = this.CTM.inverse();
+    
+        var rc = this.svg.getBoundingClientRect() as DOMRect;
+        this.svg_ratio = this.svg.viewBox.baseVal.width / rc.width;
+    
+        this.G0 = document.createElementNS("http://www.w3.org/2000/svg","g");
+        this.G1 = document.createElementNS("http://www.w3.org/2000/svg","g");
+        this.G2 = document.createElementNS("http://www.w3.org/2000/svg","g");
+    
+        this.G0.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+        this.G1.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+        this.G2.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+    
+        this.svg.appendChild(this.G0);
+        this.svg.appendChild(this.G1);
+        this.svg.appendChild(this.G2);
+    
+        this.svg.addEventListener("click", svg_click);
+        this.svg.addEventListener("pointermove", svg_pointermove);    
+    }
+}
+
+var view : View;
 
 var angle_dlg : HTMLDialogElement;
 var angle_dlg_ok : HTMLInputElement;
 var angle_dlg_color : HTMLInputElement;
-
-var tool_type = "";
-
-var shapes: Map<number, Shape> = new Map<number, Shape>();
-var shapes_lens: number[] = [0];
-var undo_lens: number[] = [];
-var selected_shapes: Shape[] = [];
-
-var undos: any[] = [];
-var new_by_redo = false;
-
-var tool : Shape | null = null;
-
-var stroke_width = 4;
-var this_stroke_width = 2;
 
 class Vec2 {
     x: number;
@@ -144,18 +168,18 @@ function OrderPoints(p1:Vec2, p2:Vec2){
 }
 
 function to_svg(x:number) : number{
-    return x * svg_ratio;
+    return x * view.svg_ratio;
 }
 
 function get_svg_point(ev: MouseEvent | PointerEvent){
-	var point = svg.createSVGPoint();
+	var point = view.svg.createSVGPoint();
 	
     //画面上の座標を取得する．
     point.x = ev.offsetX;
     point.y = ev.offsetY;
 
     //座標に逆行列を適用する．
-    var p = point.matrixTransform(CTMInv);    
+    var p = point.matrixTransform(view.CTMInv);    
 
     p.y = - p.y;
     return new Vec2(p.x, p.y);
@@ -253,7 +277,6 @@ class EventQueue {
         }
     }
 }
-var event_queue : EventQueue = new EventQueue();
 
 abstract class Shape {
     id: number = -1;
@@ -281,10 +304,10 @@ abstract class Shape {
     pointermove = (ev: PointerEvent) : void => {}
 
     constructor(){
-        if(! new_by_redo){
+        if(! view.new_by_redo){
 
-            this.id = shapes.size;
-            shapes.set(this.id, this);
+            this.id = view.shapes.size;
+            view.shapes.set(this.id, this);
         }
     }
 
@@ -317,40 +340,40 @@ abstract class Shape {
     make_event_graph(src:Shape|null){
         for(let shape of this.shape_listeners){
             
-            event_queue.add_event_make_event_graph(shape, this);
+            view.event_queue.add_event_make_event_graph(shape, this);
         }
     }
 }
 
 function clear_tool(){
-    var v = Array.from(G0.childNodes.values());
+    var v = Array.from(view.G0.childNodes.values());
     for(let x of v){
-        G0.removeChild(x);
-        G1.appendChild(x);
+        view.G0.removeChild(x);
+        view.G1.appendChild(x);
     }
 
-    for(let x of selected_shapes){
+    for(let x of view.selected_shapes){
         x.select(false);
     }
-    selected_shapes = [];
+    view.selected_shapes = [];
 
-    shapes_lens.push(shapes.size);
+    view.shapes_lens.push(view.shapes.size);
 
-    tool = null;
+    view.tool = null;
 }
 
 function get_point(ev: MouseEvent) : Point | null{
-    var pt = Array.from(shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
+    var pt = Array.from(view.shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
     return pt == undefined ? null : pt;
 }
 
 function get_line(ev: MouseEvent) : LineSegment | null{
-    var line = Array.from(shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
+    var line = Array.from(view.shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
     return line == undefined ? null : line;
 }
 
 function get_circle(ev: MouseEvent) : Circle | null{
-    var circle = Array.from(shapes.values()).find(x => x.constructor.name == "Circle" && (x as Circle).circle == ev.target && (x as Circle).handles.length == 2) as (Circle|undefined);
+    var circle = Array.from(view.shapes.values()).find(x => x.constructor.name == "Circle" && (x as Circle).circle == ev.target && (x as Circle).handles.length == 2) as (Circle|undefined);
     return circle == undefined ? null : circle;
 }
 
@@ -404,7 +427,7 @@ class SvgAction extends Action {
         this.svg.style.borderStyle = "groove";
         this.svg.style.borderWidth = "3px";
     
-        divMath.appendChild(svg);
+        divMath.appendChild(view.svg);
     }
 }
 
@@ -430,12 +453,12 @@ class Point extends Shape {
         this.pos = pt;
         this.set_pos();
     
-        G2.appendChild(this.circle);
+        view.G2.appendChild(this.circle);
     }
 
     static new_from_json(obj:any):Point{
-        if(obj.id < shapes.size){
-            return shapes.get(obj.id) as Point;
+        if(obj.id < view.shapes.size){
+            return view.shapes.get(obj.id) as Point;
         }
         else{
 
@@ -471,7 +494,7 @@ class Point extends Shape {
         console.log(`rem ${this.type_name()} ${this.id} ${this.removed}`);
         if(! this.removed){
 
-            G2.removeChild(this.circle);
+            view.G2.removeChild(this.circle);
             this.removed = true;
         }
     }
@@ -501,8 +524,8 @@ class Point extends Shape {
 
     select(selected: boolean){
         if(selected){
-            if(! selected_shapes.includes(this)){
-                selected_shapes.push(this);
+            if(! view.selected_shapes.includes(this)){
+                view.selected_shapes.push(this);
                 this.circle.setAttribute("fill", "orange");
             }
         }
@@ -542,41 +565,41 @@ class Point extends Shape {
     }
 
     pointerdown =(ev: PointerEvent)=>{
-        if(tool_type != "select"){
+        if(view.tool_type != "select"){
             return;
         }
 
-        capture = this;
+        view.capture = this;
         this.circle.setPointerCapture(ev.pointerId);
     }
 
     pointermove =(ev: PointerEvent)=>{
-        if(tool_type != "select"){
+        if(view.tool_type != "select"){
             return;
         }
 
-        if(capture != this){
+        if(view.capture != this){
             return;
         }
 
         this.adjust_point(ev);
 
         this.make_event_graph(null);
-        event_queue.process_queue();
+        view.event_queue.process_queue();
     }
 
     pointerup =(ev: PointerEvent)=>{
-        if(tool_type != "select"){
+        if(view.tool_type != "select"){
             return;
         }
 
         this.circle.releasePointerCapture(ev.pointerId);
-        capture = null;
+        view.capture = null;
 
         this.adjust_point(ev);
 
         this.make_event_graph(null);
-        event_queue.process_queue();
+        view.event_queue.process_queue();
     }
 }
 
@@ -594,7 +617,7 @@ class LineSegment extends Shape {
         this.line.setAttribute("stroke", "navy");
         this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
 
-        G0.appendChild(this.line);
+        view.G0.appendChild(this.line);
     }
 
     make_json() : any{
@@ -609,7 +632,7 @@ class LineSegment extends Shape {
         console.log(`from ${this.type_name()} ${this.id} ${this.removed}`);
         this.removed = false;
 
-        this.handles = obj.handle_ids.map((id:number) => shapes.get(id));
+        this.handles = obj.handle_ids.map((id:number) => view.shapes.get(id));
 
         this.line.setAttribute("x1", "" + this.handles[0].pos.x);
         this.line.setAttribute("y1", "" + this.handles[0].pos.y);
@@ -617,8 +640,8 @@ class LineSegment extends Shape {
         this.line.setAttribute("x2", "" + this.handles[1].pos.x);
         this.line.setAttribute("y2", "" + this.handles[1].pos.y);
 
-        G0.removeChild(this.line);
-        G1.appendChild(this.line);
+        view.G0.removeChild(this.line);
+        view.G1.appendChild(this.line);
 
         this.set_vecs();
     }
@@ -628,14 +651,14 @@ class LineSegment extends Shape {
         if(!this.removed){
 
             this.removed = true;
-            G1.removeChild(this.line);
+            view.G1.removeChild(this.line);
         }
     }
     
     select(selected: boolean){
         if(selected){
-            if(! selected_shapes.includes(this)){
-                selected_shapes.push(this);
+            if(! view.selected_shapes.includes(this)){
+                view.selected_shapes.push(this);
                 this.line.setAttribute("stroke", "orange");
             }
         }
@@ -780,7 +803,7 @@ class Rect extends Shape {
         this.removed = false;
 
         this.is_square = obj.is_square;
-        this.lines = obj.line_ids.map((id:number)=>shapes.get(id));
+        this.lines = obj.line_ids.map((id:number)=>view.shapes.get(id));
         this.handles = this.lines.map(x => x.handles[0] );
         this.set_rect_pos(null, -1, false);
     }
@@ -919,7 +942,7 @@ class Rect extends Shape {
 
         if(src == this.handles[0] || src == this.handles[1]){
 
-            event_queue.add_event_make_event_graph(this.handles[2], this);
+            view.event_queue.add_event_make_event_graph(this.handles[2], this);
         }
         else{
             console.assert(src == this.handles[2]);
@@ -927,7 +950,7 @@ class Rect extends Shape {
 
         for(let line of this.lines){
 
-            event_queue.add_event_make_event_graph(line, this);
+            view.event_queue.add_event_make_event_graph(line, this);
         }
     }
 
@@ -992,7 +1015,7 @@ class Circle extends Shape {
         this.circle.setAttribute("stroke-width", `${to_svg(stroke_width)}`);     
         this.circle.setAttribute("fill-opacity", "0");
         
-        G0.appendChild(this.circle);    
+        view.G0.appendChild(this.circle);    
     }
 
     type_name():string{ 
@@ -1181,7 +1204,7 @@ class TextBox extends Shape {
         this.rect.setAttribute("stroke", "navy");
         this.rect.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
 
-        G1.appendChild(this.rect);
+        view.G1.appendChild(this.rect);
 
         var ev = window.event as MouseEvent;
 
@@ -1214,7 +1237,7 @@ class Midpoint extends Shape {
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
 
-        event_queue.add_event_make_event_graph(this.midpoint!, this);
+        view.event_queue.add_event_make_event_graph(this.midpoint!, this);
     }
 
     process_event =(sources: Shape[])=>{
@@ -1248,7 +1271,7 @@ class Perpendicular extends Shape {
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
 
-        event_queue.add_event_make_event_graph(this.foot!, this);
+        view.event_queue.add_event_make_event_graph(this.foot!, this);
     }
 
     process_event =(sources: Shape[])=>{
@@ -1309,7 +1332,7 @@ class ParallelLine extends Shape {
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
 
-        event_queue.add_event_make_event_graph(this.line2!, this);
+        view.event_queue.add_event_make_event_graph(this.line2!, this);
     }
 
     process_event =(sources: Shape[])=>{
@@ -1362,7 +1385,7 @@ class Intersection extends Shape {
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
 
-        event_queue.add_event_make_event_graph(this.intersection!, this);
+        view.event_queue.add_event_make_event_graph(this.intersection!, this);
     }
 
     process_event =(sources: Shape[])=>{
@@ -1512,7 +1535,7 @@ class Angle extends Shape {
 
                 this.draw_arc();
         
-                G0.appendChild(this.arc);
+                view.G0.appendChild(this.arc);
 
                 for(let line2 of this.lines){
 
@@ -1529,7 +1552,7 @@ class Angle extends Shape {
 }
 
 function tool_click(){
-    tool_type = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
+    view.tool_type = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
 }
 
 function make_tool_by_type(tool_type: string): Shape|undefined {
@@ -1551,76 +1574,76 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
 }
 
 function svg_click(ev: MouseEvent){
-    if(capture != null || tool_type == "select"){
+    if(view.capture != null || view.tool_type == "select"){
         return;
     }
 
     var pt = get_svg_point(ev);
 
-    if(tool == null){
-        tool = make_tool_by_type(tool_type)!;
-        console.assert(tool.type_name() == tool_type);
+    if(view.tool == null){
+        view.tool = make_tool_by_type(view.tool_type)!;
+        console.assert(view.tool.type_name() == view.tool_type);
     }
 
-    if(tool != null){
+    if(view.tool != null){
 
-        tool.click(ev, pt);
+        view.tool.click(ev, pt);
     }
 }
 
 function svg_pointermove(ev: PointerEvent){
-    if(capture != null){
+    if(view.capture != null){
         return;
     }
 
-    if(tool != null){
-        tool.pointermove(ev);
+    if(view.tool != null){
+        view.tool.pointermove(ev);
     }
 }
 
 function undo(){
-    if(shapes_lens.length == 1){
+    if(view.shapes_lens.length == 1){
         console.log("no undo");
         return;
     }
 
-    var n = shapes_lens.pop()!;
-    console.assert(n == shapes.size );
+    var n = view.shapes_lens.pop()!;
+    console.assert(n == view.shapes.size );
 
-    undo_lens.push(undos.length);
+    view.undo_lens.push(view.undos.length);
 
-    n = array_last(shapes_lens);
-    while (n < shapes.size) {
+    n = array_last(view.shapes_lens);
+    while (n < view.shapes.size) {
         
-        var shape = shapes.get(shapes.size - 1)!;
-        shapes.delete(shape.id);
-        console.assert(shape.id == shapes.size);
+        var shape = view.shapes.get(view.shapes.size - 1)!;
+        view.shapes.delete(shape.id);
+        console.assert(shape.id == view.shapes.size);
 
         var obj = shape.make_json();
-        undos.push(obj);
+        view.undos.push(obj);
     
         shape.remove_dom();
     }
 }
 
 function redo(){
-    if(undos.length == 0){
+    if(view.undos.length == 0){
         console.log("no redo");
         return;
     }
 
-    var n = undo_lens.pop()!;
+    var n = view.undo_lens.pop()!;
 
-    var new_objs = undos.slice(n);
-    undos = undos.slice(0, n);
+    var new_objs = view.undos.slice(n);
+    view.undos = view.undos.slice(0, n);
 
-    new_by_redo = true;
+    view.new_by_redo = true;
     var new_shapes = new_objs.map(obj => make_tool_by_type(obj.type));
-    new_by_redo = false;
+    view.new_by_redo = false;
 
     for(let [shape, obj] of zip(new_shapes, new_objs)){
         shape.id = obj.id;
-        shapes.set(shape.id, shape);
+        view.shapes.set(shape.id, shape);
     }
 
     for(let [shape, obj] of zip(new_shapes, new_objs)){
@@ -1628,7 +1651,7 @@ function redo(){
         shape.from_json(obj);
     }
 
-    shapes_lens.push(shapes.size);
+    view.shapes_lens.push(view.shapes.size);
 }
 
 export function addShape(){
@@ -1639,28 +1662,7 @@ export function addShape(){
 }
 
 export function init_draw(){
-    svg = document.getElementById("main-svg") as unknown as SVGSVGElement;
-
-    CTM = svg.getCTM()!;
-    CTMInv = CTM.inverse();
-
-    var rc = svg.getBoundingClientRect() as DOMRect;
-    svg_ratio = svg.viewBox.baseVal.width / rc.width;
-
-    G0 = document.createElementNS("http://www.w3.org/2000/svg","g");
-    G1 = document.createElementNS("http://www.w3.org/2000/svg","g");
-    G2 = document.createElementNS("http://www.w3.org/2000/svg","g");
-
-    G0.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
-    G1.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
-    G2.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
-
-    svg.appendChild(G0);
-    svg.appendChild(G1);
-    svg.appendChild(G2);
-
-    svg.addEventListener("click", svg_click);
-    svg.addEventListener("pointermove", svg_pointermove);
+    view = new View();
 
     TextBox.init();
 
