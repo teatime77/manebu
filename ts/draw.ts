@@ -27,8 +27,16 @@ class View {
     event_queue : EventQueue = new EventQueue();
     capture: Point|null = null;
 
-    constructor(){
-        this.svg = document.getElementById("main-svg") as unknown as SVGSVGElement;
+    constructor(svg: SVGSVGElement){
+        this.svg = svg;
+
+        // background-color:wheat; border-style: ridge; border-width: 3px;
+        this.svg.style.backgroundColor = "wheat";
+        this.svg.style.borderStyle = "ridge";
+        this.svg.style.borderWidth = "3px";
+
+        // viewBox="-10 -10 20 20"
+        this.svg.setAttribute("viewBox", "-10 -10 20 20");
 
         this.CTM = this.svg.getCTM()!;
         this.CTMInv = this.CTM.inverse();
@@ -49,7 +57,7 @@ class View {
         this.svg.appendChild(this.G2);
     
         this.svg.addEventListener("click", svg_click);
-        this.svg.addEventListener("pointermove", svg_pointermove);    
+        this.svg.addEventListener("pointermove", svg_pointermove);  
     }
 }
 
@@ -421,13 +429,6 @@ class SvgAction extends Action {
     }
 
     init(){
-        this.svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
-        this.svg.style.width = "500px";
-        this.svg.style.height = "500px";
-        this.svg.style.borderStyle = "groove";
-        this.svg.style.borderWidth = "3px";
-    
-        divMath.appendChild(view.svg);
     }
 }
 
@@ -1551,7 +1552,7 @@ class Angle extends Shape {
     }
 }
 
-function tool_click(){
+function setToolType(){
     view.tool_type = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
 }
 
@@ -1655,20 +1656,36 @@ function redo(){
 }
 
 export function addShape(){
-    var act = new SvgAction();
-    actions.push(act);
+    
+    var svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
+    svg.style.width = "500px";
+    svg.style.height = "500px";
+    svg.style.borderStyle = "groove";
+    svg.style.borderWidth = "3px";
 
-    act.init();
+    divMath.appendChild(svg);
+
+    view = new View(svg);
+    setToolType();        
+
+    // var act = new SvgAction();
+    // act.init();
+
+    // actions.push(act);
+
+    // act.init();
 }
 
 export function init_draw(){
-    view = new View();
+    var svg = document.getElementById("main-svg") as unknown as SVGSVGElement;
+    view = new View(svg);
+    setToolType();        
 
     TextBox.init();
 
     var tool_types = document.getElementsByName("tool-type");
     for(let x of tool_types){
-        x.addEventListener("click", tool_click);
+        x.addEventListener("click", setToolType);
     }
 
     Angle.init();
@@ -1686,8 +1703,6 @@ export function init_draw(){
         }
         // console.log(`keydown:${ev.ctrlKey} ${ev.key} ${ev.keyCode} `)
     });
-
-    tool_click();
 }
 
 }
