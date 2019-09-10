@@ -8,7 +8,7 @@ const this_stroke_width = 2;
 
 declare var MathJax:any;
 
-class View {
+export class View {
     svg : SVGSVGElement;
     G0 : SVGGElement;
     G1 : SVGGElement;
@@ -58,6 +58,30 @@ class View {
     
         this.svg.addEventListener("click", svg_click);
         this.svg.addEventListener("pointermove", svg_pointermove);  
+    }
+
+    public get width() : string {
+        return this.svg.style.width;
+    }
+
+    public set width(value: string){
+        this.svg.style.width = value;
+    }
+
+    public get height() : string {
+        return this.svg.style.height;
+    }
+
+    public set height(value: string){
+        this.svg.style.height = value;
+    }
+
+    public get viewBox() : string {
+        return this.svg.getAttribute("viewBox");
+    }
+
+    public set viewBox(value: string){
+        this.svg.setAttribute("viewBox", value);
     }
 }
 
@@ -155,25 +179,6 @@ class Mat2 {
 
         return new Mat2(this.a22 / det, - this.a12 / det, - this.a21 / det, this.a11 / det)
     }
-}
-
-function OrderPoints(p1:Vec2, p2:Vec2){
-    var pt1 = new Vec2(p1.x, p1.y);
-    var pt2 = new Vec2(p2.x, p2.y);
-
-    if(pt2.x < pt1.x){
-        var tmp = pt1.x;
-        pt1.x = pt2.x;
-        pt2.x = tmp;
-    }
-
-    if(pt2.y < pt1.y){
-        var tmp = pt1.y;
-        pt1.y = pt2.y;
-        pt2.y = tmp;
-    }
-
-    return [pt1, pt2];
 }
 
 function to_svg(x:number) : number{
@@ -1575,41 +1580,38 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
     } 
 }
 
-function showProperty(){
-    var name_value_fnc = [
-        [ "width", `${view.svg.style.width}`, function(){ 
-            view.svg.style.width = (this as HTMLInputElement).value; 
-        }]
-        ,
-        [ "height", `${view.svg.style.height}`, function(){
-            view.svg.style.height = (this as HTMLInputElement).value;
-        }]
-        ,
-        [ "viewBox", `${view.svg.getAttribute("viewBox")}`, function(){
-            view.svg.setAttribute("viewBox", (this as HTMLInputElement).value);
-        }],
-    ];
+function showProperty(obj: View){
+    var proto = Object.getPrototypeOf(obj);
 
-    for(let [name, value, fnc] of name_value_fnc){
+    for(let name of Object.getOwnPropertyNames(proto)){
+        var desc = Object.getOwnPropertyDescriptor(proto, name);
+        if(desc.get != undefined && desc.set != undefined){
+            
+            msg(`${name} ${desc.get.apply(obj)}`);
 
-        var tr = document.createElement("tr");
+            var tr = document.createElement("tr");
 
-        var name_td = document.createElement("td");
-        name_td.innerText = name as string;
+            var name_td = document.createElement("td");
+            name_td.innerText = name;
 
-        var value_td = document.createElement("td");
+            var value_td = document.createElement("td");
 
-        var inp = document.createElement("input");
-        inp.type = "text";
-        inp.value = value as string;
-        inp.addEventListener("blur", fnc as any);
+            var inp = document.createElement("input");
+            inp.type = "text";
+            inp.value = "" + desc.get.apply(obj);
+            inp.addEventListener("blur", (function(inp, desc){
+                return function(ev: FocusEvent){
+                    desc.set.apply(obj, [ inp.value ]);
+                };
+            })(inp, desc));
 
-        value_td.appendChild(inp);
+            value_td.appendChild(inp);
 
-        tr.appendChild(name_td);
-        tr.appendChild(value_td);
+            tr.appendChild(name_td);
+            tr.appendChild(value_td);
 
-        tblProperty.appendChild(tr);
+            tblProperty.appendChild(tr);
+        }
     }
 }
 
@@ -1620,7 +1622,7 @@ function svg_click(ev: MouseEvent){
 
     if(view.tool_type == "select"){
 
-        showProperty();
+        showProperty(view);
         return;
     }
 
