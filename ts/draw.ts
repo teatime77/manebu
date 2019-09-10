@@ -8,7 +8,7 @@ const this_stroke_width = 2;
 
 declare var MathJax:any;
 
-export class View {
+class View {
     svg : SVGSVGElement;
     G0 : SVGGElement;
     G1 : SVGGElement;
@@ -60,27 +60,27 @@ export class View {
         this.svg.addEventListener("pointermove", svg_pointermove);  
     }
 
-    public get width() : string {
+    get width() : string {
         return this.svg.style.width;
     }
 
-    public set width(value: string){
+    set width(value: string){
         this.svg.style.width = value;
     }
 
-    public get height() : string {
+    get height() : string {
         return this.svg.style.height;
     }
 
-    public set height(value: string){
+    set height(value: string){
         this.svg.style.height = value;
     }
 
-    public get viewBox() : string {
+    get viewBox() : string {
         return this.svg.getAttribute("viewBox");
     }
 
-    public set viewBox(value: string){
+    set viewBox(value: string){
         this.svg.setAttribute("viewBox", value);
     }
 }
@@ -463,6 +463,24 @@ class Point extends Shape {
         view.G2.appendChild(this.circle);
     }
 
+    get x(){
+        return this.pos.x;
+    }
+
+    set x(value:any){
+        this.pos.x =  parseInt(value);
+        this.set_pos();
+    }
+
+    get y(){
+        return this.pos.y;
+    }
+
+    set y(value:any){
+        this.pos.y =  parseInt(value);
+        this.set_pos();
+    }
+
     static new_from_json(obj:any):Point{
         if(obj.id < view.shapes.size){
             return view.shapes.get(obj.id) as Point;
@@ -625,6 +643,14 @@ class LineSegment extends Shape {
         this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
 
         view.G0.appendChild(this.line);
+    }
+
+    get color(){
+        return this.line.getAttribute("stroke");
+    }
+
+    set color(c:string){
+        this.line.setAttribute("stroke", c);
     }
 
     make_json() : any{
@@ -1023,6 +1049,14 @@ class Circle extends Shape {
         this.circle.setAttribute("fill-opacity", "0");
         
         view.G0.appendChild(this.circle);    
+    }
+
+    get color(){
+        return this.circle.getAttribute("stroke");
+    }
+
+    set color(c:string){
+        this.circle.setAttribute("stroke", c);
     }
 
     type_name():string{ 
@@ -1437,6 +1471,14 @@ class Angle extends Shape {
 
     static current: Angle;
 
+    get color(){
+        return this.arc.getAttribute("stroke");
+    }
+
+    set color(c:string){
+        this.arc.setAttribute("stroke", c);
+    }
+
     type_name():string{ 
         return "Angle";
     }
@@ -1580,15 +1622,15 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
     } 
 }
 
-function showProperty(obj: View){
+function showProperty(obj: any){
     var proto = Object.getPrototypeOf(obj);
+
+    tblProperty.innerHTML = "";
 
     for(let name of Object.getOwnPropertyNames(proto)){
         var desc = Object.getOwnPropertyDescriptor(proto, name);
         if(desc.get != undefined && desc.set != undefined){
             
-            msg(`${name} ${desc.get.apply(obj)}`);
-
             var tr = document.createElement("tr");
 
             var name_td = document.createElement("td");
@@ -1622,7 +1664,23 @@ function svg_click(ev: MouseEvent){
 
     if(view.tool_type == "select"){
 
+
+        for(let shape of view.shapes.values()){
+
+            for(let name of Object.getOwnPropertyNames(shape)){
+                var desc = Object.getOwnPropertyDescriptor(shape, name);
+
+                if(desc.value == ev.srcElement){
+
+                    msg(`click:${shape.constructor.name} ${name}`);
+                    showProperty(shape);
+                    return
+                }
+            }        
+        }
+
         showProperty(view);
+        
         return;
     }
 
