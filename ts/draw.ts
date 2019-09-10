@@ -26,6 +26,8 @@ class View {
     tool : Shape | null = null;
     event_queue : EventQueue = new EventQueue();
     capture: Point|null = null;
+    show_grid : boolean = false;
+    grid_interval : number = 1;
 
     constructor(svg: SVGSVGElement){
         this.svg = svg;
@@ -82,6 +84,27 @@ class View {
 
     set viewBox(value: string){
         this.svg.setAttribute("viewBox", value);
+    }
+
+    get showGrid() : boolean {
+        return this.show_grid;
+    }
+
+    set showGrid(value: boolean){
+        this.show_grid = value;
+        msg(`show grid:${value}`);
+    }
+
+    get gridInterval() {
+        return this.grid_interval;
+    }
+
+    set gridInterval(value: any){
+        this.grid_interval = parseFloat(value);
+    }
+
+    makeGrid(){
+
     }
 }
 
@@ -1638,15 +1661,31 @@ function showProperty(obj: any){
 
             var value_td = document.createElement("td");
 
+            var value = desc.get.apply(obj);
+            
             var inp = document.createElement("input");
-            inp.type = "text";
-            inp.value = "" + desc.get.apply(obj);
-            inp.addEventListener("blur", (function(inp, desc){
-                return function(ev: FocusEvent){
-                    desc.set.apply(obj, [ inp.value ]);
-                };
-            })(inp, desc));
+            switch(typeof value){
+            case "string":
+            case "number":
+                inp.type = "text";
+                inp.value = `[${typeof value}] ${value}`;
+                inp.addEventListener("blur", (function(inp, desc){
+                    return function(ev: FocusEvent){
+                        desc.set.apply(obj, [ inp.value ]);
+                    };
+                })(inp, desc));
 
+                break;
+            case "boolean":
+                inp.type = "checkbox";
+                inp.checked = value as boolean;
+                inp.addEventListener("click", (function(inp, desc){
+                    return function(ev: MouseEvent){
+                        desc.set.apply(obj, [ inp.checked ]);
+                    };
+                })(inp, desc));
+                break;
+            }
             value_td.appendChild(inp);
 
             tr.appendChild(name_td);
@@ -1772,6 +1811,59 @@ export function addShape(){
 
     view = new View(svg);
     setToolType();        
+
+    var rc = svg.viewBox.baseVal;
+
+    var pat = document.createElementNS("http://www.w3.org/2000/svg","pattern") as SVGPatternElement;
+    pat.setAttribute("id", "mygrid");
+    pat.setAttribute("patternUnits", "userSpaceOnUse");
+    pat.setAttribute("x", "0");
+    pat.setAttribute("y", "0");
+    pat.setAttribute("width", "5");
+    pat.setAttribute("height", "5");
+
+    var rc1 = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rc1.setAttribute("x", "0");
+    rc1.setAttribute("y", "0");
+    rc1.setAttribute("width", "1");
+    rc1.setAttribute("height", "1");
+    rc1.setAttribute("fill", "red");
+    rc1.setAttribute("stroke", "red");
+    rc1.setAttribute("stroke-width", "1");
+
+    pat.appendChild(rc1);
+
+    var defs = document.createElementNS("http://www.w3.org/2000/svg","defs") as SVGDefsElement;
+
+    defs.appendChild(pat);
+
+    svg.appendChild(defs);
+
+
+
+
+    var rc2 = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rc2.setAttribute("x", "0");
+    rc2.setAttribute("y", "0");
+    rc2.setAttribute("width", "10");
+    rc2.setAttribute("height", "10");
+    rc2.setAttribute("fill", "url(#mygrid)");
+    rc2.setAttribute("stroke", "blue");
+    rc2.setAttribute("stroke-width", "1");
+    svg.appendChild(rc2);
+
+
+    // var svg1 = document.getElementById("aaa");
+    // svg.setAttribute("fill", "url(#aaa)");
+
+
+    // var svgCode = encodeURI(svg1.outerHTML);
+    // svgCode = `<svg viewBox="0 0 24 24"><rect width="10" height="10" fill="red" ></rect></svg>`;
+    
+    // var s = "url(data:image/svg+xml;utf8," + svgCode + ")";
+    // s = `url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24"><path fill="%23000000" d="..." /></svg>')`;
+    // // svg.style.backgroundImage = s;
+    // document.body.style.backgroundImage = s;
 
     // var act = new SvgAction();
     // act.init();
