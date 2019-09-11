@@ -1745,6 +1745,7 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
         case "Intersection":  return new Intersection();
         case "Angle":         return new Angle();
         case "TextBox":      return new TextBox();
+        case "Label":           return new Label();
     } 
 }
 
@@ -1798,6 +1799,38 @@ function showProperty(obj: any){
         }
     }
 }
+
+
+class Label extends Shape {
+    text: SVGTextElement;
+
+    constructor(){
+        super();
+
+        this.text = document.createElementNS("http://www.w3.org/2000/svg","text");
+        this.text.setAttribute("stroke", "navy");
+        this.text.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
+        this.text.textContent = "こんにちは";
+        this.text.style.fontSize = "1";
+
+        view.G0.appendChild(this.text);
+    }
+
+    process_event =(sources: Shape[])=>{
+        console.assert(sources.length == 1 && sources[0] == this.handles[0]);
+        this.text.setAttribute("x", "" + this.handles[0].pos.x);
+        this.text.setAttribute("y", "" + this.handles[0].pos.y);
+    }
+
+    click =(ev: MouseEvent, pt:Vec2): void => {
+        this.add_handle(click_handle(ev, pt));
+
+        this.text.setAttribute("x", "" + this.handles[0].pos.x);
+        this.text.setAttribute("y", "" + this.handles[0].pos.y);
+        clear_tool();
+    }
+}
+
 
 function svg_click(ev: MouseEvent){
     if(view.capture != null){
