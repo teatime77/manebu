@@ -32,6 +32,7 @@ class View extends Action {
     _showGrid : boolean = false;
     _gridWidth : number = 1;
     _gridHeight : number = 1;
+    _snapToGrid: boolean = false;
 
     constructor(svg: SVGSVGElement){
         super();
@@ -141,6 +142,14 @@ class View extends Action {
         this._gridHeight = parseFloat(value);
 
         this.setGridPattern();
+    }
+
+    get snapToGrid(){
+        return this._snapToGrid;
+    }
+
+    set snapToGrid(value: boolean){
+        this._snapToGrid = value;
     }
 
     setGridBgBox(){
@@ -290,7 +299,7 @@ function to_svg(x:number) : number{
     return x * view.svg_ratio;
 }
 
-function get_svg_point(ev: MouseEvent | PointerEvent){
+function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null){
 	var point = view.svg.createSVGPoint();
 	
     //画面上の座標を取得する．
@@ -301,6 +310,18 @@ function get_svg_point(ev: MouseEvent | PointerEvent){
     var p = point.matrixTransform(view.CTMInv);    
 
     p.y = - p.y;
+
+    if(view.snapToGrid){
+
+        var ele = document.elementFromPoint(ev.clientX, ev.clientY);
+        if(ele == view.svg || ele == view.gridBg || (dragged_point != null && ele == dragged_point.circle)){
+            p.x = Math.round(p.x / view.gridWidth ) * view.gridWidth;
+            p.y = Math.round(p.y / view.gridHeight) * view.gridHeight;
+
+            msg(`snap ${p.x} ${p.y}`)
+        }
+    }
+
     return new Vec2(p.x, p.y);
 }
 
@@ -665,8 +686,8 @@ class Point extends Shape {
         }
     }
 
-    adjust_point(ev: PointerEvent){
-        this.pos = get_svg_point(ev);
+    private dragPoint(ev: PointerEvent){
+        this.pos = get_svg_point(ev, this);
         if(this.bind_to != null){
 
             if(this.bind_to instanceof LineSegment){
@@ -712,7 +733,7 @@ class Point extends Shape {
             return;
         }
 
-        this.adjust_point(ev);
+        this.dragPoint(ev);
 
         this.make_event_graph(null);
         view.event_queue.process_queue();
@@ -726,7 +747,7 @@ class Point extends Shape {
         this.circle.releasePointerCapture(ev.pointerId);
         view.capture = null;
 
-        this.adjust_point(ev);
+        this.dragPoint(ev);
 
         this.make_event_graph(null);
         view.event_queue.process_queue();
@@ -886,7 +907,7 @@ class LineSegment extends Shape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var pt = get_svg_point(ev);
+        var pt = get_svg_point(ev, null);
 
         this.line!.setAttribute("x2", "" + pt.x);
         this.line!.setAttribute("y2", "" + pt.y);
@@ -1130,7 +1151,7 @@ class Rect extends Shape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var pt = get_svg_point(ev);
+        var pt = get_svg_point(ev, null);
 
         this.set_rect_pos(pt, -1, false);
     }
@@ -1236,7 +1257,7 @@ class Circle extends Shape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var pt = get_svg_point(ev);
+        var pt = get_svg_point(ev, null);
 
         if(this.by_diameter){
 
@@ -1805,7 +1826,7 @@ function svg_click(ev: MouseEvent){
         return;
     }
 
-    var pt = get_svg_point(ev);
+    var pt = get_svg_point(ev, null);
 
     if(view.tool == null){
         view.tool = make_tool_by_type(view.tool_type)!;
