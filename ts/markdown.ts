@@ -12,7 +12,7 @@ export function getCommand(line: string) : [string|null, string|null] {
         return [ "$$", ""];
     }
 
-    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@del", "@img", "@line", "@circle", "@arc" ]){
+    for(let cmd of [ "@speak", "@wait", "@select", "@us", "@unselect", "@del", "@line", "@circle", "@arc" ]){
         if(line.startsWith(cmd + " ") || line_trim == cmd){
 
             var arg = line.substring(cmd.length + 1).trim();
@@ -68,10 +68,6 @@ export function parseActionText(action_text: string){
 
             case "@del":
                 actions.push(new EndAction(parseInt(arg)));
-                break;
-
-            case "@img":
-                actions.push(new ImgAction(arg));
                 break;
 
             case "@line":

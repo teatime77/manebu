@@ -578,7 +578,7 @@ export class ImgAction extends Action {
     }
 
     init(){        
-        addSVG(this.file_name, null);
+        addImg(this.file_name, null);
     }
 
     *play(){

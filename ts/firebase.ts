@@ -395,12 +395,7 @@ export function setSvgImg(img: SVGImageElement, file_name: string){
     img_ref.getDownloadURL().then(function(downloadURL) {
         msg(`download URL: [${downloadURL}]`);
         
-        img.setAttributeNS('http://www.w3.org/2000/svg','height','100');
-        img.setAttributeNS('http://www.w3.org/2000/svg','width','100');
-        // img.setAttributeNS('http://www.w3.org/2000/svg','id','testimg2');
         img.setAttributeNS('http://www.w3.org/1999/xlink','href',downloadURL);
-        img.setAttributeNS('http://www.w3.org/2000/svg','x','0');
-        img.setAttributeNS('http://www.w3.org/2000/svg','y','0');
     });
 }
 
@@ -426,8 +421,10 @@ function uploadFile(file: File){
             dropZone.style.display = "none";            
         });
 
-        insertText( `\n@img ${file.name}\n` );
-        msg('Uploaded a blob or file!');
+        var act = new ImgAction(file.name);
+        actions.push(act);
+
+        act.init();
     });    
 }
 

@@ -1949,6 +1949,34 @@ export function addShape(){
     setToolType();
 }
 
+export function addImg(arg: string, ref_node: Node){
+
+    var img2 = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
+    view.svg.appendChild(img2);
+    setSvgImg(img2, arg);
+
+    img2.addEventListener("load", function(ev:Event){
+        var rc = img2.getBoundingClientRect();
+        msg(`img loaded w:${rc.width} h:${rc.height}`);
+
+        // 縦横比 = 縦 / 横
+        var ratio = rc.height / rc.width;
+
+        // viewBoxを得る。
+        var vb = view.svg.viewBox.baseVal;
+
+        // 縦横比を保って幅がsvgの半分になるようにする。
+        var w = vb.width / 2;
+        var h = ratio * vb.width / 2;
+        img2.setAttribute("width", `${w}`);
+        img2.setAttribute("height", `${h}`);
+
+        // svgの中央に配置する。
+        img2.setAttribute("x", `${vb.x + (vb.width  - w) / 2 }`);
+        img2.setAttribute("y", `${vb.y + (vb.height - h) / 2 }`);
+    });
+}
+
 export function init_draw(){
     tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
 
