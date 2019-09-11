@@ -590,17 +590,11 @@ export class ImgAction extends Action {
 }
 
 export class ShapeAction extends Action {
-    cmd: string;
-    data: ShapeData;
-
-    constructor(cmd: string, data: ShapeData){
+    constructor(cmd: string, data: any){
         super();
-        this.cmd = cmd;
-        this.data = data;
     }
 
     init(){        
-        addShapeFromData(this.cmd, this.data);
     }
 
     *play(){
@@ -663,8 +657,6 @@ export function init_manebu(in_editor: boolean){
             }        
         }
     }
-
-    init_shape();
 }
 
 }

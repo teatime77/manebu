@@ -73,7 +73,7 @@ export function parseActionText(action_text: string){
             case "@line":
             case "@circle":
             case "@arc":
-                var data = JSON.parse(arg) as ShapeData;
+                var data = JSON.parse(arg);
                 actions.push(new ShapeAction(cmd, data));
                 break;
             }
