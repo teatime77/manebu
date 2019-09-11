@@ -5,11 +5,14 @@ namespace manebu{
 const infinity = 20;
 const stroke_width = 4;
 const this_stroke_width = 2;
+const grid_line_width = 1;
 
 declare var MathJax:any;
 
-class View {
+class View extends Action {
     svg : SVGSVGElement;
+    defs : SVGDefsElement;
+    gridBg : SVGRectElement;
     G0 : SVGGElement;
     G1 : SVGGElement;
     G2 : SVGGElement;
@@ -26,10 +29,12 @@ class View {
     tool : Shape | null = null;
     event_queue : EventQueue = new EventQueue();
     capture: Point|null = null;
-    show_grid : boolean = false;
-    grid_interval : number = 1;
+    _showGrid : boolean = false;
+    _gridWidth : number = 1;
+    _gridHeight : number = 1;
 
     constructor(svg: SVGSVGElement){
+        super();
         this.svg = svg;
 
         // background-color:wheat; border-style: ridge; border-width: 3px;
@@ -40,12 +45,21 @@ class View {
         // viewBox="-10 -10 20 20"
         this.svg.setAttribute("viewBox", "-10 -10 20 20");
 
+        this.svg.setAttribute("preserveAspectRatio", "none");
+
         this.CTM = this.svg.getCTM()!;
         this.CTMInv = this.CTM.inverse();
     
         var rc = this.svg.getBoundingClientRect() as DOMRect;
         this.svg_ratio = this.svg.viewBox.baseVal.width / rc.width;
     
+        this.defs = document.createElementNS("http://www.w3.org/2000/svg","defs") as SVGDefsElement;
+        svg.appendChild(this.defs);
+
+        // グリッドの背景の矩形
+        this.gridBg = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        svg.appendChild(this.gridBg);
+
         this.G0 = document.createElementNS("http://www.w3.org/2000/svg","g");
         this.G1 = document.createElementNS("http://www.w3.org/2000/svg","g");
         this.G2 = document.createElementNS("http://www.w3.org/2000/svg","g");
@@ -84,27 +98,95 @@ class View {
 
     set viewBox(value: string){
         this.svg.setAttribute("viewBox", value);
+
+        this.setGridBgBox();
     }
 
     get showGrid() : boolean {
-        return this.show_grid;
+        return this._showGrid;
     }
 
     set showGrid(value: boolean){
-        this.show_grid = value;
-        msg(`show grid:${value}`);
+        if(this._showGrid == value){
+            return;
+        }
+
+        this._showGrid = value;
+
+        if(this._showGrid){
+            this.setGridBgBox();
+            this.setGridPattern();
+        }
+        else{
+
+        this.gridBg.setAttribute("fill", "transparent");
+        }
     }
 
-    get gridInterval() {
-        return this.grid_interval;
+    get gridWidth() {
+        return this._gridWidth;
     }
 
-    set gridInterval(value: any){
-        this.grid_interval = parseFloat(value);
+    set gridWidth(value: any){
+        this._gridWidth = parseFloat(value);
+
+        this.setGridPattern();
     }
 
-    makeGrid(){
+    get gridHeight() {
+        return this._gridHeight;
+    }
 
+    set gridHeight(value: any){
+        this._gridHeight = parseFloat(value);
+
+        this.setGridPattern();
+    }
+
+    setGridBgBox(){
+        // viewBoxを得る。
+        var vb = this.svg.viewBox.baseVal;
+
+        // グリッドの背景の矩形をviewBoxに合わせる。
+        this.gridBg.setAttribute("x", `${vb.x}`);
+        this.gridBg.setAttribute("y", `${vb.y}`);
+        this.gridBg.setAttribute("width", `${vb.width}`);
+        this.gridBg.setAttribute("height", `${vb.height}`);
+    }
+
+    setGridPattern(){
+        // 現在のパターンを削除する。
+        while(this.defs.childNodes.length != 0){
+            this.defs.removeChild(this.defs.firstChild);
+        }
+
+        // viewBoxを得る。
+        var vb = this.svg.viewBox.baseVal;
+
+        var pattern_id = `pattern-${this.action_id}`;
+
+        var pattern = document.createElementNS("http://www.w3.org/2000/svg","pattern") as SVGPatternElement;
+        pattern.setAttribute("id", pattern_id);
+        pattern.setAttribute("patternUnits", "userSpaceOnUse");
+        pattern.setAttribute("x", `${vb.x}`);
+        pattern.setAttribute("y", `${vb.y}`);
+        pattern.setAttribute("width", `${this._gridWidth}`);
+        pattern.setAttribute("height", `${this._gridHeight}`);
+    
+        this.defs.appendChild(pattern);
+
+        var rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        rect.setAttribute("x", "0");
+        rect.setAttribute("y", "0");
+        rect.setAttribute("width", `${this._gridWidth}`);
+        rect.setAttribute("height", `${this._gridHeight}`);
+        rect.setAttribute("fill", "transparent");
+        rect.setAttribute("stroke", "black");
+        rect.setAttribute("stroke-width", `${to_svg(grid_line_width)}`);
+    
+        pattern.appendChild(rect);
+    
+        this.gridBg.setAttribute("fill", `url(#${pattern_id})`);
     }
 }
 
@@ -1668,7 +1750,7 @@ function showProperty(obj: any){
             case "string":
             case "number":
                 inp.type = "text";
-                inp.value = `[${typeof value}] ${value}`;
+                inp.value = `${value}`;
                 inp.addEventListener("blur", (function(inp, desc){
                     return function(ev: FocusEvent){
                         desc.set.apply(obj, [ inp.value ]);
@@ -1810,67 +1892,7 @@ export function addShape(){
     divMath.appendChild(svg);
 
     view = new View(svg);
-    setToolType();        
-
-    var rc = svg.viewBox.baseVal;
-
-    var pat = document.createElementNS("http://www.w3.org/2000/svg","pattern") as SVGPatternElement;
-    pat.setAttribute("id", "mygrid");
-    pat.setAttribute("patternUnits", "userSpaceOnUse");
-    pat.setAttribute("x", "0");
-    pat.setAttribute("y", "0");
-    pat.setAttribute("width", "5");
-    pat.setAttribute("height", "5");
-
-    var rc1 = document.createElementNS("http://www.w3.org/2000/svg","rect");
-    rc1.setAttribute("x", "0");
-    rc1.setAttribute("y", "0");
-    rc1.setAttribute("width", "1");
-    rc1.setAttribute("height", "1");
-    rc1.setAttribute("fill", "red");
-    rc1.setAttribute("stroke", "red");
-    rc1.setAttribute("stroke-width", "1");
-
-    pat.appendChild(rc1);
-
-    var defs = document.createElementNS("http://www.w3.org/2000/svg","defs") as SVGDefsElement;
-
-    defs.appendChild(pat);
-
-    svg.appendChild(defs);
-
-
-
-
-    var rc2 = document.createElementNS("http://www.w3.org/2000/svg","rect");
-    rc2.setAttribute("x", "0");
-    rc2.setAttribute("y", "0");
-    rc2.setAttribute("width", "10");
-    rc2.setAttribute("height", "10");
-    rc2.setAttribute("fill", "url(#mygrid)");
-    rc2.setAttribute("stroke", "blue");
-    rc2.setAttribute("stroke-width", "1");
-    svg.appendChild(rc2);
-
-
-    // var svg1 = document.getElementById("aaa");
-    // svg.setAttribute("fill", "url(#aaa)");
-
-
-    // var svgCode = encodeURI(svg1.outerHTML);
-    // svgCode = `<svg viewBox="0 0 24 24"><rect width="10" height="10" fill="red" ></rect></svg>`;
-    
-    // var s = "url(data:image/svg+xml;utf8," + svgCode + ")";
-    // s = `url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24"><path fill="%23000000" d="..." /></svg>')`;
-    // // svg.style.backgroundImage = s;
-    // document.body.style.backgroundImage = s;
-
-    // var act = new SvgAction();
-    // act.init();
-
-    // actions.push(act);
-
-    // act.init();
+    setToolType();
 }
 
 export function init_draw(){
