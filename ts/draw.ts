@@ -33,6 +33,7 @@ class View extends Action {
     _gridWidth : number = 1;
     _gridHeight : number = 1;
     _snapToGrid: boolean = false;
+    _flipY : boolean = false;
 
     constructor(svg: SVGSVGElement){
         super();
@@ -65,9 +66,12 @@ class View extends Action {
         this.G1 = document.createElementNS("http://www.w3.org/2000/svg","g");
         this.G2 = document.createElementNS("http://www.w3.org/2000/svg","g");
     
-        this.G0.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
-        this.G1.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
-        this.G2.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+        if(this.flipY){
+            
+            this.G0.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+            this.G1.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+            this.G2.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+        }
     
         this.svg.appendChild(this.G0);
         this.svg.appendChild(this.G1);
@@ -150,6 +154,14 @@ class View extends Action {
 
     set snapToGrid(value: boolean){
         this._snapToGrid = value;
+    }
+
+    get flipY(){
+        return this._flipY;
+    }
+
+    set flipY(value: boolean){
+        this._flipY = value;
     }
 
     setGridBgBox(){
@@ -309,7 +321,10 @@ function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null)
     //座標に逆行列を適用する．
     var p = point.matrixTransform(view.CTMInv);    
 
-    p.y = - p.y;
+    if(view.flipY){
+
+        p.y = - p.y;
+    }
 
     if(view.snapToGrid){
 
@@ -1808,6 +1823,10 @@ class Label extends Shape {
         super();
 
         this.text = document.createElementNS("http://www.w3.org/2000/svg","text");
+        if(view.flipY){
+            
+            this.text.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+        }
         this.text.setAttribute("stroke", "navy");
         this.text.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
         this.text.textContent = "こんにちは";
@@ -1828,6 +1847,87 @@ class Label extends Shape {
         this.text.setAttribute("x", "" + this.handles[0].pos.x);
         this.text.setAttribute("y", "" + this.handles[0].pos.y);
         clear_tool();
+    }
+}
+
+
+export class Image extends Shape {
+    image: SVGImageElement;
+
+    constructor(arg: string){
+        super();
+
+        this.image = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
+        if(view.flipY){
+            
+            this.image.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+        }
+        setSvgImg(this.image, arg);
+
+        view.G0.appendChild(this.image);
+    
+        this.image.addEventListener("load", (ev:Event) => {
+            var rc = this.image.getBoundingClientRect();
+            msg(`img loaded w:${rc.width} h:${rc.height}`);
+    
+            // 縦横比 = 縦 / 横
+            var ratio = rc.height / rc.width;
+    
+            // viewBoxを得る。
+            var vb = view.svg.viewBox.baseVal;
+    
+            // 縦横比を保って幅がsvgの半分になるようにする。
+            var w = vb.width / 2;
+            var h = ratio * vb.width / 2;
+            this.image.setAttribute("width", `${w}`);
+            this.image.setAttribute("height", `${h}`);
+    
+            // svgの中央に配置する。
+            var x = vb.x + (vb.width  - w) / 2 ;
+            var y = vb.y + (vb.height - h) / 2;
+            this.image.setAttribute("x", `${x}`);
+            this.image.setAttribute("y", `${y}`);
+    
+            this.add_handle(new Point(new Vec2(x, y)));
+            this.add_handle(new Point(new Vec2(x + w, y + h)));
+        });
+    }
+    
+
+    make_event_graph(src:Shape|null){
+        super.make_event_graph(src);
+
+        if(src == this.handles[0]){
+
+            view.event_queue.add_event_make_event_graph(this.handles[1], this);
+        }
+        else{
+            console.assert(src == this.handles[1]);
+        }
+    }
+
+
+    process_event =(sources: Shape[])=>{
+        for(let src of sources){
+            if(src == this.handles[0]){
+                var x = this.handles[0].pos.x;
+                var y = this.handles[0].pos.y;
+
+                this.image.setAttribute("x", `${x}`);
+                this.image.setAttribute("y", `${y}`);
+
+                this.handles[1].pos.x = x + this.image.width.baseVal.value;
+                this.handles[1].pos.y = y + this.image.height.baseVal.value;
+
+                this.handles[1].set_pos();
+            }
+            else if(src == this.handles[1]){
+                
+            }
+            else{
+                console.assert(false);
+            }
+        }
     }
 }
 
@@ -1947,34 +2047,6 @@ export function addShape(){
 
     view = new View(svg);
     setToolType();
-}
-
-export function addImg(arg: string, ref_node: Node){
-
-    var img2 = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
-    view.svg.appendChild(img2);
-    setSvgImg(img2, arg);
-
-    img2.addEventListener("load", function(ev:Event){
-        var rc = img2.getBoundingClientRect();
-        msg(`img loaded w:${rc.width} h:${rc.height}`);
-
-        // 縦横比 = 縦 / 横
-        var ratio = rc.height / rc.width;
-
-        // viewBoxを得る。
-        var vb = view.svg.viewBox.baseVal;
-
-        // 縦横比を保って幅がsvgの半分になるようにする。
-        var w = vb.width / 2;
-        var h = ratio * vb.width / 2;
-        img2.setAttribute("width", `${w}`);
-        img2.setAttribute("height", `${h}`);
-
-        // svgの中央に配置する。
-        img2.setAttribute("x", `${vb.x + (vb.width  - w) / 2 }`);
-        img2.setAttribute("y", `${vb.y + (vb.height - h) / 2 }`);
-    });
 }
 
 export function init_draw(){

@@ -570,6 +570,7 @@ export class EndAction extends Action {
 }
 
 export class ImgAction extends Action {
+    image: Image;
     file_name: string;
 
     constructor(file_name: string){
@@ -577,8 +578,8 @@ export class ImgAction extends Action {
         this.file_name = file_name;
     }
 
-    init(){        
-        addImg(this.file_name, null);
+    init(){
+        this.image = new Image(this.file_name);
     }
 
     *play(){
