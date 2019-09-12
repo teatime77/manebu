@@ -20,12 +20,8 @@ class View extends Action {
     CTMInv : DOMMatrix;
     svg_ratio: number;
     shapes: Map<number, Shape> = new Map<number, Shape>();
-    shapes_lens: number[] = [0];
     tool_type = "";
-    undo_lens: number[] = [];
     selected_shapes: Shape[] = [];
-    undos: any[] = [];
-    new_by_redo = false;
     tool : Shape | null = null;
     event_queue : EventQueue = new EventQueue();
     capture: Point|null = null;
@@ -436,7 +432,6 @@ class EventQueue {
 abstract class Shape {
     id: number = -1;
     handles : Point[] = [];
-    removed : boolean = false;
     shape_listeners:Shape[] = [];
 
     type_name():string{ 
@@ -448,22 +443,14 @@ abstract class Shape {
     make_json() : any{}
     from_json(obj: any){}
 
-    remove_dom(){
-        console.log(`rem ${this.type_name()} ${this.id} ${this.removed}`);
-        this.removed = true;
-    }
-
     select(selected: boolean){}
 
     click =(ev: MouseEvent, pt:Vec2): void => {}
     pointermove = (ev: PointerEvent) : void => {}
 
     constructor(){
-        if(! view.new_by_redo){
-
-            this.id = view.shapes.size;
-            view.shapes.set(this.id, this);
-        }
+        this.id = view.shapes.size;
+        view.shapes.set(this.id, this);
     }
 
     make_json_ref(parent: Shape) : any{
@@ -511,8 +498,6 @@ function clear_tool(){
         x.select(false);
     }
     view.selected_shapes = [];
-
-    view.shapes_lens.push(view.shapes.size);
 
     view.tool = null;
 }
@@ -648,21 +633,9 @@ class Point extends Shape {
     }
     
     from_json(obj: any){
-        console.log(`from ${this.type_name()} ${this.id} ${this.removed}`);
-        this.removed = false;
-
         this.pos.x = obj.x;
         this.pos.y = obj.y;
         this.set_pos();
-    }
-
-    remove_dom(){
-        console.log(`rem ${this.type_name()} ${this.id} ${this.removed}`);
-        if(! this.removed){
-
-            view.G2.removeChild(this.circle);
-            this.removed = true;
-        }
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
@@ -803,9 +776,6 @@ class LineSegment extends Shape {
     }
 
     from_json(obj: any){
-        console.log(`from ${this.type_name()} ${this.id} ${this.removed}`);
-        this.removed = false;
-
         this.handles = obj.handle_ids.map((id:number) => view.shapes.get(id));
 
         this.line.setAttribute("x1", "" + this.handles[0].pos.x);
@@ -818,15 +788,6 @@ class LineSegment extends Shape {
         view.G1.appendChild(this.line);
 
         this.set_vecs();
-    }
-
-    remove_dom(){
-        console.log(`rem ${this.type_name()} ${this.id} ${this.removed}`);
-        if(!this.removed){
-
-            this.removed = true;
-            view.G1.removeChild(this.line);
-        }
     }
     
     select(selected: boolean){
@@ -973,9 +934,6 @@ class Rect extends Shape {
     }
 
     from_json(obj: any){
-        console.log(`from ${this.type_name()} ${this.id} ${this.removed}`);
-        this.removed = false;
-
         this.is_square = obj.is_square;
         this.lines = obj.line_ids.map((id:number)=>view.shapes.get(id));
         this.handles = this.lines.map(x => x.handles[0] );
@@ -1862,6 +1820,7 @@ export class Image extends Shape {
             
             this.image.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
+        this.image.setAttribute("preserveAspectRatio", "none");
         setSvgImg(this.image, arg);
 
         view.G0.appendChild(this.image);
@@ -1922,7 +1881,11 @@ export class Image extends Shape {
                 this.handles[1].set_pos();
             }
             else if(src == this.handles[1]){
+                var w = this.handles[1].pos.x - this.handles[0].pos.x;
+                var h = this.handles[1].pos.y - this.handles[0].pos.y;
                 
+                this.image.setAttribute("width", `${w}`);
+                this.image.setAttribute("height", `${h}`);
             }
             else{
                 console.assert(false);
@@ -1982,59 +1945,6 @@ function svg_pointermove(ev: PointerEvent){
     }
 }
 
-function undo(){
-    if(view.shapes_lens.length == 1){
-        console.log("no undo");
-        return;
-    }
-
-    var n = view.shapes_lens.pop()!;
-    console.assert(n == view.shapes.size );
-
-    view.undo_lens.push(view.undos.length);
-
-    n = array_last(view.shapes_lens);
-    while (n < view.shapes.size) {
-        
-        var shape = view.shapes.get(view.shapes.size - 1)!;
-        view.shapes.delete(shape.id);
-        console.assert(shape.id == view.shapes.size);
-
-        var obj = shape.make_json();
-        view.undos.push(obj);
-    
-        shape.remove_dom();
-    }
-}
-
-function redo(){
-    if(view.undos.length == 0){
-        console.log("no redo");
-        return;
-    }
-
-    var n = view.undo_lens.pop()!;
-
-    var new_objs = view.undos.slice(n);
-    view.undos = view.undos.slice(0, n);
-
-    view.new_by_redo = true;
-    var new_shapes = new_objs.map(obj => make_tool_by_type(obj.type));
-    view.new_by_redo = false;
-
-    for(let [shape, obj] of zip(new_shapes, new_objs)){
-        shape.id = obj.id;
-        view.shapes.set(shape.id, shape);
-    }
-
-    for(let [shape, obj] of zip(new_shapes, new_objs)){
-        console.assert(shape.type_name() == obj.type);
-        shape.from_json(obj);
-    }
-
-    view.shapes_lens.push(view.shapes.size);
-}
-
 export function addShape(){
     
     var svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
@@ -2064,20 +1974,6 @@ export function init_draw(){
     }
 
     Angle.init();
-
-    document.body.addEventListener("keydown", (ev:KeyboardEvent) =>{
-        if(ev.ctrlKey){
-            switch(ev.key){
-            case "z":
-                undo();
-                break;
-            case "y":
-                redo();
-                break;
-            }
-        }
-        // console.log(`keydown:${ev.ctrlKey} ${ev.key} ${ev.keyCode} `)
-    });
 }
 
 }
