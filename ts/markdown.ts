@@ -134,7 +134,7 @@ export function openActionData(action_text: string){
     function* fnc(){
         yield* waitActions(); 
 
-        for(let act of actions.filter(x => x.class_name == "SelectionAction")){
+        for(let act of actions.filter(x => x.constructor.name == "SelectionAction")){
             (act as SelectionAction).setSelectedDoms();
         }
     }

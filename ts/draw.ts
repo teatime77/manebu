@@ -280,7 +280,7 @@ class Mat2 {
     }
 
     print(){
-        console.log(`${this.a11} ${this.a12}\n${this.a21} ${this.a22}`);
+        msg(`${this.a11} ${this.a12}\n${this.a21} ${this.a22}`);
     }
 
     det(){
@@ -328,8 +328,6 @@ function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null)
         if(ele == view.svg || ele == view.gridBg || (dragged_point != null && ele == dragged_point.circle)){
             p.x = Math.round(p.x / view.gridWidth ) * view.gridWidth;
             p.y = Math.round(p.y / view.gridHeight) * view.gridHeight;
-
-            msg(`snap ${p.x} ${p.y}`)
         }
     }
 
@@ -407,7 +405,6 @@ class EventQueue {
     }
 
     add_event_make_event_graph(destination:Shape, source: Shape){
-        console.log(`destination:${destination.type_name()} ${destination.id} source:${source.type_name()} ${source.id}`);
         this.add_event(destination, source);
         destination.make_event_graph(source);
     }
@@ -415,9 +412,7 @@ class EventQueue {
     process_queue =()=>{
         var processed : Shape[] = [];
 
-        console.log("");
         while(this.events.length != 0){
-            console.log("events:" + this.events.map(x=>x.destination).map(x=>`${x.type_name()} ${x.id}`).join(" "));
             var event = this.events[0];
             if(! processed.includes(event.destination)){
                 processed.push(event.destination);
@@ -429,8 +424,7 @@ class EventQueue {
     }
 }
 
-abstract class Shape {
-    id: number = -1;
+abstract class Shape extends Action {
     handles : Point[] = [];
     shape_listeners:Shape[] = [];
 
@@ -449,15 +443,16 @@ abstract class Shape {
     pointermove = (ev: PointerEvent) : void => {}
 
     constructor(){
-        this.id = view.shapes.size;
-        view.shapes.set(this.id, this);
+        super();
+
+        view.shapes.set(this.action_id, this);
     }
 
     make_json_ref(parent: Shape) : any{
-        if(this.id < parent.id){
+        if(this.action_id < parent.action_id){
             return {
                 "type": this.type_name(),
-                "id": this.id
+                "id": this.action_id
             };
         }
         else{
@@ -606,18 +601,6 @@ class Point extends Shape {
         this.pos.y =  parseInt(value);
         this.set_pos();
     }
-
-    static new_from_json(obj:any):Point{
-        if(obj.id < view.shapes.size){
-            return view.shapes.get(obj.id) as Point;
-        }
-        else{
-
-            var pt = new Point(new Vec2(0, 0));
-            pt.from_json(obj);
-            return pt;    
-        }
-    }
     
     type_name():string{ 
         return "Point";
@@ -626,7 +609,7 @@ class Point extends Shape {
     make_json() : any{
         return {
             "type": "Point",
-            "id": this.id,
+            "id": this.action_id,
             "x": this.pos.x,
             "y": this.pos.y,
         };
@@ -770,8 +753,8 @@ class LineSegment extends Shape {
     make_json() : any{
         return {
             "type": this.type_name(),
-            "id": this.id,
-            "handle_ids": this.handles.map(x => x.id),
+            "id": this.action_id,
+            "handle_ids": this.handles.map(x => x.action_id),
         };
     }
 
@@ -841,7 +824,6 @@ class LineSegment extends Shape {
     }
 
     process_event =(sources: Shape[])=>{
-        console.log("process");
         for(let src of sources){
             if(src == this.handles[0]){
 
@@ -927,9 +909,9 @@ class Rect extends Shape {
     make_json() : any{
         return {
             "type": this.type_name(),
-            "id": this.id,
+            "id": this.action_id,
             "is_square": this.is_square,
-            "line_ids": this.lines.map(x => x.id )
+            "line_ids": this.lines.map(x => x.action_id )
         };
     }
 
@@ -1614,7 +1596,6 @@ class Angle extends Shape {
         }
 
         var large_arc_sweep_flag = (Math.PI < d_theta ? 1 : 0);
-        console.log(`${theta1} ${theta2} d_theta:${d_theta} large_arc_sweep_flag:${large_arc_sweep_flag}`);
 
         var d = `M${p1.x} ${p1.y} A ${r} ${r} 0 ${large_arc_sweep_flag} 1 ${p2.x} ${p2.y}`;
 
@@ -1626,7 +1607,6 @@ class Angle extends Shape {
     }
 
     ok_click(){
-        console.log("angle dlg ok click");
         this.arc!.setAttribute("stroke", angle_dlg_color.value.trim());
 
         angle_dlg.close();
@@ -1910,7 +1890,6 @@ function svg_click(ev: MouseEvent){
 
                 if(desc.value == ev.srcElement){
 
-                    msg(`click:${shape.constructor.name} ${name}`);
                     showProperty(shape);
                     return
                 }

@@ -251,13 +251,10 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
 
 export class Action {
     action_id: number;
-    class_name: string;
 
     constructor(){
         this.action_id = ActionId;
         ActionId++;
-
-        this.class_name = this.constructor.name;
     }
 
     init(){        
