@@ -103,12 +103,12 @@ export function make_html_lines(text: string){
     return html_lines.join("\n");
 }
 
-export function stringify(text: string){
+export function tostr(text: string){
     if(! text.includes('\n')){
-        return JSON.stringify(text) + '\n';
+        return JSON.stringify(text);
     }
     else{
-        return `${endMark}\n${text}${endMark}\n`;
+        return `${endMark}\n${text}${endMark}`;
     }
 }
 
@@ -178,6 +178,9 @@ export function deserializeActions(text: string){
             break;
         case UnselectionAction.name:
             act = new UnselectionAction();
+            break;
+        case View.name:
+            act = new View(obj);
             break;
 
         case EndAction.name:

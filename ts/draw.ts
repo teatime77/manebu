@@ -9,7 +9,7 @@ const grid_line_width = 1;
 
 declare var MathJax:any;
 
-class View extends Action {
+export class View extends Action {
     svg : SVGSVGElement;
     defs : SVGDefsElement;
     gridBg : SVGRectElement;
@@ -31,19 +31,28 @@ class View extends Action {
     _snapToGrid: boolean = false;
     _flipY : boolean = false;
 
-    constructor(svg: SVGSVGElement){
+    constructor(obj: any){
         super();
-        this.svg = svg;
+        view = this;     
 
+        this.svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
+
+        this.svg.style.width = obj.width;
+        this.svg.style.height = obj.height;
         // background-color:wheat; border-style: ridge; border-width: 3px;
         this.svg.style.backgroundColor = "wheat";
         this.svg.style.borderStyle = "ridge";
         this.svg.style.borderWidth = "3px";
-
+    
         // viewBox="-10 -10 20 20"
-        this.svg.setAttribute("viewBox", "-10 -10 20 20");
+        this.svg.setAttribute("viewBox", obj.viewBox);
 
         this.svg.setAttribute("preserveAspectRatio", "none");
+    }
+
+    init(){   
+
+        divMath.appendChild(this.svg);
 
         this.CTM = this.svg.getCTM()!;
         this.CTMInv = this.CTM.inverse();
@@ -52,11 +61,11 @@ class View extends Action {
         this.svg_ratio = this.svg.viewBox.baseVal.width / rc.width;
     
         this.defs = document.createElementNS("http://www.w3.org/2000/svg","defs") as SVGDefsElement;
-        svg.appendChild(this.defs);
+        this.svg.appendChild(this.defs);
 
         // グリッドの背景の矩形
         this.gridBg = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        svg.appendChild(this.gridBg);
+        this.svg.appendChild(this.gridBg);
 
         this.G0 = document.createElementNS("http://www.w3.org/2000/svg","g");
         this.G1 = document.createElementNS("http://www.w3.org/2000/svg","g");
@@ -75,6 +84,21 @@ class View extends Action {
     
         this.svg.addEventListener("click", svg_click);
         this.svg.addEventListener("pointermove", svg_pointermove);  
+
+        setToolType();
+    }
+
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+width: ${tostr(this.svg.style.width)}
+height: ${tostr(this.svg.style.height)}
+viewBox: ${tostr(this.svg.getAttribute("viewBox"))}`;
+    }
+
+    summary() : string {
+        return "view";
     }
 
     get width() : string {
@@ -1925,25 +1949,20 @@ function svg_pointermove(ev: PointerEvent){
 }
 
 export function addShape(){
-    
-    var svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
-    svg.style.width = "500px";
-    svg.style.height = "500px";
-    svg.style.borderStyle = "groove";
-    svg.style.borderWidth = "3px";
+    var obj = {
+        "width" : "500px",
+        "height" : "500px",
+        "viewBox" : "-10 -10 20 20",
+    };   
 
-    divMath.appendChild(svg);
-
-    view = new View(svg);
-    setToolType();
+    var view1 = new View(obj);
+    actions.push(view1);
+    view1.init();
+    divActions.appendChild(view1.summaryDom());
 }
 
 export function init_draw(){
     tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
-
-    var svg = document.getElementById("main-svg") as unknown as SVGSVGElement;
-    view = new View(svg);
-    setToolType();        
 
     TextBox.init();
 

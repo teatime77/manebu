@@ -412,7 +412,7 @@ export class TextBlockAction extends DivAction {
         return `
 type_name: ${this.typeName()}
 action_id: ${this.action_id}
-text: ${stringify(this.text)}`;
+text: ${tostr(this.text)}`;
     }
 
     static deserialize(obj: TextBlockAction) : TextBlockAction {
@@ -450,7 +450,7 @@ export class SpeechAction extends DivAction {
         return `
 type_name: ${this.typeName()}
 action_id: ${this.action_id}
-text: ${stringify(this.text)}`;
+text: ${tostr(this.text)}`;
     }
 
     static deserialize(obj: SpeechAction) : SpeechAction {
