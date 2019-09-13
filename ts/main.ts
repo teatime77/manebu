@@ -291,6 +291,7 @@ export class Action {
         span.dataset.action_id = "" + this.action_id;
         span.textContent = this.summary();
         span.tabIndex = 0;
+        span.style.whiteSpace = "nowrap";
         span.addEventListener("keydown", function(ev:KeyboardEvent){
             if(ev.key == "ArrowDown" || ev.key == "ArrowUp"){
                 console.log(`key down:${ev.key}`);
@@ -387,7 +388,9 @@ class DivAction extends Action {
     
         div.tabIndex = 0;
     
-        div.innerHTML = make_html_lines(text);
+        var html = make_html_lines(text);
+        div.innerHTML = html;
+        reprocessMathJax(html);
     
         return div;
     }
@@ -417,7 +420,7 @@ export class TextBlockAction extends DivAction {
     }
 
     summary() : string {
-        return `t ${this.action_id} ${this.lines.join(';')}`;
+        return `t ${this.action_id} ${this.lines.filter(x => x.trim() != "$$").join(' ').substring(0, 10)}`;
     }
 }
 
@@ -463,6 +466,7 @@ export class SelectionAction extends Action {
     }
 
     enable(){
+        this.setSelectedDoms();
         for(let dom of this.selectedDoms){
 
             if(this.isTmp){
@@ -480,6 +484,7 @@ export class SelectionAction extends Action {
     }
 
     disable(){
+        this.setSelectedDoms();
         for(let dom of this.selectedDoms){
             dom.style.color = "unset";
             dom.style.backgroundColor = "unset";
@@ -622,6 +627,20 @@ export class ShapeAction extends Action {
     }
 }
 
+function addAction(act: Action){
+    actions.splice(focusedActionIdx + 1, 0, act);
+            
+    var next_ele = divActions.children[focusedActionIdx].nextElementSibling;
+    if(next_ele == null){
+
+        divActions.appendChild(act.summaryDom());
+    }
+    else{
+
+        divActions.insertBefore(act.summaryDom(), next_ele);
+    }
+}
+
 export function addSelection(){
     if(tmpSelection == null){
         return;
@@ -629,15 +648,27 @@ export function addSelection(){
 
     tmpSelection.isTmp = false;
     tmpSelection.enable();
+    addAction(tmpSelection);
+
+    tmpSelection = null;
+}
+
+function reprocessMathJax(html: string){
+    if(html.split('\n').some(x => x.trim() == "$$")){
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    }
 }
 
 function updateFocusedTextBlock(){
     var act = actions[focusedActionIdx] as TextBlockAction;
 
-    act.div.innerHTML = make_html_lines(textMath.value);
+    var html = make_html_lines(textMath.value);
+    act.div.innerHTML = html;
     act.lines = textMath.value.split('\n');
 
     divActions.children[focusedActionIdx].textContent = act.summary();
+
+    reprocessMathJax(html);
 }
 
 function monitorTextMath(){
@@ -657,10 +688,6 @@ function monitorTextMath(){
             prev_value = textMath.value;
 
             updateFocusedTextBlock();
-            
-            if(prev_value.startsWith("$$\n") || prev_value.indexOf("\n$$\n") != -1){
-                MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-            }
         }, 100);
     });
 
@@ -691,27 +718,17 @@ function monitorTextMath(){
         if(ev.ctrlKey && ev.code == "Enter"){
 
             var act = actions[focusedActionIdx] as TextBlockAction;
-            var next_ele = divActions.children[focusedActionIdx].nextElementSibling;
 
             updateFocusedTextBlock();
-
-            focusedActionIdx++;
 
             textMath.value = "";
 
             var act = new TextBlockAction([""]);
-            actions.splice(focusedActionIdx, 0, act);
-            
-            if(next_ele == null){
-
-                divActions.appendChild(act.summaryDom());
-            }
-            else{
-
-                divActions.insertBefore(act.summaryDom(), next_ele);
-            }
+            addAction(act);
         
             act.init();        
+
+            focusedActionIdx++;
         }
     });
 }
