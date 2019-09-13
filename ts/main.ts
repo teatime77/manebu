@@ -20,8 +20,6 @@ export var divMath : HTMLDivElement;
 var tmpSelection : SelectionAction | null = null;
 export var inEditor : boolean;
 export var ActionId = 0;
-var textMathSelectionStart : number = 0;
-var textMathSelectionEnd : number = 0;
 var divMsg : HTMLDivElement = null;
 var focusedActionIdx : number = -1;
 const IDX = 0;
@@ -257,6 +255,10 @@ export class Action {
         ActionId++;
     }
 
+    typeName(){
+        return this.constructor.name;
+    }
+
     init(){        
     }
 
@@ -287,7 +289,7 @@ export class Action {
     summaryDom() : HTMLSpanElement {
         var span = document.createElement("span");
         span.dataset.action_id = "" + this.action_id;
-        span.innerText = this.summary();
+        span.textContent = this.summary();
         span.tabIndex = 0;
         span.addEventListener("keydown", function(ev:KeyboardEvent){
             if(ev.key == "ArrowDown" || ev.key == "ArrowUp"){
@@ -335,32 +337,23 @@ export class Action {
             divMath.scrollTop = divMath.scrollHeight;
     
             focusedActionIdx = idx;
+
+            var act = actions[focusedActionIdx];
+            if(act.constructor == TextBlockAction){
+                textMath.value = (act as TextBlockAction).lines.join('\n');
+            }
+            else{
+                textMath.value = "";
+            }
         });
     
 
         return span;
     }
-    
 }
 
 export var actions : Action[] = [];
 export var selections : SelectionAction[] = [];
-
-function makeTextDiv(action_id:number, text: string) : HTMLDivElement {
-    var div = document.createElement("div");
-    div.className = "manebu-text-block";
-
-    div.id = getBlockId(action_id);
-    div.title = div.id
-
-    divMath.insertBefore(div, null);
-
-    div.tabIndex = 0;
-
-    div.innerHTML = make_html_lines(text);
-
-    return div;
-}
 
 class DivAction extends Action {
     div: HTMLDivElement;
@@ -371,6 +364,32 @@ class DivAction extends Action {
 
     disable(){
         this.div.style.display = "none";
+    }
+
+    makeTextDiv(text: string) : HTMLDivElement {
+        var idx = actions.indexOf(this);
+        console.assert(idx != -1);
+
+        var next_ele = null;
+        for(let act of actions.slice(idx + 1)){
+            if(act instanceof DivAction){
+                next_ele = act.div;
+                break;
+            }
+        }
+        var div = document.createElement("div");
+        div.className = "manebu-text-block";
+    
+        div.id = getBlockId(this.action_id);
+        div.title = div.id
+    
+        divMath.insertBefore(div, next_ele);
+    
+        div.tabIndex = 0;
+    
+        div.innerHTML = make_html_lines(text);
+    
+        return div;
     }
 }
 
@@ -387,7 +406,7 @@ export class TextBlockAction extends DivAction {
 
         msg(`append text block[${text}]`);
     
-        this.div = makeTextDiv(this.action_id, text);
+        this.div = this.makeTextDiv(text);
         this.div.addEventListener("click", function(ev:MouseEvent){
             onclick_block(this, ev);
         });
@@ -398,7 +417,7 @@ export class TextBlockAction extends DivAction {
     }
 
     summary() : string {
-        return `テキスト ${this.lines[0]}`;
+        return `t ${this.action_id} ${this.lines.join(';')}`;
     }
 }
 
@@ -411,7 +430,7 @@ export class SpeechAction extends DivAction {
     }
 
     init(){        
-        this.div = makeTextDiv(this.action_id, this.text);
+        this.div = this.makeTextDiv(this.text);
     }
 
     *play(){
@@ -603,23 +622,98 @@ export class ShapeAction extends Action {
     }
 }
 
-export function insertText(ins_str: string){
-    textMath.value = textMath.value.substring(0, textMathSelectionEnd) + ins_str + textMath.value.substring(textMathSelectionEnd);
-
-    textMathSelectionStart += ins_str.length;
-    textMathSelectionEnd += ins_str.length;
-}
-
 export function addSelection(){
     if(tmpSelection == null){
         return;
     }
 
-    var ins_str = '@select ' + JSON.stringify(tmpSelection) + '\n';
-    insertText(ins_str);
-
     tmpSelection.isTmp = false;
     tmpSelection.enable();
+}
+
+function updateFocusedTextBlock(){
+    var act = actions[focusedActionIdx] as TextBlockAction;
+
+    act.div.innerHTML = make_html_lines(textMath.value);
+    act.lines = textMath.value.split('\n');
+
+    divActions.children[focusedActionIdx].textContent = act.summary();
+}
+
+function monitorTextMath(){
+    var timer_id = -1;
+
+    textMath.addEventListener("focus", function(){
+        console.assert(0 <= focusedActionIdx && focusedActionIdx < actions.length && actions[focusedActionIdx].constructor == TextBlockAction);
+        var act1 = actions[focusedActionIdx] as TextBlockAction;
+
+        textMath.value = act1.lines.join('\n');
+        var prev_value = textMath.value;
+        timer_id = setInterval(function(){
+            if(prev_value == textMath.value){
+                return;
+            }
+
+            prev_value = textMath.value;
+
+            updateFocusedTextBlock();
+            
+            if(prev_value.startsWith("$$\n") || prev_value.indexOf("\n$$\n") != -1){
+                MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+            }
+        }, 100);
+    });
+
+    textMath.addEventListener("blur", function(){
+        clearInterval(timer_id);
+
+        if(textMath.value.trim() == ""){
+            var act = actions[focusedActionIdx] as TextBlockAction;
+
+            actions.splice(focusedActionIdx, 1);
+            divMath.removeChild(act.div);
+            divActions.removeChild(divActions.children[focusedActionIdx]);
+            
+            if(focusedActionIdx == ActionId - 1){
+                ActionId--;
+            }
+            focusedActionIdx = -1;
+        }
+        else{
+
+            updateFocusedTextBlock();
+        }
+    });
+
+    textMath.addEventListener("keypress", function(ev:KeyboardEvent){
+        msg(`key press ${ev.ctrlKey} ${ev.key}`);
+        console.assert(focusedActionIdx != -1);
+        if(ev.ctrlKey && ev.code == "Enter"){
+
+            var act = actions[focusedActionIdx] as TextBlockAction;
+            var next_ele = divActions.children[focusedActionIdx].nextElementSibling;
+
+            updateFocusedTextBlock();
+
+            focusedActionIdx++;
+
+            textMath.value = "";
+
+            var act = new TextBlockAction([""]);
+            actions.splice(focusedActionIdx, 0, act);
+            
+            if(next_ele == null){
+
+                divActions.appendChild(act.summaryDom());
+            }
+            else{
+
+                divActions.insertBefore(act.summaryDom(), next_ele);
+            }
+        
+            act.init();        
+        }
+    });
 }
 
 export function init_manebu(in_editor: boolean){
@@ -638,23 +732,16 @@ export function init_manebu(in_editor: boolean){
     }
 
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
+    textMath.disabled = false;
 
-    textMath.onblur = function(ev:FocusEvent){
-        var sel = window.getSelection();
-        
-        if(sel.rangeCount == 1){
+    var act = new TextBlockAction([""]);
+    actions.push(act);
+    divActions.appendChild(act.summaryDom());
 
-            var rng = sel.getRangeAt(0);
-            textMathSelectionStart = textMath.selectionStart;
-            textMathSelectionEnd = textMath.selectionEnd;
-            msg(`blur2 ${ev} ${sel.rangeCount} start:${textMathSelectionStart} end:${textMathSelectionEnd}`);
+    focusedActionIdx = 0;
+    act.init();
 
-            if(textMath.value.charCodeAt(0) == "🙀".charCodeAt(0)){
-                msg(`blur:${textMath.value.charAt(0)} ${textMath.value.charCodeAt(0).toString(16)} ${"🙀".charCodeAt(0).toString(16)}`);
-                textMath.value = textMath.value.substring(0, textMathSelectionStart) + "🙀" + textMath.value.substring(textMathSelectionEnd);
-            }        
-        }
-    }
+    monitorTextMath();
 }
 
 }
