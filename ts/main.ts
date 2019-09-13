@@ -21,7 +21,7 @@ var tmpSelection : SelectionAction | null = null;
 export var inEditor : boolean;
 export var ActionId = 0;
 var divMsg : HTMLDivElement = null;
-var focusedActionIdx : number = -1;
+export var focusedActionIdx : number = -1;
 const IDX = 0;
 const NODE_NAME = 1;
 

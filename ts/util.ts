@@ -108,7 +108,7 @@ export function stringify(text: string){
         return JSON.stringify(text) + '\n';
     }
     else{
-        return `\n${text}${endMark}\n`;
+        return `${endMark}\n${text}${endMark}\n`;
     }
 }
 
@@ -139,13 +139,17 @@ export function deserializeActions(text: string){
             obj["type_name"] = line.substring(10).trim();
 
             while(lines.length != 0){
-                line = lines.shift();
-                var k = lines.indexOf(':');
+                line = lines.shift().trim();
+                if(line == ""){
+                    break;
+                }
+                var k = line.indexOf(':');
+                console.assert(k != -1);
 
                 var name = line.substring(0, k).trim();
                 var value;
                 var mark = line.substring(k + 1).trim();
-                if(mark[0] == '"'){
+                if(mark != endMark){
 
                     value = JSON.parse(mark);
                 }
@@ -158,26 +162,32 @@ export function deserializeActions(text: string){
 
                 obj[name] = value;
             }
-
         }
 
-        var act;
-        
+        var act = null;
+
         switch(obj["type_name"]){
         case TextBlockAction.name:
             act = TextBlockAction.deserialize(obj);
             break;
+        case SpeechAction.name:
+            act = SpeechAction.deserialize(obj);
+            break;
         case SelectionAction.name:
             act = SelectionAction.deserialize(obj);
             break;
+        case UnselectionAction.name:
+            act = new UnselectionAction();
+            break;
+
+        case EndAction.name:
+        case ShapeAction.name:
         default:
             console.assert(false);
-            act = null;
             break;
         }
         actions.push(act);
     }
-
 }
 
 }

@@ -321,7 +321,7 @@ export function firebase_update(){
     var text = serializeActions();
     msg(`${text}`);
 
-    // writeFile(selectedFile, textMath.value);
+    writeFile(selectedFile, text);
 }
 
 function showPopup(div: HTMLDivElement){
@@ -345,9 +345,6 @@ export function openFile(){
     db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
         if (doc.exists) {
             var doc_data = doc.data() as Doc;
-
-            ActionId = 0;
-            textMath.value = doc_data.text;
 
             openActionData(doc_data.text);       
 
