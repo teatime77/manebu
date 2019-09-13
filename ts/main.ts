@@ -539,7 +539,6 @@ export class SelectionAction extends Action {
         return "選択";
     }
 
-
     setSelectedDoms(){
         console.assert(this.dom_type == "math");
 

@@ -94,7 +94,8 @@ type_name: ${this.typeName()}
 action_id: ${this.action_id}
 width: ${tostr(this.svg.style.width)}
 height: ${tostr(this.svg.style.height)}
-viewBox: ${tostr(this.svg.getAttribute("viewBox"))}`;
+viewBox: ${tostr(this.svg.getAttribute("viewBox"))}
+`;
     }
 
     summary() : string {
@@ -238,7 +239,7 @@ var angle_dlg : HTMLDialogElement;
 var angle_dlg_ok : HTMLInputElement;
 var angle_dlg_color : HTMLInputElement;
 
-class Vec2 {
+export class Vec2 {
     x: number;
     y: number;
 
@@ -452,10 +453,6 @@ abstract class Shape extends Action {
     handles : Point[] = [];
     shape_listeners:Shape[] = [];
 
-    type_name():string{ 
-        return this.constructor.name;
-    }
-
     process_event(sources: Shape[]){}
 
     make_json() : any{}
@@ -475,7 +472,7 @@ abstract class Shape extends Action {
     make_json_ref(parent: Shape) : any{
         if(this.action_id < parent.action_id){
             return {
-                "type": this.type_name(),
+                "type": this.typeName(),
                 "id": this.action_id
             };
         }
@@ -583,7 +580,7 @@ class SvgAction extends Action {
     }
 }
 
-class Point extends Shape {
+export class Point extends Shape {
     pos : Vec2;
     circle : SVGCircleElement;
     bind_to: Shape|null = null;
@@ -593,6 +590,10 @@ class Point extends Shape {
 
     constructor(pt:Vec2){
         super();
+        this.pos = pt;
+    }
+
+    init(){   
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("r", `${to_svg(5)}`);
         this.circle.setAttribute("fill", "blue");
@@ -602,10 +603,28 @@ class Point extends Shape {
 
         this.circle.style.cursor = "pointer";
 
-        this.pos = pt;
         this.set_pos();
     
         view.G2.appendChild(this.circle);
+    }
+
+    serialize() : string {
+        var obj = Object.assign({}, this);
+
+        delete obj.handles;
+        delete obj.shape_listeners;
+    
+        delete obj.circle;
+        delete obj.bind_to;
+        delete obj.pos_in_line;
+        delete obj.angle_in_circle;
+
+        obj["type_name"] = this.typeName();
+        return `json: ${JSON.stringify(obj)}\n`;
+    }
+
+    summary() : string {
+        return "点";
     }
 
     get x(){
@@ -624,10 +643,6 @@ class Point extends Shape {
     set y(value:any){
         this.pos.y =  parseInt(value);
         this.set_pos();
-    }
-    
-    type_name():string{ 
-        return "Point";
     }
 
     make_json() : any{
@@ -659,6 +674,9 @@ class Point extends Shape {
             line.bind(this)
             line.adjust(this);
         }
+
+        actions.push(this);
+        divActions.appendChild(this.summaryDom());
 
         clear_tool();
     }
@@ -776,7 +794,7 @@ class LineSegment extends Shape {
 
     make_json() : any{
         return {
-            "type": this.type_name(),
+            "type": this.typeName(),
             "id": this.action_id,
             "handle_ids": this.handles.map(x => x.action_id),
         };
@@ -926,13 +944,9 @@ class Rect extends Shape {
         this.is_square = is_square;
     }
 
-    type_name():string{ 
-        return "Rect." + (this.is_square ? "2" : "1");
-    }
-
     make_json() : any{
         return {
-            "type": this.type_name(),
+            "type": this.typeName(),
             "id": this.action_id,
             "is_square": this.is_square,
             "line_ids": this.lines.map(x => x.action_id )
@@ -1164,10 +1178,6 @@ class Circle extends Shape {
         this.circle.setAttribute("stroke", c);
     }
 
-    type_name():string{ 
-        return "Circle." + (this.by_diameter ? "2" : "1");
-    }
-
     set_center(pt: Vec2){
         this.center = this.handles[0].pos.add(pt).mul(0.5);
 
@@ -1259,10 +1269,6 @@ class Circle extends Shape {
 class Triangle extends Shape {
     lines : Array<LineSegment> = [];
 
-    type_name():string{ 
-        return "Triangle";
-    }
-
     click =(ev: MouseEvent, pt:Vec2): void =>{
         var line = new LineSegment();
 
@@ -1306,10 +1312,6 @@ class TextBox extends Shape {
     rect   : SVGRectElement;
     div : HTMLDivElement | null = null;
     clicked_pos : Vec2|null = null;
-
-    type_name():string{ 
-        return "TextBox";
-    }
 
     static ontypeset(self: TextBox){
         var rc = self.div!.getBoundingClientRect();
@@ -1369,10 +1371,6 @@ class TextBox extends Shape {
 class Midpoint extends Shape {
     midpoint : Point | null = null;
 
-    type_name():string{ 
-        return "Midpoint";
-    }
-
     calc_midpoint(){
         var p1 = this.handles[0].pos;
         var p2 = this.handles[1].pos;
@@ -1409,10 +1407,6 @@ class Perpendicular extends Shape {
     foot : Point | null = null;
     perpendicular : LineSegment | null = null;
     in_handle_move: boolean = false;
-
-    type_name():string{ 
-        return "Perpendicular";
-    }
 
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
@@ -1524,10 +1518,6 @@ class Intersection extends Shape {
     lines : LineSegment[] = [];
     intersection : Point|null = null;
 
-    type_name():string{ 
-        return "Intersection";
-    }
-
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
 
@@ -1582,10 +1572,6 @@ class Angle extends Shape {
 
     set color(c:string){
         this.arc.setAttribute("stroke", c);
-    }
-
-    type_name():string{ 
-        return "Angle";
     }
 
     draw_arc(){
@@ -1906,7 +1892,6 @@ function svg_click(ev: MouseEvent){
 
     if(view.tool_type == "select"){
 
-
         for(let shape of view.shapes.values()){
 
             for(let name of Object.getOwnPropertyNames(shape)){
@@ -1929,7 +1914,7 @@ function svg_click(ev: MouseEvent){
 
     if(view.tool == null){
         view.tool = make_tool_by_type(view.tool_type)!;
-        console.assert(view.tool.type_name() == view.tool_type);
+        console.assert(view.tool.typeName() == view.tool_type);
     }
 
     if(view.tool != null){

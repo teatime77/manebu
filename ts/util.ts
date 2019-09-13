@@ -1,6 +1,7 @@
 namespace manebu{
 export var padding = 10;
 const endMark = "🔚";
+export var pointMap : Map<number, Point>;
 
 export function array_last<T>(arr:T[]) : T{
     console.assert(arr.length != 0);
@@ -113,6 +114,8 @@ export function tostr(text: string){
 }
 
 export function serializeActions() : string {
+    pointMap = new Map<number, Point>();
+
     return actions.map(x => x.serialize()).join('\n');
 }
 
@@ -181,6 +184,9 @@ export function deserializeActions(text: string){
             break;
         case View.name:
             act = new View(obj);
+            break;
+        case Point.name:
+            act = new Point(new Vec2(obj.pos.x, obj.pos.y));
             break;
 
         case EndAction.name:
