@@ -1,5 +1,6 @@
 namespace manebu{
 export var padding = 10;
+const endMark = "🔚";
 
 export function array_last<T>(arr:T[]) : T{
     console.assert(arr.length != 0);
@@ -100,6 +101,83 @@ export function make_html_lines(text: string){
     }
 
     return html_lines.join("\n");
+}
+
+export function stringify(text: string){
+    if(! text.includes('\n')){
+        return JSON.stringify(text) + '\n';
+    }
+    else{
+        return `\n${text}${endMark}\n`;
+    }
+}
+
+export function serializeActions() : string {
+    return actions.map(x => x.serialize()).join('\n');
+}
+
+export function deserializeActions(text: string){
+    actions = [];
+
+    var lines = text.split('\n');
+    while(lines.length != 0){
+        // 空行をスキップする。
+        for(; lines.length != 0 && lines[0].trim() == ""; lines.shift());
+        if(lines.length == 0){
+            break;
+        }
+
+        var line = lines.shift();
+        var obj;
+        if(line.startsWith("json:")){
+            obj = JSON.parse(line.substring(5).trim());
+        }
+        else{
+            console.assert(line.startsWith("type_name:"));
+
+            obj = {};
+            obj["type_name"] = line.substring(10).trim();
+
+            while(lines.length != 0){
+                line = lines.shift();
+                var k = lines.indexOf(':');
+
+                var name = line.substring(0, k).trim();
+                var value;
+                var mark = line.substring(k + 1).trim();
+                if(mark[0] == '"'){
+
+                    value = JSON.parse(mark);
+                }
+                else{
+                    var last_idx = lines.findIndex(x => x.endsWith(mark));
+                    var texts = lines.splice(0, last_idx + 1);
+                    value = texts.join('\n');
+                    value = value.substring(0, value.length - mark.length);
+                }
+
+                obj[name] = value;
+            }
+
+        }
+
+        var act;
+        
+        switch(obj["type_name"]){
+        case TextBlockAction.name:
+            act = TextBlockAction.deserialize(obj);
+            break;
+        case SelectionAction.name:
+            act = SelectionAction.deserialize(obj);
+            break;
+        default:
+            console.assert(false);
+            act = null;
+            break;
+        }
+        actions.push(act);
+    }
+
 }
 
 }

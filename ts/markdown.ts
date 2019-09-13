@@ -36,7 +36,7 @@ export function parseActionText(action_text: string){
         var [cmd, arg] = getCommand(line);
         if(cmd != null){
             if(texts.length != 0){
-                actions.push(new TextBlockAction(texts));
+                actions.push(new TextBlockAction(texts.join('\n')));
                 texts = [];
             }
 
@@ -50,7 +50,7 @@ export function parseActionText(action_text: string){
                     }
                 }
                 
-                actions.push(new TextBlockAction(lines.slice(start_line_idx, line_idx)));
+                actions.push(new TextBlockAction(lines.slice(start_line_idx, line_idx).join('\n')));
                 continue;
 
             case "@speak":
@@ -87,7 +87,7 @@ export function parseActionText(action_text: string){
 
     if(texts.length != 0){
 
-        actions.push(new TextBlockAction(texts));
+        actions.push(new TextBlockAction(texts.join('\n')));
     }
 
     for(let act of actions){

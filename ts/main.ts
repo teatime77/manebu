@@ -255,6 +255,11 @@ export class Action {
         ActionId++;
     }
 
+    serialize() : string {
+        console.assert(false);
+        return "";
+    }
+
     typeName(){
         return this.constructor.name;
     }
@@ -341,7 +346,7 @@ export class Action {
 
             var act = actions[focusedActionIdx];
             if(act.constructor == TextBlockAction){
-                textMath.value = (act as TextBlockAction).lines.join('\n');
+                textMath.value = (act as TextBlockAction).text;
             }
             else{
                 textMath.value = "";
@@ -357,6 +362,7 @@ export var actions : Action[] = [];
 export var selections : SelectionAction[] = [];
 
 class DivAction extends Action {
+    text: string;
     div: HTMLDivElement;
 
     enable(){
@@ -397,19 +403,29 @@ class DivAction extends Action {
 }
 
 export class TextBlockAction extends DivAction {
-    lines: string[];
-
-    constructor(lines: string[]){
+    constructor(text: string){
         super();
-        this.lines = lines;
+        this.text = text;
+    }
+
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+text: ${stringify(this.text)}`;
+    }
+
+    static deserialize(obj: TextBlockAction) : TextBlockAction {
+        var act = new TextBlockAction(obj.text);
+        act.action_id = obj.action_id;
+
+        return act;
     }
 
     init(){        
-        var text = this.lines.join('\n');
-
-        msg(`append text block[${text}]`);
+        msg(`append text block[${this.text}]`);
     
-        this.div = this.makeTextDiv(text);
+        this.div = this.makeTextDiv(this.text);
         this.div.addEventListener("click", function(ev:MouseEvent){
             onclick_block(this, ev);
         });
@@ -420,16 +436,28 @@ export class TextBlockAction extends DivAction {
     }
 
     summary() : string {
-        return `t ${this.action_id} ${this.lines.filter(x => x.trim() != "$$").join(' ').substring(0, 10)}`;
+        return `t ${this.action_id} ${this.text.split('\n').filter(x => x.trim() != "$$").join(' ').substring(0, 10)}`;
     }
 }
 
 export class SpeechAction extends DivAction {
-    text: string;
-
     constructor(text: string){
         super();
         this.text = text;
+    }
+
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+text: ${stringify(this.text)}`;
+    }
+
+    static deserialize(obj: SpeechAction) : SpeechAction {
+        var act = new SpeechAction(obj.text);
+        act.action_id = obj.action_id;
+
+        return act;
     }
 
     init(){        
@@ -459,6 +487,22 @@ export class SelectionAction extends Action {
         this.dom_type = dom_type;
         this.start_path = start_path;
         this.end_path   = end_path;
+    }
+
+    serialize() : string {
+        var obj = Object.assign({}, this);
+        delete obj.selectedDoms;
+        delete obj.isTmp;
+
+        obj["type_name"] = this.typeName();
+        return `json: ${JSON.stringify(obj)}\n`;
+    }
+
+    static deserialize(obj: SelectionAction) : SelectionAction {
+        var act = new SelectionAction(obj.block_id, obj.dom_type, obj.start_path, obj.end_path);
+        act.action_id = obj.action_id;
+
+        return act;
     }
 
     init(){
@@ -664,7 +708,7 @@ function updateFocusedTextBlock(){
 
     var html = make_html_lines(textMath.value);
     act.div.innerHTML = html;
-    act.lines = textMath.value.split('\n');
+    act.text = textMath.value;
 
     divActions.children[focusedActionIdx].textContent = act.summary();
 
@@ -678,7 +722,7 @@ function monitorTextMath(){
         console.assert(0 <= focusedActionIdx && focusedActionIdx < actions.length && actions[focusedActionIdx].constructor == TextBlockAction);
         var act1 = actions[focusedActionIdx] as TextBlockAction;
 
-        textMath.value = act1.lines.join('\n');
+        textMath.value = act1.text;
         var prev_value = textMath.value;
         timer_id = setInterval(function(){
             if(prev_value == textMath.value){
@@ -723,7 +767,7 @@ function monitorTextMath(){
 
             textMath.value = "";
 
-            var act = new TextBlockAction([""]);
+            var act = new TextBlockAction("");
             addAction(act);
         
             act.init();        
@@ -751,7 +795,7 @@ export function init_manebu(in_editor: boolean){
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
     textMath.disabled = false;
 
-    var act = new TextBlockAction([""]);
+    var act = new TextBlockAction("");
     actions.push(act);
     divActions.appendChild(act.summaryDom());
 

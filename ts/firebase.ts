@@ -318,7 +318,10 @@ function writeFile(file: FileInfo, text: string){
 }
 
 export function firebase_update(){
-    writeFile(selectedFile, textMath.value);
+    var text = serializeActions();
+    msg(`${text}`);
+
+    // writeFile(selectedFile, textMath.value);
 }
 
 function showPopup(div: HTMLDivElement){
