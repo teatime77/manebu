@@ -5,6 +5,7 @@ declare var navigator;
 var textName  : HTMLInputElement;
 var fileTreeView : HTMLUListElement;
 var dlgFolder : HTMLDivElement;
+var txtRaw : HTMLTextAreaElement;
 export var dropZone : HTMLDivElement;
 
 var db;
@@ -88,6 +89,10 @@ function showFileTreeView(){
             console.assert(selectedFile != undefined);
 
             this.style.backgroundColor = "lightgray";
+
+            readFile(selectedFile, function(data:string){
+                txtRaw.value = data;
+            });
         });
         span.dataset.file_id = "" + file.id;
 
@@ -105,6 +110,24 @@ function showFileTreeView(){
 
     fileTreeView.innerHTML = "";
     fnc(rootFile, fileTreeView);
+}
+
+function readFile(file: FileInfo, fnc:(data:string)=>void){
+    db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
+        if (doc.exists) {
+            var doc_data = doc.data() as Doc;
+
+            fnc(doc_data.text);
+        } 
+        else {
+            // doc.data() will be undefined in this case
+
+            msg(`[${file.id}]${file.name} はありません。`);
+        }
+    })
+    .catch(function(error) {
+        msg(`[${file.id}]${file.name} の読み込みエラーです。`);
+    });
 }
 
 function showContents(){
@@ -126,21 +149,7 @@ function showContents(){
                 var file = getFileById(file_id);
                 console.assert(file != undefined);
 
-                db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
-                    if (doc.exists) {
-                        var doc_data = doc.data() as Doc;
-
-                        openActionData(doc_data.text);
-                    } 
-                    else {
-                        // doc.data() will be undefined in this case
-            
-                        msg(`[${file.id}]${file.name} はありません。`);
-                    }
-                })
-                .catch(function(error) {
-                    msg(`[${file.id}]${file.name} の読み込みエラーです。`);
-                });
+                readFile(file, openActionData);
 
                 msg(`click:${file_id} ${this.textContent}`);
             });
@@ -254,6 +263,7 @@ export function firebase_init(){
     textName  = document.getElementById("text-name") as HTMLInputElement;
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
     dlgFolder = document.getElementById("dlg-Folder") as HTMLDivElement;
+    txtRaw = document.getElementById("txt-raw") as HTMLTextAreaElement;
     dropZone = document.getElementById('drop_zone') as HTMLDivElement;
 
     dropZone.addEventListener('dragover', handleDragOver, false);
@@ -325,7 +335,7 @@ export function firebase_update(){
 }
 
 function showPopup(div: HTMLDivElement){
-    div.style.display = "inline-block";
+    div.style.display = "grid"; // "inline-block";
     div.style.position = "fixed";
     div.style.left = "20px";
     div.style.top  = "20px";
@@ -426,6 +436,10 @@ function uploadFile(file: File){
 
         act.init();
     });    
+}
+
+export function writeRawText(){
+    writeFile(selectedFile, txtRaw.value);
 }
 
 function handleFileSelect(ev: DragEvent) {

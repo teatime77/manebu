@@ -20,12 +20,12 @@
 <script type="text/javascript">
 var exports = {};
 </script>
-<script type="text/javascript"  src="js/util.js?ver=1568361098" ></script>
-<script type="text/javascript" src="js/main.js?ver=1568361098" ></script>
-<script type="text/javascript"  src="js/draw.js?ver=1568361098" ></script>
-<script type="text/javascript" src="js/firebase.js?ver=1568361098" ></script>
-<script type="text/javascript" src="js/markdown.js?ver=1568361098" ></script>
-<script type="text/javascript" src="js/speech.js?ver=1568361098" ></script>
+<script type="text/javascript"  src="js/util.js?ver=1568370775" ></script>
+<script type="text/javascript" src="js/main.js?ver=1568370775" ></script>
+<script type="text/javascript"  src="js/draw.js?ver=1568370775" ></script>
+<script type="text/javascript" src="js/firebase.js?ver=1568370775" ></script>
+<script type="text/javascript" src="js/markdown.js?ver=1568370775" ></script>
+<script type="text/javascript" src="js/speech.js?ver=1568370775" ></script>
 <script type="text/javascript" src="js/mymathjax.js" ></script>
 
 <script type="text/javascript">
@@ -144,17 +144,24 @@ $$</textarea><br/>
     <input id="angle-dlg-ok" type="button" value="OK" />
 </dialog>
 
-<div id="dlg-Folder" style="display: none; position:fixed; border-style:outset; border-width: 5px; background-color: cornsilk;">
-    名前:
-    <input id="text-name" type="text" size=20 value="" /><br/>
-    <button onclick="manebu.make_folder()">フォルダーを作成</button>  
-    <button onclick="manebu.make_file()">ファイルを作成</button>  
+<div id="dlg-Folder" style="display: none; position:fixed; border-style:outset; border-width: 5px; background-color: cornsilk; grid-template-rows:50px 1fr 50px; grid-template-columns:1fr 1fr;">
+    <div style="grid-row: 1; grid-column: 1; " >
+        名前: <input id="text-name" type="text" size=20 value="" /><br/>
+        <button onclick="manebu.make_folder()">フォルダーを作成</button>  
+        <button onclick="manebu.make_file()">ファイルを作成</button>  
+
+    </div>
+    <div style="grid-row: 1; grid-column: 2; " >
+        <button onclick="manebu.openFile()">開く</button>  
+        <button onclick="manebu.saveFolder()">保存</button>  
+        <button onclick="manebu.closeFolder()">閉じる</button>  
+    </div>
   
-    <ul id="file-tree-view"></ul>
-  
-    <button onclick="manebu.openFile()">開く</button>  
-    <button onclick="manebu.saveFolder()">保存</button>  
-    <button onclick="manebu.closeFolder()">閉じる</button>  
+    <ul id="file-tree-view" style="grid-row: 2; grid-column: 1; "></ul>
+    <textarea id="txt-raw" style="grid-row: 2; grid-column: 2; overflow: scroll; white-space: nowrap; "></textarea>
+    <div style="grid-row: 3; grid-column: 2; " >
+        <button onclick="manebu.writeRawText()">書き込み</button>      
+    </div>
 </div>
   
 <div id="drop_zone" style="display:none; position:fixed; left: 50px; top: 50px; width: 300px; height: 200px; border-style: groove; border-width: 3px;">
