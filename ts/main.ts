@@ -248,10 +248,10 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
 }
 
 export class Action {
-    action_id: number;
+    id: number;
 
     constructor(){
-        this.action_id = ActionId;
+        this.id = ActionId;
         ActionId++;
     }
 
@@ -294,7 +294,7 @@ export class Action {
 
     summaryDom() : HTMLSpanElement {
         var span = document.createElement("span");
-        span.dataset.action_id = "" + this.action_id;
+        span.dataset.id = "" + this.id;
         span.textContent = this.summary();
         span.tabIndex = 0;
         span.style.whiteSpace = "nowrap";
@@ -388,7 +388,7 @@ class DivAction extends Action {
         var div = document.createElement("div");
         div.className = "manebu-text-block";
     
-        div.id = getBlockId(this.action_id);
+        div.id = getBlockId(this.id);
         div.title = div.id
     
         divMath.insertBefore(div, next_ele);
@@ -412,13 +412,13 @@ export class TextBlockAction extends DivAction {
     serialize() : string {
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 text: ${tostr(this.text)}`;
     }
 
     static deserialize(obj: TextBlockAction) : TextBlockAction {
         var act = new TextBlockAction(obj.text);
-        act.action_id = obj.action_id;
+        act.id = obj.id;
 
         return act;
     }
@@ -437,7 +437,7 @@ text: ${tostr(this.text)}`;
     }
 
     summary() : string {
-        return `t ${this.action_id} ${this.text.split('\n').filter(x => x.trim() != "$$").join(' ').substring(0, 10)}`;
+        return `t ${this.id} ${this.text.split('\n').filter(x => x.trim() != "$$").join(' ').substring(0, 10)}`;
     }
 }
 
@@ -450,13 +450,13 @@ export class SpeechAction extends DivAction {
     serialize() : string {
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 text: ${tostr(this.text)}`;
     }
 
     static deserialize(obj: SpeechAction) : SpeechAction {
         var act = new SpeechAction(obj.text);
-        act.action_id = obj.action_id;
+        act.id = obj.id;
 
         return act;
     }
@@ -501,7 +501,7 @@ export class SelectionAction extends Action {
 
     static deserialize(obj: SelectionAction) : SelectionAction {
         var act = new SelectionAction(obj.block_id, obj.dom_type, obj.start_path, obj.end_path);
-        act.action_id = obj.action_id;
+        act.id = obj.id;
 
         return act;
     }
@@ -611,13 +611,13 @@ export class UnselectionAction extends Action {
 }
 
 export class EndAction extends Action {
-    constructor(action_id: number){
+    constructor(id: number){
         super();
     }
 
     *play(){
 
-        var del_ele = document.getElementById(getBlockId(this.action_id));
+        var del_ele = document.getElementById(getBlockId(this.id));
         if(inEditor){
 
             del_ele.style.backgroundColor = "gainsboro";

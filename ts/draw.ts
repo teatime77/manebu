@@ -49,8 +49,8 @@ export class View extends Action {
     constructor(obj: any){
         super();
 
-        if(obj.action_id != undefined){
-            this.action_id = obj.action_id;
+        if(obj.id != undefined){
+            this.id = obj.id;
         }
 
         view = this;     
@@ -115,7 +115,7 @@ export class View extends Action {
     serialize() : string {
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 width: ${tostr(this.svg.style.width)}
 height: ${tostr(this.svg.style.height)}
 viewBox: ${tostr(this.svg.getAttribute("viewBox"))}
@@ -231,7 +231,7 @@ viewBox: ${tostr(this.svg.getAttribute("viewBox"))}
         // viewBoxを得る。
         var vb = this.svg.viewBox.baseVal;
 
-        var pattern_id = `pattern-${this.action_id}`;
+        var pattern_id = `pattern-${this.id}`;
 
         var pattern = document.createElementNS("http://www.w3.org/2000/svg","pattern") as SVGPatternElement;
         pattern.setAttribute("id", pattern_id);
@@ -482,14 +482,11 @@ abstract class Shape extends Action {
     serialize() : string {
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 handles: ${handles_str(this.handles)}`;
     }
 
     process_event(sources: Shape[]){}
-
-    make_json() : any{}
-    from_json(obj: any){}
 
     select(selected: boolean){}
 
@@ -499,19 +496,7 @@ handles: ${handles_str(this.handles)}`;
     constructor(){
         super();
 
-        view.shapes.set(this.action_id, this);
-    }
-
-    make_json_ref(parent: Shape) : any{
-        if(this.action_id < parent.action_id){
-            return {
-                "type": this.typeName(),
-                "id": this.action_id
-            };
-        }
-        else{
-            return this.make_json();
-        }
+        view.shapes.set(this.id, this);
     }
 
     add_handle(handle: Point, use_this_handle_move: boolean = true){
@@ -651,8 +636,8 @@ export class Point extends Shape {
     }
 
     serialize() : string {
-        console.assert(! pointMap.has(this.action_id));
-        pointMap.set(this.action_id, this);
+        console.assert(! pointMap.has(this.id));
+        pointMap.set(this.id, this);
 
         var obj = Object.assign({}, this);
 
@@ -687,21 +672,6 @@ export class Point extends Shape {
 
     set y(value:any){
         this.pos.y =  parseInt(value);
-        this.set_pos();
-    }
-
-    make_json() : any{
-        return {
-            "type": "Point",
-            "id": this.action_id,
-            "x": this.pos.x,
-            "y": this.pos.y,
-        };
-    }
-    
-    from_json(obj: any){
-        this.pos.x = obj.x;
-        this.pos.y = obj.y;
         this.set_pos();
     }
 
@@ -847,21 +817,6 @@ class LineSegment extends Shape {
 
     set color(c:string){
         this.line.setAttribute("stroke", c);
-    }
-
-    from_json(obj: any){
-        this.handles = obj.handle_ids.map((id:number) => view.shapes.get(id));
-
-        this.line.setAttribute("x1", "" + this.handles[0].pos.x);
-        this.line.setAttribute("y1", "" + this.handles[0].pos.y);
-
-        this.line.setAttribute("x2", "" + this.handles[1].pos.x);
-        this.line.setAttribute("y2", "" + this.handles[1].pos.y);
-
-        view.G0.removeChild(this.line);
-        view.G1.appendChild(this.line);
-
-        this.set_vecs();
     }
     
     select(selected: boolean){
@@ -1019,18 +974,10 @@ class Rect extends Shape {
     serialize() : string {
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 handles: ${handles_str(this.handles)}
 is_square: ${this.is_square}
 `;
-    }
-
-
-    from_json(obj: any){
-        this.is_square = obj.is_square;
-        this.lines = obj.line_ids.map((id:number)=>view.shapes.get(id));
-        this.handles = this.lines.map(x => x.handles[0] );
-        this.set_rect_pos(null, -1, false);
     }
 
     set_rect_pos(pt: Vec2|null, idx: number, clicked:boolean){
@@ -1261,7 +1208,7 @@ class Circle extends Shape {
     serialize() : string {
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 handles: ${handles_str(this.handles)}
 by_diameter: ${this.by_diameter}
 `;
@@ -1372,7 +1319,7 @@ class Triangle extends Shape {
 
         return `
 type_name: ${this.typeName()}
-action_id: ${this.action_id}
+id: ${this.id}
 handles: ${handles_str(handles)}
 `;
     }
@@ -2141,7 +2088,7 @@ function setHandles(shape: Shape, obj: any){
 }
 
 function loadShape(shape: Shape, obj: any){
-    shape.action_id = obj.action_id;
+    shape.id = obj.id;
     setHandles(shape, obj);
 }
 
@@ -2152,10 +2099,10 @@ export function deserializeShapes(obj:any) : Action {
 
     case Point.name:{
         var pt = new Point(new Vec2(obj.pos.x, obj.pos.y));
-        pt.action_id = obj.action_id;
+        pt.id = obj.id;
 
-        console.assert(!pointMap.has(pt.action_id));
-        pointMap.set(pt.action_id, pt);
+        console.assert(!pointMap.has(pt.id));
+        pointMap.set(pt.id, pt);
         return pt;
     }
 

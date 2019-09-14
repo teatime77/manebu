@@ -117,13 +117,13 @@ export function handles_str(handles : Point[]){
     var texts = []
 
     for(let p of handles){
-        if(pointMap.has(p.action_id)){
+        if(pointMap.has(p.id)){
 
-            texts.push( `{ "ref":${p.action_id} }` );
+            texts.push( `{ "ref":${p.id} }` );
         }
         else{
 
-            pointMap.set(p.action_id, p);
+            pointMap.set(p.id, p);
             texts.push( `{ "x":${p.pos.x}, "y":${p.pos.y} }` );
         }
     }

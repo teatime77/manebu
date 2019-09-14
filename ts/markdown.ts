@@ -42,7 +42,7 @@ export function openActionData(action_text: string){
         actions.push(new TextBlockAction(""));
     }
 
-    ActionId = Math.max(... actions.map(x => x.action_id)) + 1;
+    ActionId = Math.max(... actions.map(x => x.id)) + 1;
     focusedActionIdx = 0;
 
     divMath.innerHTML = "";
