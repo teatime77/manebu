@@ -472,6 +472,14 @@ abstract class Shape extends Action {
     handles : Point[] = [];
     shape_listeners:Shape[] = [];
 
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+handles: ${handles_str(this.handles)}
+`;
+    }
+
     process_event(sources: Shape[]){}
 
     make_json() : any{}
@@ -615,7 +623,11 @@ export class Point extends Shape {
         this.pos = pt;
     }
 
-    init(){   
+    init(){
+        if(this.initialized){
+            return;
+        }
+
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("r", `${to_svg(5)}`);
         this.circle.setAttribute("fill", "blue");
@@ -823,14 +835,6 @@ class LineSegment extends Shape {
         this.process_event(this.handles);
     }
 
-    serialize() : string {
-        return `
-type_name: ${this.typeName()}
-action_id: ${this.action_id}
-handles: ${handles_str(this.handles)}
-`;
-    }
-
     get color(){
         return this.line.getAttribute("stroke");
     }
@@ -1015,14 +1019,6 @@ is_square: ${this.is_square}
 `;
     }
 
-    make_json() : any{
-        return {
-            "type": this.typeName(),
-            "id": this.action_id,
-            "is_square": this.is_square,
-            "line_ids": this.lines.map(x => x.action_id )
-        };
-    }
 
     from_json(obj: any){
         this.is_square = obj.is_square;
@@ -1363,6 +1359,32 @@ by_diameter: ${this.by_diameter}
 
 class Triangle extends Shape {
     lines : Array<LineSegment> = [];
+
+    serialize() : string {
+        var handles = Array.from(this.lines[0].handles);
+        handles.push(this.lines[1].handles[1]);
+
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+handles: ${handles_str(handles)}
+`;
+    }
+
+    restore(){
+        this.handles.forEach(x => x.init());
+
+        for(var i = 0; i < 3; i++){
+
+            var line = initLineSegment();
+            this.lines.push(line);
+
+            line.add_handle(this.handles[i], false);
+            line.add_handle(this.handles[(i+1) % 3], false);
+            line.restore();
+            line.update_pos();
+        }
+    }
 
     click =(ev: MouseEvent, pt:Vec2): void =>{
         var line = initLineSegment();
@@ -2105,6 +2127,11 @@ export function deserializeShapes(obj:any) : Action {
         var circle = new Circle(obj.by_diameter);
         loadShape(circle, obj);
         return circle;
+
+    case Triangle.name:
+        var tri = new Triangle();
+        loadShape(tri, obj);
+        return tri;
 
     default:
         return null;
