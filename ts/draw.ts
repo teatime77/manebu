@@ -1231,6 +1231,9 @@ class Circle extends Shape {
         super();
 
         this.by_diameter = by_diameter;
+    }
+
+    init(){
 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("fill", "none");// "transparent");
@@ -1239,6 +1242,27 @@ class Circle extends Shape {
         this.circle.setAttribute("fill-opacity", "0");
         
         view.G0.appendChild(this.circle);    
+    }
+
+    restore(){
+        for(let p of this.handles){
+            if(! p.initialized){
+
+                p.init();
+            }
+            p.shape_listeners.push(this);
+        }
+
+        this.process_event(this.handles);
+    }
+
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+handles: ${handles_str(this.handles)}
+by_diameter: ${this.by_diameter}
+`;
     }
 
     get color(){
@@ -2048,6 +2072,11 @@ function setHandles(shape: Shape, obj: any){
     }
 }
 
+function loadShape(shape: Shape, obj: any){
+    shape.action_id = obj.action_id;
+    setHandles(shape, obj);
+}
+
 export function deserializeShapes(obj:any) : Action {
     switch(obj["type_name"]){
     case View.name:
@@ -2062,21 +2091,20 @@ export function deserializeShapes(obj:any) : Action {
         return pt;
     }
 
-    case LineSegment.name:{
+    case LineSegment.name:
         var line = new LineSegment();
-        line.action_id = obj.action_id;
-
-        setHandles(line, obj);
+        loadShape(line, obj);
         return line;
-    }
 
-    case Rect.name:{
+    case Rect.name:
         var rect = new Rect(obj.is_square);
-        rect.action_id = obj.action_id;
-
-        setHandles(rect, obj);
+        loadShape(rect, obj);
         return rect;
-    }
+
+    case Circle.name:
+        var circle = new Circle(obj.by_diameter);
+        loadShape(circle, obj);
+        return circle;
 
     default:
         return null;
