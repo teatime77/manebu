@@ -47,13 +47,14 @@ export function openActionData(action_text: string){
 
     divMath.innerHTML = "";
     divActions.innerHTML = "";
-    for(let act of actions){
-        act.init();
-        act.restore();
-        divActions.appendChild(act.summaryDom());
-    }
 
     function* fnc(){
+        for(let act of actions){
+            act.init();
+            yield* act.restore();
+            divActions.appendChild(act.summaryDom());
+        }
+
         yield* waitActions(); 
 
         for(let act of actions.filter(x => x.constructor.name == "SelectionAction")){

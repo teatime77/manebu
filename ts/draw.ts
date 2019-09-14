@@ -483,8 +483,7 @@ abstract class Shape extends Action {
         return `
 type_name: ${this.typeName()}
 action_id: ${this.action_id}
-handles: ${handles_str(this.handles)}
-`;
+handles: ${handles_str(this.handles)}`;
     }
 
     process_event(sources: Shape[]){}
@@ -830,7 +829,7 @@ class LineSegment extends Shape {
         view.G0.appendChild(this.line);
     }
 
-    restore(){
+    *restore(){
         for(let p of this.handles){
             if(! p.initialized){
 
@@ -994,7 +993,7 @@ class Rect extends Shape {
         this.is_square = is_square;
     }
 
-    restore(){
+    *restore(){
         for(let [i,p] of this.handles.entries()){
             if(! p.initialized){
 
@@ -1247,7 +1246,7 @@ class Circle extends Shape {
         view.G0.appendChild(this.circle);    
     }
 
-    restore(){
+    *restore(){
         for(let p of this.handles){
             if(! p.initialized){
 
@@ -1378,7 +1377,7 @@ handles: ${handles_str(handles)}
 `;
     }
 
-    restore(){
+    *restore(){
         this.handles.forEach(x => x.init());
 
         for(var i = 0; i < 3; i++){
@@ -1388,7 +1387,7 @@ handles: ${handles_str(handles)}
 
             line.add_handle(this.handles[i], false);
             line.add_handle(this.handles[(i+1) % 3], false);
-            line.restore();
+            yield* line.restore();
             line.update_pos();
         }
     }
@@ -1437,6 +1436,8 @@ class TextBox extends Shape {
     rect   : SVGRectElement;
     div : HTMLDivElement | null = null;
     clicked_pos : Vec2|null = null;
+    offset_pos : Vec2|null = null;
+    typeset_done: boolean;
 
     static ontypeset(self: TextBox){
         var rc = self.div!.getBoundingClientRect();
@@ -1445,15 +1446,21 @@ class TextBox extends Shape {
         var h = to_svg(rc.height);
         self.rect.setAttribute("y", `${self.clicked_pos!.y}`);
         self.rect.setAttribute("height", `${h}`);
+
+        self.typeset_done = true;
     }
 
     static ok_click(){
+        var self = TextBox.text_box;
+
         var text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
-        TextBox.text_box.text = text;
-        TextBox.text_box.div!.innerHTML = make_html_lines(text);
+        self.text = text;
+        self.div!.innerHTML = make_html_lines(text);
         TextBox.dialog.close();
+
+        self.typeset_done = false;
         MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-        MathJax.Hub.Queue([TextBox.ontypeset, TextBox.text_box]);
+        MathJax.Hub.Queue([TextBox.ontypeset, self]);
     }
 
     static initDialog(){
@@ -1464,37 +1471,60 @@ class TextBox extends Shape {
     constructor(){
         super();
         TextBox.text_box = this;
+    }
+
+    init(){
         this.rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        this.rect.setAttribute("width", `${to_svg(1)}`);
+        this.rect.setAttribute("height", `${to_svg(1)}`);
+        this.rect.setAttribute("fill", "transparent");
+        this.rect.setAttribute("stroke", "navy");
+        this.rect.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
+        view.G1.appendChild(this.rect);
+
+        this.div = document.createElement("div");
+        this.div.style.position = "absolute";
+        this.div.style.backgroundColor = "cornsilk"
+        view.div.appendChild(this.div);
+    }
+
+    *restore(){
+        this.rect.setAttribute("x", "" + this.clicked_pos.x);
+        this.rect.setAttribute("y", "" + this.clicked_pos.y);
+
+        this.div.style.left  = `${this.offset_pos.x}px`;
+        this.div.style.top   = `${this.offset_pos.y}px`;
+
+        this.div.innerHTML = make_html_lines(this.text);
+        this.typeset_done = false;
+
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+        MathJax.Hub.Queue([TextBox.ontypeset, this]);
+
+        while(! this.typeset_done){
+            yield;
+        }
     }
 
     serialize() : string {
         return `
 ${super.serialize()}
 clicked_pos: ${JSON.stringify(this.clicked_pos)}
+offset_pos: ${JSON.stringify(this.offset_pos)}
 text: ${tostr(this.text)}`;
     }
 
     click =(ev: MouseEvent, pt:Vec2) : void =>{
         this.clicked_pos = pt;
+        this.offset_pos = new Vec2(ev.offsetX, ev.offsetY);
 
         this.rect.setAttribute("x", "" + pt.x);
         this.rect.setAttribute("y", "" + pt.y);
-        this.rect.setAttribute("width", `${to_svg(1)}`);
-        this.rect.setAttribute("height", `${to_svg(1)}`);
-        this.rect.setAttribute("fill", "transparent");
-        this.rect.setAttribute("stroke", "navy");
-        this.rect.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
-
-        view.G1.appendChild(this.rect);
 
         var ev = window.event as MouseEvent;
 
-        this.div = document.createElement("div");
-        this.div.style.position = "absolute";
-        this.div.style.left  = `${ev.offsetX}px`;
-        this.div.style.top   = `${ev.offsetY}px`;
-        this.div.style.backgroundColor = "cornsilk"
-        view.div.appendChild(this.div);
+        this.div.style.left  = `${this.offset_pos.x}px`;
+        this.div.style.top   = `${this.offset_pos.y}px`;
 
         TextBox.dialog.showModal();
         finish_tool();
@@ -2148,6 +2178,14 @@ export function deserializeShapes(obj:any) : Action {
         var tri = new Triangle();
         loadShape(tri, obj);
         return tri;
+
+    case TextBox.name:
+        var text = new TextBox();
+        loadShape(text, obj);
+        text.clicked_pos = obj.clicked_pos;
+        text.offset_pos  = obj.offset_pos;
+        text.text        = obj.text;
+        return text;
 
     default:
         return null;

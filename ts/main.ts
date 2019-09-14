@@ -267,7 +267,7 @@ export class Action {
     init(){        
     }
 
-    restore(){}
+    *restore(){}
 
     enable(){
     }
