@@ -16,6 +16,13 @@ function initPoint(pt:Vec2){
     return point;
 }
 
+function initLineSegment(){
+    var line = new LineSegment();
+    line.init();
+
+    return line;
+}
+
 export class View extends Action {
     svg : SVGSVGElement;
     defs : SVGDefsElement;
@@ -832,14 +839,6 @@ handles: ${handles_str(this.handles)}
         this.line.setAttribute("stroke", c);
     }
 
-    make_json() : any{
-        return {
-            "type": this.typeName(),
-            "id": this.action_id,
-            "handle_ids": this.handles.map(x => x.action_id),
-        };
-    }
-
     from_json(obj: any){
         this.handles = obj.handle_ids.map((id:number) => view.shapes.get(id));
 
@@ -982,6 +981,38 @@ class Rect extends Shape {
     constructor(is_square: boolean){
         super();
         this.is_square = is_square;
+    }
+
+    restore(){
+        for(let [i,p] of this.handles.entries()){
+            if(! p.initialized){
+
+                p.init();
+            }
+            if(i != 3){
+
+                p.shape_listeners.push(this);
+            }
+        }
+
+        for(var i = 0; i < 4; i++){
+
+            var line = initLineSegment();
+            this.lines.push(line);
+
+            line.add_handle(this.handles[i], false);
+            line.add_handle(this.handles[(i+1) % 4], false);
+            line.update_pos();
+        }
+    }
+
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+handles: ${handles_str(this.handles)}
+is_square: ${this.is_square}
+`;
     }
 
     make_json() : any{
@@ -1164,7 +1195,7 @@ class Rect extends Shape {
 
             for(var i = 0; i < 4; i++){
 
-                var line = new LineSegment();
+                var line = initLineSegment();
                 this.lines.push(line);
             }
         }
@@ -1310,7 +1341,7 @@ class Triangle extends Shape {
     lines : Array<LineSegment> = [];
 
     click =(ev: MouseEvent, pt:Vec2): void =>{
-        var line = new LineSegment();
+        var line = initLineSegment();
 
         if(this.lines.length == 0){
             line.add_handle(click_handle(ev, pt));
@@ -1484,7 +1515,7 @@ class Perpendicular extends Shape {
 
             this.foot = initPoint( calc_foot_of_perpendicular(this.handles[0].pos, this.line!) );
 
-            this.perpendicular = new LineSegment();
+            this.perpendicular = initLineSegment();
             this.perpendicular.line.style.cursor = "move";
             this.perpendicular.add_handle(this.handles[0]);
             this.perpendicular.add_handle(this.foot, false);
@@ -1539,7 +1570,7 @@ class ParallelLine extends Shape {
 
             this.point.shape_listeners.push(this);
 
-            this.line2 = new LineSegment();
+            this.line2 = initLineSegment();
             this.line2.line.style.cursor = "move";
 
             this.line2.add_handle(initPoint(new Vec2(0,0)));
@@ -1734,13 +1765,15 @@ function setToolType(){
 }
 
 function make_tool_by_type(tool_type: string): Shape|undefined {
-    switch(tool_type){
+    var v = tool_type.split('.');
+    var type_name = v[0];
+    var arg = v.length == 2 ? v[1] : null;
+
+    switch(type_name){
         case "Point":         return new Point(new Vec2(0,0));
         case "LineSegment":  return new LineSegment();
-        case "Rect.1":          return new Rect(false);
-        case "Rect.2":        return new Rect(true);
-        case "Circle.1":       return new Circle(false);
-        case "Circle.2":       return new Circle(true);
+        case "Rect":          return new Rect(arg == "2");
+        case "Circle":       return new Circle(arg == "2");
         case "Triangle":      return new Triangle();
         case "Midpoint":      return new Midpoint();
         case "Perpendicular": return new Perpendicular()
@@ -1954,7 +1987,7 @@ function svg_click(ev: MouseEvent){
 
     if(view.tool == null){
         view.tool = make_tool_by_type(view.tool_type)!;
-        console.assert(view.tool.typeName() == view.tool_type);
+        console.assert(view.tool.typeName() == view.tool_type.split('.')[0]);
         view.tool.init();
     }
 
@@ -2020,20 +2053,30 @@ export function deserializeShapes(obj:any) : Action {
     case View.name:
         return new View(obj);
 
-    case Point.name:
+    case Point.name:{
         var pt = new Point(new Vec2(obj.pos.x, obj.pos.y));
         pt.action_id = obj.action_id;
 
         console.assert(!pointMap.has(pt.action_id));
         pointMap.set(pt.action_id, pt);
         return pt;
+    }
 
-    case LineSegment.name:
+    case LineSegment.name:{
         var line = new LineSegment();
         line.action_id = obj.action_id;
 
         setHandles(line, obj);
         return line;
+    }
+
+    case Rect.name:{
+        var rect = new Rect(obj.is_square);
+        rect.action_id = obj.action_id;
+
+        setHandles(rect, obj);
+        return rect;
+    }
 
     default:
         return null;
