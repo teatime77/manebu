@@ -113,6 +113,24 @@ export function tostr(text: string){
     }
 }
 
+export function handles_str(handles : Point[]){
+    var texts = []
+
+    for(let p of handles){
+        if(pointMap.has(p.action_id)){
+
+            texts.push( `{ "ref":${p.action_id} }` );
+        }
+        else{
+
+            pointMap.set(p.action_id, p);
+            texts.push( `{ "x":${p.pos.x}, "y":${p.pos.y} }` );
+        }
+    }
+
+    return `[ ${texts.join(", ")} ]`;
+}
+
 export function serializeActions() : string {
     pointMap = new Map<number, Point>();
 
@@ -120,6 +138,8 @@ export function serializeActions() : string {
 }
 
 export function deserializeActions(text: string){
+    pointMap = new Map<number, Point>();
+
     actions = [];
 
     var lines = text.split('\n');
@@ -182,17 +202,14 @@ export function deserializeActions(text: string){
         case UnselectionAction.name:
             act = new UnselectionAction();
             break;
-        case View.name:
-            act = new View(obj);
-            break;
-        case Point.name:
-            act = new Point(new Vec2(obj.pos.x, obj.pos.y));
-            break;
 
         case EndAction.name:
         case ShapeAction.name:
-        default:
             console.assert(false);
+
+        default:
+            act = deserializeShapes(obj);
+            console.assert(act != null);
             break;
         }
         actions.push(act);

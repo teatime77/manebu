@@ -9,6 +9,13 @@ const grid_line_width = 1;
 
 declare var MathJax:any;
 
+function initPoint(pt:Vec2){
+    var point = new Point(pt);
+    point.init();
+
+    return point;
+}
+
 export class View extends Action {
     svg : SVGSVGElement;
     defs : SVGDefsElement;
@@ -33,6 +40,11 @@ export class View extends Action {
 
     constructor(obj: any){
         super();
+
+        if(obj.action_id != undefined){
+            this.action_id = obj.action_id;
+        }
+
         view = this;     
 
         this.svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
@@ -366,7 +378,7 @@ function click_handle(ev: MouseEvent, pt:Vec2) : Point{
         var line = get_line(ev);
         if(line != null){
 
-            handle = new Point(pt);
+            handle = initPoint(pt);
             line.adjust(handle);
 
             line.bind(handle)
@@ -375,14 +387,14 @@ function click_handle(ev: MouseEvent, pt:Vec2) : Point{
             var circle = get_circle(ev);
             if(circle != null){
 
-                handle = new Point(pt);
+                handle = initPoint(pt);
                 circle.adjust(handle);
 
                 circle.bind(handle)
             }
             else{
 
-                handle = new Point(pt);
+                handle = initPoint(pt);
             }
         }
     }
@@ -503,7 +515,7 @@ abstract class Shape extends Action {
     }
 }
 
-function clear_tool(){
+function finish_tool(){
     var v = Array.from(view.G0.childNodes.values());
     for(let x of v){
         view.G0.removeChild(x);
@@ -515,6 +527,8 @@ function clear_tool(){
     }
     view.selected_shapes = [];
 
+    actions.push(view.tool);
+    divActions.appendChild(view.tool.summaryDom());
     view.tool = null;
 }
 
@@ -584,6 +598,7 @@ export class Point extends Shape {
     pos : Vec2;
     circle : SVGCircleElement;
     bind_to: Shape|null = null;
+    initialized : boolean = false;
 
     pos_in_line: number|undefined;
     angle_in_circle: number|undefined;
@@ -606,9 +621,14 @@ export class Point extends Shape {
         this.set_pos();
     
         view.G2.appendChild(this.circle);
+
+        this.initialized = true;
     }
 
     serialize() : string {
+        console.assert(! pointMap.has(this.action_id));
+        pointMap.set(this.action_id, this);
+
         var obj = Object.assign({}, this);
 
         delete obj.handles;
@@ -675,10 +695,7 @@ export class Point extends Shape {
             line.adjust(this);
         }
 
-        actions.push(this);
-        divActions.appendChild(this.summaryDom());
-
-        clear_tool();
+        finish_tool();
     }
 
     set_pos(){
@@ -777,11 +794,34 @@ class LineSegment extends Shape {
 
     constructor(){
         super();
+    }
+
+    init(){
         this.line = document.createElementNS("http://www.w3.org/2000/svg","line");
         this.line.setAttribute("stroke", "navy");
         this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
 
         view.G0.appendChild(this.line);
+    }
+
+    restore(){
+        for(let p of this.handles){
+            if(! p.initialized){
+
+                p.init();
+            }
+            p.shape_listeners.push(this);
+        }
+
+        this.process_event(this.handles);
+    }
+
+    serialize() : string {
+        return `
+type_name: ${this.typeName()}
+action_id: ${this.action_id}
+handles: ${handles_str(this.handles)}
+`;
     }
 
     get color(){
@@ -901,7 +941,7 @@ class LineSegment extends Shape {
             this.line.style.cursor = "move";
             this.set_vecs();
 
-            clear_tool();
+            finish_tool();
         }    
 
     }
@@ -1039,7 +1079,7 @@ class Rect extends Shape {
 
                 line1.line.style.cursor = "move";
                 
-                var handle3 = new Point(p3);
+                var handle3 = initPoint(p3);
                 this.handles.push(handle3);
             }
 
@@ -1058,7 +1098,7 @@ class Rect extends Shape {
                 line2.add_handle(this.handles[2], false);
                 line2.line.style.cursor = "move";
 
-                var handle4 = new Point(p4);
+                var handle4 = initPoint(p4);
                 this.handles.push(handle4);
 
                 line3.add_handle(this.handles[2], false);
@@ -1139,7 +1179,7 @@ class Rect extends Shape {
                 console.assert(line.handles.length == 2);
                 line.set_vecs();
             }
-            clear_tool();
+            finish_tool();
         }    
     }
 
@@ -1241,7 +1281,7 @@ class Circle extends Shape {
             this.set_radius(pt);
             this.circle.style.cursor = "move";
     
-            clear_tool();
+            finish_tool();
         }
     }
 
@@ -1293,7 +1333,7 @@ class Triangle extends Shape {
             line.add_handle(handle1);
             line.line.style.cursor = "move";
 
-            clear_tool();
+            finish_tool();
         }
 
         this.lines.push(line);
@@ -1330,7 +1370,7 @@ class TextBox extends Shape {
         MathJax.Hub.Queue([TextBox.ontypeset, TextBox.text_box]);
     }
 
-    static init(){
+    static initDialog(){
         TextBox.dialog = document.getElementById('text-box-dlg') as HTMLDialogElement;
         (document.getElementById("text-box-ok") as HTMLInputElement).addEventListener("click", TextBox.ok_click);
     }
@@ -1364,7 +1404,7 @@ class TextBox extends Shape {
         document.body.appendChild(this.div);
 
         TextBox.dialog.showModal();
-        clear_tool();
+        finish_tool();
     }
 }
 
@@ -1394,9 +1434,9 @@ class Midpoint extends Shape {
 
         if(this.handles.length == 2){
 
-            this.midpoint = new Point( this.calc_midpoint() );
+            this.midpoint = initPoint( this.calc_midpoint() );
 
-            clear_tool();
+            finish_tool();
         }
     }
 }
@@ -1442,7 +1482,7 @@ class Perpendicular extends Shape {
 
             this.line.shape_listeners.push(this);
 
-            this.foot = new Point( calc_foot_of_perpendicular(this.handles[0].pos, this.line!) );
+            this.foot = initPoint( calc_foot_of_perpendicular(this.handles[0].pos, this.line!) );
 
             this.perpendicular = new LineSegment();
             this.perpendicular.line.style.cursor = "move";
@@ -1452,7 +1492,7 @@ class Perpendicular extends Shape {
             this.perpendicular.set_vecs();
             this.perpendicular.update_pos();
 
-            clear_tool();
+            finish_tool();
         }
     }
 }
@@ -1502,14 +1542,14 @@ class ParallelLine extends Shape {
             this.line2 = new LineSegment();
             this.line2.line.style.cursor = "move";
 
-            this.line2.add_handle(new Point(new Vec2(0,0)));
-            this.line2.add_handle(new Point(new Vec2(0,0)));
+            this.line2.add_handle(initPoint(new Vec2(0,0)));
+            this.line2.add_handle(initPoint(new Vec2(0,0)));
             this.calc_parallel_line();
             for(let handle of this.line2.handles){
                 handle.set_pos();
             }
 
-            clear_tool();
+            finish_tool();
         }
     }
 }
@@ -1543,14 +1583,14 @@ class Intersection extends Shape {
             else{
 
                 var v = lines_intersection(this.lines[0], this.lines[1]);
-                this.intersection = new Point(v);
+                this.intersection = initPoint(v);
 
                 for(let line2 of this.lines){
 
                     line2.shape_listeners.push(this);
                 }
 
-                clear_tool();
+                finish_tool();
             }
         }
     }
@@ -1623,7 +1663,7 @@ class Angle extends Shape {
     }
 
 
-    static init(){
+    static initDialog(){
         angle_dlg = document.getElementById('angle-dlg') as HTMLDialogElement;
         angle_dlg_ok = document.getElementById('angle-dlg-ok') as HTMLInputElement;
         angle_dlg_color = document.getElementById('angle-dlg-color') as HTMLInputElement;
@@ -1680,7 +1720,7 @@ class Angle extends Shape {
                     line2.shape_listeners.push(this);
                 }
 
-                clear_tool();
+                finish_tool();
             }
         }
     }
@@ -1794,7 +1834,7 @@ class Label extends Shape {
 
         this.text.setAttribute("x", "" + this.handles[0].pos.x);
         this.text.setAttribute("y", "" + this.handles[0].pos.y);
-        clear_tool();
+        finish_tool();
     }
 }
 
@@ -1837,8 +1877,8 @@ export class Image extends Shape {
             this.image.setAttribute("x", `${x}`);
             this.image.setAttribute("y", `${y}`);
     
-            this.add_handle(new Point(new Vec2(x, y)));
-            this.add_handle(new Point(new Vec2(x + w, y + h)));
+            this.add_handle(initPoint(new Vec2(x, y)));
+            this.add_handle(initPoint(new Vec2(x + w, y + h)));
         });
     }
     
@@ -1915,6 +1955,7 @@ function svg_click(ev: MouseEvent){
     if(view.tool == null){
         view.tool = make_tool_by_type(view.tool_type)!;
         console.assert(view.tool.typeName() == view.tool_type);
+        view.tool.init();
     }
 
     if(view.tool != null){
@@ -1949,14 +1990,53 @@ export function addShape(){
 export function init_draw(){
     tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
 
-    TextBox.init();
+    TextBox.initDialog();
 
     var tool_types = document.getElementsByName("tool-type");
     for(let x of tool_types){
         x.addEventListener("click", setToolType);
     }
 
-    Angle.init();
+    Angle.initDialog();
 }
 
+function setHandles(shape: Shape, obj: any){
+    for(let data of obj.handles){
+        var pt;
+        if(data.ref != undefined){
+            pt = pointMap.get(data.ref);
+            console.assert(pt != undefined);
+        }
+        else{
+
+            pt = new Point(new Vec2(data.x, data.y));
+        }
+        shape.handles.push(pt)
+    }
+}
+
+export function deserializeShapes(obj:any) : Action {
+    switch(obj["type_name"]){
+    case View.name:
+        return new View(obj);
+
+    case Point.name:
+        var pt = new Point(new Vec2(obj.pos.x, obj.pos.y));
+        pt.action_id = obj.action_id;
+
+        console.assert(!pointMap.has(pt.action_id));
+        pointMap.set(pt.action_id, pt);
+        return pt;
+
+    case LineSegment.name:
+        var line = new LineSegment();
+        line.action_id = obj.action_id;
+
+        setHandles(line, obj);
+        return line;
+
+    default:
+        return null;
+    }
+}
 }

@@ -49,6 +49,7 @@ export function openActionData(action_text: string){
     divActions.innerHTML = "";
     for(let act of actions){
         act.init();
+        act.restore();
         divActions.appendChild(act.summaryDom());
     }
 

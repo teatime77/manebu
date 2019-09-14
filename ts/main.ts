@@ -267,6 +267,8 @@ export class Action {
     init(){        
     }
 
+    restore(){}
+
     enable(){
     }
 
@@ -287,8 +289,7 @@ export class Action {
     }
 
     summary() : string {
-        console.assert(false);
-        return "";
+        return this.typeName();
     }
 
     summaryDom() : HTMLSpanElement {
