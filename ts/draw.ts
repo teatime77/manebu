@@ -24,6 +24,7 @@ function initLineSegment(){
 }
 
 export class View extends Action {
+    div : HTMLDivElement;
     svg : SVGSVGElement;
     defs : SVGDefsElement;
     gridBg : SVGRectElement;
@@ -54,14 +55,18 @@ export class View extends Action {
 
         view = this;     
 
+        this.div = document.createElement("div");
+        this.div.style.width = obj.width;
+        this.div.style.height = obj.height;
+        this.div.style.position = "relative";
+        this.div.style.borderStyle = "ridge";
+        this.div.style.borderWidth = "3px";
+
         this.svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
 
         this.svg.style.width = obj.width;
         this.svg.style.height = obj.height;
-        // background-color:wheat; border-style: ridge; border-width: 3px;
         this.svg.style.backgroundColor = "wheat";
-        this.svg.style.borderStyle = "ridge";
-        this.svg.style.borderWidth = "3px";
     
         // viewBox="-10 -10 20 20"
         this.svg.setAttribute("viewBox", obj.viewBox);
@@ -69,9 +74,9 @@ export class View extends Action {
         this.svg.setAttribute("preserveAspectRatio", "none");
     }
 
-    init(){   
-
-        divMath.appendChild(this.svg);
+    init(){
+        divMath.appendChild(this.div);
+        this.div.appendChild(this.svg);
 
         this.CTM = this.svg.getCTM()!;
         this.CTMInv = this.CTM.inverse();
@@ -126,6 +131,7 @@ viewBox: ${tostr(this.svg.getAttribute("viewBox"))}
     }
 
     set width(value: string){
+        this.div.style.width = value;
         this.svg.style.width = value;
     }
 
@@ -134,6 +140,7 @@ viewBox: ${tostr(this.svg.getAttribute("viewBox"))}
     }
 
     set height(value: string){
+        this.div.style.height = value;
         this.svg.style.height = value;
     }
 
@@ -1426,6 +1433,7 @@ handles: ${handles_str(handles)}
 class TextBox extends Shape {
     static dialog : HTMLDialogElement;
     static text_box : TextBox;    
+    text: string;
     rect   : SVGRectElement;
     div : HTMLDivElement | null = null;
     clicked_pos : Vec2|null = null;
@@ -1435,12 +1443,13 @@ class TextBox extends Shape {
         self.rect.setAttribute("width", `${to_svg(rc.width)}`);
 
         var h = to_svg(rc.height);
-        self.rect.setAttribute("y", `${self.clicked_pos!.y - h}`);
+        self.rect.setAttribute("y", `${self.clicked_pos!.y}`);
         self.rect.setAttribute("height", `${h}`);
     }
 
     static ok_click(){
         var text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
+        TextBox.text_box.text = text;
         TextBox.text_box.div!.innerHTML = make_html_lines(text);
         TextBox.dialog.close();
         MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
@@ -1456,6 +1465,13 @@ class TextBox extends Shape {
         super();
         TextBox.text_box = this;
         this.rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    }
+
+    serialize() : string {
+        return `
+${super.serialize()}
+clicked_pos: ${JSON.stringify(this.clicked_pos)}
+text: ${tostr(this.text)}`;
     }
 
     click =(ev: MouseEvent, pt:Vec2) : void =>{
@@ -1475,10 +1491,10 @@ class TextBox extends Shape {
 
         this.div = document.createElement("div");
         this.div.style.position = "absolute";
-        this.div.style.left  = `${ev.pageX}px`;
-        this.div.style.top   = `${ev.pageY}px`;
+        this.div.style.left  = `${ev.offsetX}px`;
+        this.div.style.top   = `${ev.offsetY}px`;
         this.div.style.backgroundColor = "cornsilk"
-        document.body.appendChild(this.div);
+        view.div.appendChild(this.div);
 
         TextBox.dialog.showModal();
         finish_tool();
