@@ -1,6 +1,6 @@
 namespace manebu{
 export var padding = 10;
-const endMark = "🔚";
+const endMark = "😀";
 export var pointMap : Map<number, Point>;
 
 export function array_last<T>(arr:T[]) : T{
@@ -14,8 +14,6 @@ export function array_remove<T>(arr:T[], x:T) {
         arr.splice(index, 1);
     }
 }
-
-
 
 function get_indent(line: string) : [number, string]{
     var indent = 0;
@@ -109,7 +107,7 @@ export function tostr(text: string){
         return JSON.stringify(text);
     }
     else{
-        return `${endMark}\n${text}${endMark}`;
+        return `${endMark}${text}${endMark}`;
     }
 }
 
@@ -134,59 +132,43 @@ export function handles_str(handles : Point[]){
 export function serializeActions() : string {
     pointMap = new Map<number, Point>();
 
-    return actions.map(x => x.serialize()).join('\n');
+    var texts = [];
+    for(let [i,x] of actions.entries()){
+        var s1 = x.serialize();
+        texts.push(s1);
+
+        JSON.parse(reviseJson(s1));
+    }
+
+    return "[" + texts.join('\n,\n') + "]";
+}
+
+export function reviseJson(text:string){
+    var ret = "";
+
+    var el = endMark.length;
+    while(true){
+        var k1 = text.indexOf(endMark);
+        if(k1 == -1){
+            return ret + text;
+        }
+
+        var k2 = text.indexOf(endMark, k1 + el);
+        console.assert(k2 != -1);
+
+        ret += text.substring(0, k1) + JSON.stringify(text.substring(k1 + el, k2));
+        text = text.substring(k2 + el);
+    }
 }
 
 export function deserializeActions(text: string){
+    var objs = JSON.parse(reviseJson(text));
+
     pointMap = new Map<number, Point>();
 
     actions = [];
 
-    var lines = text.split('\n');
-    while(lines.length != 0){
-        // 空行をスキップする。
-        for(; lines.length != 0 && lines[0].trim() == ""; lines.shift());
-        if(lines.length == 0){
-            break;
-        }
-
-        var line = lines.shift();
-        var obj;
-        if(line.startsWith("json:")){
-            obj = JSON.parse(line.substring(5).trim());
-        }
-        else{
-            console.assert(line.startsWith("type_name:"));
-
-            obj = {};
-            obj["type_name"] = line.substring(10).trim();
-
-            while(lines.length != 0){
-                line = lines.shift().trim();
-                if(line == ""){
-                    break;
-                }
-                var k = line.indexOf(':');
-                console.assert(k != -1);
-
-                var name = line.substring(0, k).trim();
-                var value;
-                var mark = line.substring(k + 1).trim();
-                if(mark != endMark){
-
-                    value = JSON.parse(mark);
-                }
-                else{
-                    var last_idx = lines.findIndex(x => x.endsWith(mark));
-                    var texts = lines.splice(0, last_idx + 1);
-                    value = texts.join('\n');
-                    value = value.substring(0, value.length - mark.length);
-                }
-
-                obj[name] = value;
-            }
-        }
-
+    for(let obj of objs){
         var act = null;
 
         switch(obj["type_name"]){
@@ -213,6 +195,7 @@ export function deserializeActions(text: string){
             break;
         }
         actions.push(act);
+
     }
 }
 

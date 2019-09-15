@@ -113,13 +113,13 @@ export class View extends Action {
     }
 
     serialize() : string {
-        return `
-type_name: ${this.typeName()}
-id: ${this.id}
-width: ${tostr(this.svg.style.width)}
-height: ${tostr(this.svg.style.height)}
-viewBox: ${tostr(this.svg.getAttribute("viewBox"))}
-`;
+        return `{
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "width": ${tostr(this.svg.style.width)},
+    "height": ${tostr(this.svg.style.height)},
+    "viewBox": ${tostr(this.svg.getAttribute("viewBox"))}
+}`;
     }
 
     summary() : string {
@@ -479,11 +479,17 @@ abstract class Shape extends Action {
     handles : Point[] = [];
     shape_listeners:Shape[] = [];
 
-    serialize() : string {
+    serialize() : string{
+        console.assert(false);
+        return "";
+    }
+
+    serializeShape() : string {
         return `
-type_name: ${this.typeName()}
-id: ${this.id}
-handles: ${handles_str(this.handles)}`;
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "handles": ${handles_str(this.handles)}
+`;
     }
 
     process_event(sources: Shape[]){}
@@ -650,7 +656,7 @@ export class Point extends Shape {
         delete obj.angle_in_circle;
 
         obj["type_name"] = this.typeName();
-        return `json: ${JSON.stringify(obj)}\n`;
+        return `${JSON.stringify(obj)}\n`;
     }
 
     summary() : string {
@@ -789,6 +795,12 @@ class LineSegment extends Shape {
 
     constructor(){
         super();
+    }
+
+    serialize() : string {
+        return `{
+${this.serializeShape()}
+}`;
     }
 
     init(){
@@ -972,12 +984,12 @@ class Rect extends Shape {
     }
 
     serialize() : string {
-        return `
-type_name: ${this.typeName()}
-id: ${this.id}
-handles: ${handles_str(this.handles)}
-is_square: ${this.is_square}
-`;
+        return `{
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "handles": ${handles_str(this.handles)},
+    "is_square": ${this.is_square}
+}`;
     }
 
     set_rect_pos(pt: Vec2|null, idx: number, clicked:boolean){
@@ -1206,12 +1218,12 @@ class Circle extends Shape {
     }
 
     serialize() : string {
-        return `
-type_name: ${this.typeName()}
-id: ${this.id}
-handles: ${handles_str(this.handles)}
-by_diameter: ${this.by_diameter}
-`;
+        return `{
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "handles": ${handles_str(this.handles)},
+    "by_diameter": ${this.by_diameter}
+}`;
     }
 
     get color(){
@@ -1317,11 +1329,11 @@ class Triangle extends Shape {
         var handles = Array.from(this.lines[0].handles);
         handles.push(this.lines[1].handles[1]);
 
-        return `
-type_name: ${this.typeName()}
-id: ${this.id}
-handles: ${handles_str(handles)}
-`;
+        return `{
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "handles": ${handles_str(handles)}
+}`;
     }
 
     *restore(){
@@ -1454,11 +1466,12 @@ class TextBox extends Shape {
     }
 
     serialize() : string {
-        return `
-${super.serialize()}
-clicked_pos: ${JSON.stringify(this.clicked_pos)}
-offset_pos: ${JSON.stringify(this.offset_pos)}
-text: ${tostr(this.text)}`;
+        return `{
+${this.serializeShape()},
+    "clicked_pos": ${JSON.stringify(this.clicked_pos)},
+    "offset_pos": ${JSON.stringify(this.offset_pos)},
+    "text": ${tostr(this.text)}
+}`;
     }
 
     click =(ev: MouseEvent, pt:Vec2) : void =>{
@@ -1517,6 +1530,16 @@ class Perpendicular extends Shape {
     foot : Point | null = null;
     perpendicular : LineSegment | null = null;
     in_handle_move: boolean = false;
+
+    serialize() : string {
+        return `{
+    ${this.serializeShape()},
+    "line_id": ${this.line.id}
+}`;
+    }
+
+    *restore(){
+    }
 
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);

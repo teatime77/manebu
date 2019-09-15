@@ -331,7 +331,14 @@ export function firebase_update(){
     var text = serializeActions();
     msg(`${text}`);
 
-    writeFile(selectedFile, text);
+    msg("------------------------------------");
+    var s = reviseJson(text);
+    msg(s);
+    msg("------------------------------------");
+    var obj = JSON.parse(s);
+    msg(`${JSON.stringify(obj)}`);
+
+    // writeFile(selectedFile, text);
 }
 
 function showPopup(div: HTMLDivElement){

@@ -410,10 +410,11 @@ export class TextBlockAction extends DivAction {
     }
 
     serialize() : string {
-        return `
-type_name: ${this.typeName()}
-id: ${this.id}
-text: ${tostr(this.text)}`;
+        return `{
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "text": ${tostr(this.text)}
+}`;
     }
 
     static deserialize(obj: TextBlockAction) : TextBlockAction {
@@ -448,10 +449,11 @@ export class SpeechAction extends DivAction {
     }
 
     serialize() : string {
-        return `
-type_name: ${this.typeName()}
-id: ${this.id}
-text: ${tostr(this.text)}`;
+        return `{
+    "type_name": "${this.typeName()}",
+    "id": ${this.id},
+    "text": ${tostr(this.text)}
+}`;
     }
 
     static deserialize(obj: SpeechAction) : SpeechAction {
@@ -496,7 +498,7 @@ export class SelectionAction extends Action {
         delete obj.isTmp;
 
         obj["type_name"] = this.typeName();
-        return `json: ${JSON.stringify(obj)}\n`;
+        return `${JSON.stringify(obj)}\n`;
     }
 
     static deserialize(obj: SelectionAction) : SelectionAction {
