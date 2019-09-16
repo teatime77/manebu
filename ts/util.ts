@@ -1,7 +1,14 @@
 namespace manebu{
+declare var MathJax:any;
 export var padding = 10;
 const endMark = "😀";
-export var pointMap : Map<number, Point>;
+export var actionMap : Map<number, Action>;
+var isPlaying: boolean = false;
+var stopPlaying: boolean = false;
+
+function ltrim(stringToTrim) {
+	return stringToTrim.replace(/^\s+/,"");
+}
 
 export function array_last<T>(arr:T[]) : T{
     console.assert(arr.length != 0);
@@ -112,25 +119,129 @@ export function tostr(text: string){
 }
 
 export function handles_str(handles : Point[]){
-    var texts = []
+    return `[ ${handles.map(x => x.serialize()).join(", ")} ]`;
+}
 
-    for(let p of handles){
-        if(pointMap.has(p.id)){
+function objToStr(obj: any, nest: number){
+    var t1 = " ".repeat(4 * nest);
+    var t2 = " ".repeat(4 * (nest + 1));
 
-            texts.push( `{ "ref":${p.id} }` );
+    if(Array.isArray(obj)){
+        return `${t1}[\n` + (obj as any[]).map(x => objToStr(x, nest + 1)).join(`,\n`) + `\n${t1}]`;
+    }
+
+    if(typeof obj == "object"){
+
+        if(obj.ref != undefined){
+            
+            return `${t1}{ "ref": ${obj.ref} }`;
         }
-        else{
 
-            pointMap.set(p.id, p);
-            texts.push( `{ "x":${p.pos.x}, "y":${p.pos.y} }` );
+        if(obj.type_name == Point.name){
+            
+            return `${t1}{ "type_name": "${obj.type_name}", "id": ${obj.id}, "pos": { "type_name": "${Vec2.name}", "x": ${obj.pos.x}, "y": ${obj.pos.y} } }`;
+        }
+
+        if(obj.constructor.name == Vec2.name){
+            
+            return `${t1}{ "type_name": "${Vec2.name}", "x": ${obj.x}, "y": ${obj.y} }`;
+        }
+
+        if(obj.type_name == "TextBox"){
+            msg(``);
+        }
+
+        var lines = [];
+        for (let [key, value] of Object.entries(obj)){
+            lines.push(`${t2}"${key}": ${ltrim(objToStr(value, nest + 1))}`)
+        }
+        
+        return `${t1}{\n` + lines.join(`,\n`) + `\n${t1}}`;
+    }
+
+    if(typeof obj == "string"){
+        if(obj.includes('\n')){
+            return `${endMark}${obj}${endMark}`;
         }
     }
 
-    return `[ ${texts.join(", ")} ]`;
+    return JSON.stringify(obj);
+}
+
+
+export function fromObj(obj: any){
+
+    if(Array.isArray(obj)){
+        return (obj as any[]).map(x => fromObj(x));
+    }
+
+    if(typeof obj == "object"){
+        msg(`${obj.id} ${obj.type_name}`)
+
+        var act;
+
+        if(obj.ref != undefined){
+            
+            act = actionMap.get(obj.ref);
+            console.assert(act != undefined);
+            return act;
+        }
+
+        if(obj.type_name == Vec2.name){
+            
+            return new Vec2(obj.x, obj.y);
+        }
+
+        switch(obj["type_name"]){
+        case TextBlockAction.name:
+            act = new TextBlockAction(obj.text);
+            break;
+        case SpeechAction.name:
+            act = new SpeechAction(obj.text);
+            break;
+        case SelectionAction.name:
+            act = new SelectionAction(obj.block_id, obj.dom_type, obj.start_path, obj.end_path);
+            break;
+        case UnselectionAction.name:
+            act = new UnselectionAction();
+            break;
+
+        case EndAction.name:
+        case ShapeAction.name:
+            console.assert(false);
+
+        default:
+            act = deserializeShapes(obj);
+            console.assert(act != null);
+            break;
+        }
+
+        for (let [key, value] of Object.entries(obj)){
+            act[key] = fromObj(value);
+        }
+
+        console.assert(!actionMap.has(act.id));
+        actionMap.set(act.id, act);
+
+        return act;
+    }
+
+    return obj;
 }
 
 export function serializeActions() : string {
-    pointMap = new Map<number, Point>();
+    for(let [i,x] of all_actions.entries()){
+        x.id = i;
+    }
+    actionMap = new Map<number, Action>();
+
+    var action_objs = actions.map(x => x.toObj());
+
+    return objToStr(action_objs, 0);
+}
+
+export function serializeActions2() : string {
+    actionMap = new Map<number, Action>();
 
     var texts = [];
     for(let [i,x] of actions.entries()){
@@ -162,41 +273,72 @@ export function reviseJson(text:string){
 }
 
 export function deserializeActions(text: string){
-    var objs = JSON.parse(reviseJson(text));
+    var obj = JSON.parse(reviseJson(text));
 
-    pointMap = new Map<number, Point>();
+    actionMap = new Map<number, Action>();
 
-    actions = [];
+    actions = fromObj(obj);
+}
 
-    for(let obj of objs){
-        var act = null;
 
-        switch(obj["type_name"]){
-        case TextBlockAction.name:
-            act = TextBlockAction.deserialize(obj);
-            break;
-        case SpeechAction.name:
-            act = SpeechAction.deserialize(obj);
-            break;
-        case SelectionAction.name:
-            act = SelectionAction.deserialize(obj);
-            break;
-        case UnselectionAction.name:
-            act = new UnselectionAction();
-            break;
+function* waitActions(){
+    var typeset_done = false;
+    MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    MathJax.Hub.Queue([function(){
+        typeset_done = true;
+    }]);
 
-        case EndAction.name:
-        case ShapeAction.name:
-            console.assert(false);
-
-        default:
-            act = deserializeShapes(obj);
-            console.assert(act != null);
-            break;
-        }
-        actions.push(act);
-
+    while(! typeset_done){
+        yield;
     }
+
+    divMath.scrollTop = divMath.scrollHeight;
+}
+
+export function runGenerator(gen: IterableIterator<any>){
+    isPlaying = true;
+    stopPlaying = false;
+
+    var id = setInterval(function(){
+        var ret = gen.next();
+        if(ret.done || stopPlaying){        
+
+            isPlaying = false;
+            clearInterval(id);
+            msg("停止しました。");
+        }
+    },100);
+}
+
+export function openActionData(action_text: string){
+    deserializeActions(action_text);
+
+    if(actions.length == 0){
+        ActionId = 0;
+        actions.push(new TextBlockAction(""));
+    }
+
+    ActionId = Math.max(... actions.map(x => x.id)) + 1;
+    focusedActionIdx = 0;
+
+    divMath.innerHTML = "";
+    divActions.innerHTML = "";
+
+    function* fnc(){
+        for(let act of actions){
+            act.init();
+            yield* act.restore();
+            divActions.appendChild(act.summaryDom());
+        }
+
+        yield* waitActions(); 
+
+        for(let act of actions.filter(x => x.constructor.name == "SelectionAction")){
+            (act as SelectionAction).setSelectedDoms();
+        }
+    }
+
+    runGenerator(fnc());
 }
 
 }

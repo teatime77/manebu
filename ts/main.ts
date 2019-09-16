@@ -24,6 +24,7 @@ var divMsg : HTMLDivElement = null;
 export var focusedActionIdx : number = -1;
 const IDX = 0;
 const NODE_NAME = 1;
+export var all_actions : Action[] = [];
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -253,6 +254,30 @@ export class Action {
     constructor(){
         this.id = ActionId;
         ActionId++;
+
+        all_actions.push(this);
+    }
+
+    toObj(){
+        if(actionMap.has(this.id)){
+            return { ref: this.id };
+        }
+        actionMap.set(this.id, this);
+        
+        var obj = { type_name: this.typeName(), id: this.id };
+        if(this instanceof Shape){
+
+            if(! (this instanceof Point || this instanceof View)){
+                Object.assign(obj, { handles : this.handles.map(x => x.toObj()) });
+            }
+        }
+
+        this.makeObj(obj);
+
+        return obj;
+    }
+
+    makeObj(obj){
     }
 
     serialize() : string {
@@ -354,7 +379,6 @@ export class Action {
             }
         });
     
-
         return span;
     }
 }
@@ -409,19 +433,16 @@ export class TextBlockAction extends DivAction {
         this.text = text;
     }
 
+    makeObj(obj){
+        Object.assign(obj, { text: this.text });
+    }
+
     serialize() : string {
         return `{
     "type_name": "${this.typeName()}",
     "id": ${this.id},
     "text": ${tostr(this.text)}
 }`;
-    }
-
-    static deserialize(obj: TextBlockAction) : TextBlockAction {
-        var act = new TextBlockAction(obj.text);
-        act.id = obj.id;
-
-        return act;
     }
 
     init(){        
@@ -448,19 +469,16 @@ export class SpeechAction extends DivAction {
         this.text = text;
     }
 
+    makeObj(obj){
+        Object.assign(obj, { text: this.text });
+    }
+
     serialize() : string {
         return `{
     "type_name": "${this.typeName()}",
     "id": ${this.id},
     "text": ${tostr(this.text)}
 }`;
-    }
-
-    static deserialize(obj: SpeechAction) : SpeechAction {
-        var act = new SpeechAction(obj.text);
-        act.id = obj.id;
-
-        return act;
     }
 
     init(){        
@@ -492,6 +510,15 @@ export class SelectionAction extends Action {
         this.end_path   = end_path;
     }
 
+    makeObj(obj){
+        Object.assign(obj, {
+            block_id: this.block_id ,
+            dom_type: this.dom_type ,
+            start_path: this.start_path,
+            end_path: this.end_path 
+        });
+    }
+
     serialize() : string {
         var obj = Object.assign({}, this);
         delete obj.selectedDoms;
@@ -499,13 +526,6 @@ export class SelectionAction extends Action {
 
         obj["type_name"] = this.typeName();
         return `${JSON.stringify(obj)}\n`;
-    }
-
-    static deserialize(obj: SelectionAction) : SelectionAction {
-        var act = new SelectionAction(obj.block_id, obj.dom_type, obj.start_path, obj.end_path);
-        act.id = obj.id;
-
-        return act;
     }
 
     init(){
