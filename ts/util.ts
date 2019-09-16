@@ -293,6 +293,8 @@ export function runGenerator(gen: IterableIterator<any>){
 }
 
 export function openActionData(action_text: string){
+    divMath.innerHTML = "";
+
     deserializeActions(action_text);
 
     if(actions.length == 0){
@@ -303,7 +305,6 @@ export function openActionData(action_text: string){
     ActionId = Math.max(... actions.map(x => x.id)) + 1;
     focusedActionIdx = 0;
 
-    divMath.innerHTML = "";
     divActions.innerHTML = "";
 
     function* fnc(){

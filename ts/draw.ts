@@ -72,9 +72,7 @@ export class View extends Action {
         this.svg.setAttribute("viewBox", obj._viewBox);
 
         this.svg.setAttribute("preserveAspectRatio", "none");
-    }
-
-    init(){
+        //---------- 
         divMath.appendChild(this.div);
         this.div.appendChild(this.svg);
 
@@ -501,15 +499,6 @@ export abstract class Shape extends Action {
         view.shapes.set(this.id, this);
     }
 
-    init(){
-        for(let p of this.handles){
-            if(! p.initialized){
-
-                p.init();
-            }
-        }
-    }
-
     initChildren(children:Shape[]){
         for(let x of children){
             if(x != null){
@@ -623,7 +612,6 @@ export class Point extends Shape {
     pos : Vec2;
     circle : SVGCircleElement;
     bind_to: Shape|null = null;
-    initialized : boolean = false;
 
     pos_in_line: number|undefined;
     angle_in_circle: number|undefined;
@@ -631,13 +619,7 @@ export class Point extends Shape {
     constructor(pt:Vec2){
         super();
         this.pos = pt;
-    }
-
-    init(){
-        if(this.initialized){
-            return;
-        }
-
+        //---------- 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("r", `${to_svg(5)}`);
         this.circle.setAttribute("fill", "blue");
@@ -650,8 +632,6 @@ export class Point extends Shape {
         this.set_pos();
     
         view.G2.appendChild(this.circle);
-
-        this.initialized = true;
     }
 
     makeObj(obj){
@@ -794,6 +774,12 @@ class LineSegment extends Shape {
 
     constructor(){
         super();
+        //---------- 
+        this.line = document.createElementNS("http://www.w3.org/2000/svg","line");
+        this.line.setAttribute("stroke", "navy");
+        this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
+
+        view.G0.appendChild(this.line);
     }
 
     init(){
@@ -802,13 +788,9 @@ class LineSegment extends Shape {
         for(let p of this.handles){
             p.shape_listeners.push(this);
         }
+    }
 
-        this.line = document.createElementNS("http://www.w3.org/2000/svg","line");
-        this.line.setAttribute("stroke", "navy");
-        this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
-
-        view.G0.appendChild(this.line);
-
+    *restore(){
         this.update_pos();
     }
 
@@ -954,8 +936,13 @@ class Rect extends Shape {
 
         this.handles.slice(0, 3).forEach(x => x.shape_listeners.push(this));
 
+        this.lines.forEach(x => x.init());
+    }
+
+    *restore(){
         for(let line of this.lines){
-            line.init();
+
+            yield* line.restore();
         }
     }
 
@@ -1166,11 +1153,7 @@ class Circle extends Shape {
         super();
 
         this.by_diameter = by_diameter;
-    }
-
-    init(){
-        super.init();
-
+        //---------- 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("fill", "none");// "transparent");
         this.circle.setAttribute("stroke", "navy");
@@ -1178,6 +1161,11 @@ class Circle extends Shape {
         this.circle.setAttribute("fill-opacity", "0");
         
         view.G0.appendChild(this.circle);    
+    }
+
+    init(){
+        super.init();
+
     }
 
     *restore(){
@@ -1385,9 +1373,7 @@ class TextBox extends Shape {
     constructor(){
         super();
         TextBox.text_box = this;
-    }
-
-    init(){
+        //---------- 
         this.rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
         this.rect.setAttribute("width", `${to_svg(1)}`);
         this.rect.setAttribute("height", `${to_svg(1)}`);
@@ -1498,6 +1484,10 @@ class Perpendicular extends Shape {
         super.init();
         this.initChildren([this.line, this.foot, this.perpendicular]);
     }
+
+    *restore(){
+        yield* this.perpendicular.restore();
+    }
     
     makeObj(obj){
         Object.assign(obj, {
@@ -1560,6 +1550,23 @@ class ParallelLine extends Shape {
     line1 : LineSegment | null = null;
     line2 : LineSegment | null = null;
     point : Point|null = null;
+
+    init(){
+        super.init();
+        this.initChildren([this.line1, this.line2, this.point]);
+    }
+
+    *restore(){
+        yield* this.line2.restore();
+    }
+    
+    makeObj(obj){
+        Object.assign(obj, {
+            line1: this.line1.toObj(),
+            line2: this.line2.toObj(),
+            point: this.point.toObj()
+        });
+    }
 
     calc_parallel_line(){
         var p1 = this.point!.pos.add(this.line1!.e.mul(infinity));
@@ -2089,6 +2096,9 @@ export function deserializeShapes(obj:any) : Action {
 
     case Perpendicular.name:
         return new Perpendicular();
+
+    case ParallelLine.name:
+        return new ParallelLine();
 
     default:
         return null;

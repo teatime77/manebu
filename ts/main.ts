@@ -394,14 +394,14 @@ class DivAction extends Action {
     }
 
     makeTextDiv(text: string) : HTMLDivElement {
-        var idx = actions.indexOf(this);
-        console.assert(idx != -1);
-
         var next_ele = null;
-        for(let act of actions.slice(idx + 1)){
-            if(act instanceof DivAction){
-                next_ele = act.div;
-                break;
+        if(focusedActionIdx != -1){
+
+            for(let act of actions.slice(focusedActionIdx + 1)){
+                if(act instanceof DivAction){
+                    next_ele = act.div;
+                    break;
+                }
             }
         }
         var div = document.createElement("div");
@@ -426,13 +426,7 @@ export class TextBlockAction extends DivAction {
     constructor(text: string){
         super();
         this.text = text;
-    }
-
-    makeObj(obj){
-        Object.assign(obj, { text: this.text });
-    }
-
-    init(){        
+        //---------- 
         msg(`append text block[${this.text}]`);
     
         this.div = this.makeTextDiv(this.text);
@@ -445,6 +439,10 @@ export class TextBlockAction extends DivAction {
         }, false);        
     }
 
+    makeObj(obj){
+        Object.assign(obj, { text: this.text });
+    }
+
     summary() : string {
         return `t ${this.id} ${this.text.split('\n').filter(x => x.trim() != "$$").join(' ').substring(0, 10)}`;
     }
@@ -454,14 +452,12 @@ export class SpeechAction extends DivAction {
     constructor(text: string){
         super();
         this.text = text;
+        //---------- 
+        this.div = this.makeTextDiv(this.text);
     }
 
     makeObj(obj){
         Object.assign(obj, { text: this.text });
-    }
-
-    init(){        
-        this.div = this.makeTextDiv(this.text);
     }
 
     *play(){
