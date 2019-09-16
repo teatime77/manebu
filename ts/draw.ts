@@ -1943,10 +1943,13 @@ class Label extends Shape {
 
 
 export class Image extends Shape {
+    fileName: string;
     image: SVGImageElement;
 
-    constructor(arg: string){
+    constructor(file_name: string){
         super();
+
+        this.fileName = file_name;
 
         this.image = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
         if(view.flipY){
@@ -1954,11 +1957,29 @@ export class Image extends Shape {
             this.image.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
         this.image.setAttribute("preserveAspectRatio", "none");
-        setSvgImg(this.image, arg);
+        setSvgImg(this.image, file_name);
 
         view.G0.appendChild(this.image);
     
         this.image.addEventListener("load", (ev:Event) => {
+            if(this.handles.length != 0){
+                // this.process_event(this.handles);
+
+                var x1 = this.handles[0].pos.x;
+                var y1 = this.handles[0].pos.y;
+                var x2 = this.handles[1].pos.x;
+                var y2 = this.handles[1].pos.y;
+                
+                this.image.setAttribute("x", `${x1}`);
+                this.image.setAttribute("y", `${y1}`);
+
+                var w = x2 - x1;
+                var h = y2 - y1;
+                this.image.setAttribute("width", `${w}`);
+                this.image.setAttribute("height", `${h}`);
+                    
+                return;
+            }
             var rc = this.image.getBoundingClientRect();
             msg(`img loaded w:${rc.width} h:${rc.height}`);
     
@@ -1984,7 +2005,10 @@ export class Image extends Shape {
             this.add_handle(initPoint(new Vec2(x + w, y + h)));
         });
     }
-    
+
+    makeObj(obj){
+        Object.assign(obj, { fileName: this.fileName });
+    }
 
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
@@ -2143,6 +2167,9 @@ export function deserializeShapes(obj:any) : Action {
 
     case Label.name:
         return new Label(obj.text);
+
+    case Image.name:
+        return new Image(obj.fileName);
 
     default:
         return null;

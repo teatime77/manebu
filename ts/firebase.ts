@@ -438,10 +438,8 @@ function uploadFile(file: File){
             dropZone.style.display = "none";            
         });
 
-        var act = new ImgAction(file.name);
+        var act = new Image(file.name);
         actions.push(act);
-
-        act.init();
     });    
 }
 
