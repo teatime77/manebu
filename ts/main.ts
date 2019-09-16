@@ -280,11 +280,6 @@ export class Action {
     makeObj(obj){
     }
 
-    serialize() : string {
-        console.assert(false);
-        return "";
-    }
-
     typeName(){
         return this.constructor.name;
     }
@@ -437,14 +432,6 @@ export class TextBlockAction extends DivAction {
         Object.assign(obj, { text: this.text });
     }
 
-    serialize() : string {
-        return `{
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "text": ${tostr(this.text)}
-}`;
-    }
-
     init(){        
         msg(`append text block[${this.text}]`);
     
@@ -471,14 +458,6 @@ export class SpeechAction extends DivAction {
 
     makeObj(obj){
         Object.assign(obj, { text: this.text });
-    }
-
-    serialize() : string {
-        return `{
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "text": ${tostr(this.text)}
-}`;
     }
 
     init(){        
@@ -517,15 +496,6 @@ export class SelectionAction extends Action {
             start_path: this.start_path,
             end_path: this.end_path 
         });
-    }
-
-    serialize() : string {
-        var obj = Object.assign({}, this);
-        delete obj.selectedDoms;
-        delete obj.isTmp;
-
-        obj["type_name"] = this.typeName();
-        return `${JSON.stringify(obj)}\n`;
     }
 
     init(){

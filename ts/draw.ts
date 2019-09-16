@@ -120,16 +120,6 @@ export class View extends Action {
         });
     }
 
-    serialize() : string {
-        return `{
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "width": ${tostr(this.svg.style.width)},
-    "height": ${tostr(this.svg.style.height)},
-    "viewBox": ${tostr(this.svg.getAttribute("viewBox"))}
-}`;
-    }
-
     summary() : string {
         return "view";
     }
@@ -498,19 +488,6 @@ export abstract class Shape extends Action {
     handles : Point[] = [];
     shape_listeners:Shape[] = [];
 
-    serialize() : string{
-        console.assert(false);
-        return "";
-    }
-
-    serializeShape() : string {
-        return `
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "handles": ${handles_str(this.handles)}
-`;
-    }
-
     process_event(sources: Shape[]){}
 
     select(selected: boolean){}
@@ -522,6 +499,23 @@ export abstract class Shape extends Action {
         super();
 
         view.shapes.set(this.id, this);
+    }
+
+    init(){
+        for(let p of this.handles){
+            if(! p.initialized){
+
+                p.init();
+            }
+        }
+    }
+
+    initChildren(children:Shape[]){
+        for(let x of children){
+            if(x != null){
+                x.init();
+            }
+        }
     }
 
     add_handle(handle: Point, use_this_handle_move: boolean = true){
@@ -664,14 +658,6 @@ export class Point extends Shape {
         Object.assign(obj, { pos: this.pos });
     }
 
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
-        }
-
-        return `{ "type_name": "${this.typeName()}", "id": ${this.id}, "pos": ${JSON.stringify(this.pos)} }`;
-    }
-
     summary() : string {
         return "点";
     }
@@ -810,34 +796,20 @@ class LineSegment extends Shape {
         super();
     }
 
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
+    init(){
+        super.init();
+
+        for(let p of this.handles){
+            p.shape_listeners.push(this);
         }
 
-        return `{
-${this.serializeShape()}
-}`;
-    }
-
-    init(){
         this.line = document.createElementNS("http://www.w3.org/2000/svg","line");
         this.line.setAttribute("stroke", "navy");
         this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
 
         view.G0.appendChild(this.line);
-    }
 
-    *restore(){
-        for(let p of this.handles){
-            if(! p.initialized){
-
-                p.init();
-            }
-            p.shape_listeners.push(this);
-        }
-
-        this.process_event(this.handles);
+        this.update_pos();
     }
 
     get color(){
@@ -977,26 +949,13 @@ class Rect extends Shape {
         this.is_square = is_square;
     }
 
-    *restore(){
-        for(let [i,p] of this.handles.entries()){
-            if(! p.initialized){
+    init(){
+        super.init();
 
-                p.init();
-            }
-            if(i != 3){
+        this.handles.slice(0, 3).forEach(x => x.shape_listeners.push(this));
 
-                p.shape_listeners.push(this);
-            }
-        }
-
-        for(var i = 0; i < 4; i++){
-
-            var line = initLineSegment();
-            this.lines.push(line);
-
-            line.add_handle(this.handles[i], false);
-            line.add_handle(this.handles[(i+1) % 4], false);
-            line.update_pos();
+        for(let line of this.lines){
+            line.init();
         }
     }
 
@@ -1005,19 +964,6 @@ class Rect extends Shape {
             is_square: this.is_square,
             lines: this.lines.map(x => x.toObj())
         });
-    }
-
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
-        }
-
-        return `{
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "handles": ${handles_str(this.handles)},
-    "is_square": ${this.is_square}
-}`;
     }
 
     set_rect_pos(pt: Vec2|null, idx: number, clicked:boolean){
@@ -1223,6 +1169,7 @@ class Circle extends Shape {
     }
 
     init(){
+        super.init();
 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("fill", "none");// "transparent");
@@ -1235,10 +1182,6 @@ class Circle extends Shape {
 
     *restore(){
         for(let p of this.handles){
-            if(! p.initialized){
-
-                p.init();
-            }
             p.shape_listeners.push(this);
         }
 
@@ -1247,19 +1190,6 @@ class Circle extends Shape {
 
     makeObj(obj){
         Object.assign(obj, { by_diameter: this.by_diameter });
-    }
-
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
-        }
-
-        return `{
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "handles": ${handles_str(this.handles)},
-    "by_diameter": ${this.by_diameter}
-}`;
     }
 
     get color(){
@@ -1363,21 +1293,6 @@ class Triangle extends Shape {
 
     makeObj(obj){
         Object.assign(obj, { lines: this.lines.map(x => x.toObj()) });
-    }
-
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
-        }
-
-        var handles = Array.from(this.lines[0].handles);
-        handles.push(this.lines[1].handles[1]);
-
-        return `{
-    "type_name": "${this.typeName()}",
-    "id": ${this.id},
-    "handles": ${handles_str(handles)}
-}`;
     }
 
     init(){
@@ -1499,7 +1414,7 @@ class TextBox extends Shape {
 
         MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
         MathJax.Hub.Queue([TextBox.ontypeset, this]);
-
+        
         while(! this.typeset_done){
             yield;
         }
@@ -1511,19 +1426,6 @@ class TextBox extends Shape {
             clicked_pos: this.clicked_pos,
             offset_pos: this.offset_pos
         });
-    }
-
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
-        }
-
-        return `{
-${this.serializeShape()},
-    "clicked_pos": ${JSON.stringify(this.clicked_pos)},
-    "offset_pos": ${JSON.stringify(this.offset_pos)},
-    "text": ${tostr(this.text)}
-}`;
     }
 
     click =(ev: MouseEvent, pt:Vec2) : void =>{
@@ -1545,6 +1447,15 @@ ${this.serializeShape()},
 
 class Midpoint extends Shape {
     midpoint : Point | null = null;
+
+    init(){
+        super.init();
+        this.initChildren([this.midpoint]);
+    }
+
+    makeObj(obj){
+        Object.assign(obj, { midpoint: this.midpoint.toObj() });
+    }
 
     calc_midpoint(){
         var p1 = this.handles[0].pos;
@@ -1583,22 +1494,17 @@ class Perpendicular extends Shape {
     perpendicular : LineSegment | null = null;
     in_handle_move: boolean = false;
 
+    init(){
+        super.init();
+        this.initChildren([this.line, this.foot, this.perpendicular]);
+    }
+    
     makeObj(obj){
-        Object.assign(obj, { });
-    }
-
-    serialize() : string {
-        if(actionMap.has(this.id)){
-            return `{ "ref": ${this.id} }`;
-        }
-
-        return `{
-    ${this.serializeShape()},
-    "line_id": ${this.line.id}
-}`;
-    }
-
-    *restore(){
+        Object.assign(obj, {
+            line: this.line.toObj(),
+            foot: this.foot.toObj(),
+            perpendicular: this.perpendicular.toObj()
+        });
     }
 
     make_event_graph(src:Shape|null){
@@ -2131,9 +2037,9 @@ function svg_pointermove(ev: PointerEvent){
 
 export function addShape(){
     var obj = {
-        "width" : "500px",
-        "height" : "500px",
-        "viewBox" : "-10 -10 20 20",
+        "_width" : "500px",
+        "_height" : "500px",
+        "_viewBox" : "-10 -10 20 20",
     };   
 
     var view1 = new View(obj);
@@ -2153,26 +2059,6 @@ export function init_draw(){
     }
 
     Angle.initDialog();
-}
-
-function setHandles(shape: Shape, obj: any){
-    for(let data of obj.handles){
-        var pt;
-        if(data.ref != undefined){
-            pt = actionMap.get(data.ref);
-            console.assert(pt != undefined);
-        }
-        else{
-
-            pt = new Point(new Vec2(data.pos.x, data.pos.y));
-        }
-        shape.handles.push(pt)
-    }
-}
-
-function loadShape(shape: Shape, obj: any){
-    shape.id = obj.id;
-    setHandles(shape, obj);
 }
 
 export function deserializeShapes(obj:any) : Action {
@@ -2197,6 +2083,12 @@ export function deserializeShapes(obj:any) : Action {
 
     case TextBox.name:
         return new TextBox();
+
+    case Midpoint.name:
+        return new Midpoint();
+
+    case Perpendicular.name:
+        return new Perpendicular();
 
     default:
         return null;

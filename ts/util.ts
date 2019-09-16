@@ -118,10 +118,6 @@ export function tostr(text: string){
     }
 }
 
-export function handles_str(handles : Point[]){
-    return `[ ${handles.map(x => x.serialize()).join(", ")} ]`;
-}
-
 function objToStr(obj: any, nest: number){
     var t1 = " ".repeat(4 * nest);
     var t2 = " ".repeat(4 * (nest + 1));
@@ -238,20 +234,6 @@ export function serializeActions() : string {
     var action_objs = actions.map(x => x.toObj());
 
     return objToStr(action_objs, 0);
-}
-
-export function serializeActions2() : string {
-    actionMap = new Map<number, Action>();
-
-    var texts = [];
-    for(let [i,x] of actions.entries()){
-        var s1 = x.serialize();
-        texts.push(s1);
-
-        JSON.parse(reviseJson(s1));
-    }
-
-    return "[" + texts.join('\n,\n') + "]";
 }
 
 export function reviseJson(text:string){

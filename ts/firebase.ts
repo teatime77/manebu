@@ -338,7 +338,7 @@ export function firebase_update(){
     var obj = JSON.parse(s);
     msg(`${JSON.stringify(obj)}`);
 
-    // writeFile(selectedFile, text);
+    writeFile(selectedFile, text);
 }
 
 function showPopup(div: HTMLDivElement){
