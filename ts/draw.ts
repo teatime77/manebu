@@ -479,10 +479,8 @@ class EventQueue {
 }
 
 export abstract class Shape extends Action {
-    handles : Point[] = [];
-    listeners:Shape[] = [];
-
     process_event(sources: Shape[]){}
+    listeners:Shape[] = [];
 
     select(selected: boolean){}
 
@@ -504,13 +502,21 @@ export abstract class Shape extends Action {
         }
     }
 
-    initChildren(children:Shape[]){
-        for(let x of children){
-            if(x != null){
-                x.init();
-            }
+    bind(pt: Point){
+        this.listeners.push(pt);
+        pt.bind_to = this;
+    }
+
+    make_event_graph(src:Shape|null){
+        for(let shape of this.listeners){
+            
+            view.event_queue.add_event_make_event_graph(shape, this);
         }
     }
+}
+
+export abstract class CompositeShape extends Shape {
+    handles : Point[] = [];
 
     add_handle(handle: Point, use_this_handle_move: boolean = true){
 
@@ -521,15 +527,11 @@ export abstract class Shape extends Action {
         this.handles.push(handle);
     }
 
-    bind(pt: Point){
-        this.listeners.push(pt);
-        pt.bind_to = this;
-    }
-
-    make_event_graph(src:Shape|null){
-        for(let shape of this.listeners){
-            
-            view.event_queue.add_event_make_event_graph(shape, this);
+    initChildren(children:Shape[]){
+        for(let x of children){
+            if(x != null){
+                x.init();
+            }
         }
     }
 }
@@ -604,11 +606,9 @@ function calc_foot_of_perpendicular(pos:Vec2, line: LineSegment) : Vec2 {
 
 export class Point extends Shape {
     pos : Vec2;
-    bind_to: Shape|null = null;
-    circle : SVGCircleElement;
+    bind_to: Shape|undefined;
 
-    pos_in_line: number|undefined;
-    angle_in_circle: number|undefined;
+    circle : SVGCircleElement;
 
     constructor(pt:Vec2){
         super();
@@ -631,6 +631,9 @@ export class Point extends Shape {
     makeObj(obj){
         super.makeObj(obj);
         Object.assign(obj, { pos: this.pos });
+        if(this.bind_to != undefined){
+            obj.bind_to = { ref: this.bind_to.id };
+        }
     }
 
     summary() : string {
@@ -693,13 +696,16 @@ export class Point extends Shape {
 
     private dragPoint(ev: PointerEvent){
         this.pos = get_svg_point(ev, this);
-        if(this.bind_to != null){
+        if(this.bind_to != undefined){
 
             if(this.bind_to instanceof LineSegment){
                     (this.bind_to as LineSegment).adjust(this);
             }
-            else if(this.bind_to.constructor.name == "Circle"){
+            else if(this.bind_to instanceof Circle){
                 (this.bind_to as Circle).adjust(this);
+            }
+            else{
+                console.assert(false);
             }
         }
         else{
@@ -709,12 +715,12 @@ export class Point extends Shape {
     }
 
     process_event =(sources: Shape[])=>{
-        if(this.bind_to != null){
+        if(this.bind_to != undefined){
 
             if(this.bind_to instanceof LineSegment){
                     (this.bind_to as LineSegment).adjust(this);
             }
-            else if(this.bind_to.constructor.name == "Circle"){
+            else if(this.bind_to instanceof Circle){
                 (this.bind_to as Circle).adjust(this);
             }
         }
@@ -759,7 +765,7 @@ export class Point extends Shape {
     }
 }
 
-class LineSegment extends Shape {    
+class LineSegment extends CompositeShape {    
     line : SVGLineElement;
     p1: Vec2 = new Vec2(0,0);
     p2: Vec2 = new Vec2(0,0);
@@ -897,18 +903,20 @@ class LineSegment extends Shape {
     }
 
     adjust(handle: Point) {
+        var pos_in_line;
+
         if(this.len == 0){
-            handle.pos_in_line = 0;
+            pos_in_line = 0;
         }
         else{
-            handle.pos_in_line = this.e.dot(handle.pos.sub(this.p1)) / this.len;
+            pos_in_line = this.e.dot(handle.pos.sub(this.p1)) / this.len;
         }
-        handle.pos = this.p1.add(this.p12.mul(handle.pos_in_line));
+        handle.pos = this.p1.add(this.p12.mul(pos_in_line));
         handle.set_pos();
     }
 }
 
-class Rect extends Shape {
+class Rect extends CompositeShape {
     is_square: boolean;
     lines : Array<LineSegment> = [];
     h : number = -1;
@@ -935,6 +943,7 @@ class Rect extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             is_square: this.is_square,
             lines: this.lines.map(x => x.toObj())
@@ -1131,7 +1140,7 @@ class Rect extends Shape {
     }
 }
 
-class Circle extends Shape {
+class Circle extends CompositeShape {
     circle: SVGCircleElement;
     center: Vec2|null = null;
     radius: number = to_svg(1);
@@ -1165,6 +1174,7 @@ class Circle extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, { by_diameter: this.by_diameter });
     }
 
@@ -1258,16 +1268,16 @@ class Circle extends Shape {
         var theta = Math.atan2(v.y, v.x);
 
         handle.pos = new Vec2(this.center!.x + this.radius * Math.cos(theta), this.center!.y + this.radius * Math.sin(theta));
-        handle.angle_in_circle = theta;
 
         handle.set_pos();
     }
 }
 
-class Triangle extends Shape {
+class Triangle extends CompositeShape {
     lines : Array<LineSegment> = [];
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, { lines: this.lines.map(x => x.toObj()) });
     }
 
@@ -1319,7 +1329,7 @@ class Triangle extends Shape {
     }
 }
 
-class TextBox extends Shape {
+class TextBox extends CompositeShape {
     static dialog : HTMLDialogElement;
     static text_box : TextBox;    
     text: string;
@@ -1395,6 +1405,7 @@ class TextBox extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             text: this.text,
             clicked_pos: this.clicked_pos,
@@ -1419,7 +1430,7 @@ class TextBox extends Shape {
     }
 }
 
-class Midpoint extends Shape {
+class Midpoint extends CompositeShape {
     midpoint : Point | null = null;
 
     init(){
@@ -1428,6 +1439,7 @@ class Midpoint extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, { midpoint: this.midpoint.toObj() });
     }
 
@@ -1462,7 +1474,7 @@ class Midpoint extends Shape {
 }
 
 
-class Perpendicular extends Shape {
+class Perpendicular extends CompositeShape {
     line : LineSegment | null = null;
     foot : Point | null = null;
     perpendicular : LineSegment | null = null;
@@ -1478,6 +1490,7 @@ class Perpendicular extends Shape {
     }
     
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             line: this.line.toObj(),
             foot: this.foot.toObj(),
@@ -1534,7 +1547,7 @@ class Perpendicular extends Shape {
     }
 }
 
-class ParallelLine extends Shape {
+class ParallelLine extends CompositeShape {
     line1 : LineSegment | null = null;
     line2 : LineSegment | null = null;
     point : Point|null = null;
@@ -1551,6 +1564,7 @@ class ParallelLine extends Shape {
     }
     
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             line1: this.line1.toObj(),
             line2: this.line2.toObj(),
@@ -1610,12 +1624,13 @@ class ParallelLine extends Shape {
     }
 }
 
-class Intersection extends Shape {
+class Intersection extends CompositeShape {
     lines : LineSegment[] = [];
     intersection : Point|null = null;
 
     
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             lines: this.lines.map(x => x.toObj()),
             intersection: this.intersection.toObj()
@@ -1663,9 +1678,10 @@ class Intersection extends Shape {
     }
 }
 
-class Angle extends Shape {
+class Angle extends CompositeShape {
     lines : LineSegment[] = [];
     ts : number[] = [];
+
     arc: SVGPathElement|null = null;
 
     static current: Angle;
@@ -1688,6 +1704,7 @@ class Angle extends Shape {
     }
     
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             lines: this.lines.map(x => x.toObj()),
             ts: Array.from(this.ts)
@@ -1885,8 +1902,9 @@ function showProperty(obj: any){
 }
 
 
-class Label extends Shape {
+class Label extends CompositeShape {
     text: string;
+
     svg_text: SVGTextElement;
 
     constructor(text: string){
@@ -1912,6 +1930,7 @@ class Label extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, {
             text: this.text
         });
@@ -1933,8 +1952,9 @@ class Label extends Shape {
 }
 
 
-export class Image extends Shape {
+export class Image extends CompositeShape {
     fileName: string;
+
     image: SVGImageElement;
 
     constructor(file_name: string){
@@ -1998,6 +2018,7 @@ export class Image extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, { fileName: this.fileName });
     }
 

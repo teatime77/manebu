@@ -265,11 +265,9 @@ export class Action {
         actionMap.set(this.id, this);
         
         var obj = { type_name: this.typeName(), id: this.id };
-        if(this instanceof Shape){
-
-            if(! (this instanceof Point || this instanceof View)){
-                Object.assign(obj, { handles : this.handles.map(x => x.toObj()) });
-            }
+        
+        if(this instanceof CompositeShape){
+            Object.assign(obj, { handles : this.handles.map(x => x.toObj()) });
         }
 
         this.makeObj(obj);

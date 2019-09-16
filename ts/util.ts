@@ -134,7 +134,7 @@ function objToStr(obj: any, nest: number){
             return `${t1}{ "ref": ${obj.ref} }`;
         }
 
-        if(obj.type_name == Point.name && obj.listeners == undefined){
+        if(obj.type_name == Point.name && obj.listeners == undefined && obj.bind_to == undefined){
 
             return `${t1}{ "type_name": "${obj.type_name}", "id": ${obj.id}, "pos": { "type_name": "${Vec2.name}", "x": ${obj.pos.x}, "y": ${obj.pos.y} } }`;
         }
