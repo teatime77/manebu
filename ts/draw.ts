@@ -1552,8 +1552,7 @@ class ParallelLine extends Shape {
     point : Point|null = null;
 
     init(){
-        super.init();
-        this.initChildren([this.line1, this.line2, this.point]);
+        this.line2.init();
     }
 
     *restore(){
@@ -1623,6 +1622,14 @@ class ParallelLine extends Shape {
 class Intersection extends Shape {
     lines : LineSegment[] = [];
     intersection : Point|null = null;
+
+    
+    makeObj(obj){
+        Object.assign(obj, {
+            lines: this.lines.map(x => x.toObj()),
+            intersection: this.intersection.toObj()
+        });
+    }
 
     make_event_graph(src:Shape|null){
         super.make_event_graph(src);
@@ -2099,6 +2106,9 @@ export function deserializeShapes(obj:any) : Action {
 
     case ParallelLine.name:
         return new ParallelLine();
+
+    case Intersection.name:
+        return new Intersection();
 
     default:
         return null;
