@@ -1679,6 +1679,30 @@ class Angle extends Shape {
 
     static current: Angle;
 
+    constructor(){
+        super();
+        this.arc = document.createElementNS("http://www.w3.org/2000/svg","path");
+
+        this.arc.setAttribute("fill", "none");
+        this.arc.setAttribute("stroke", "red");
+        this.arc.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
+        this.arc.addEventListener("click", this.arc_click);
+        this.arc.style.cursor = "pointer";
+
+        view.G0.appendChild(this.arc);
+    }
+
+    *restore(){
+        this.draw_arc();
+    }
+    
+    makeObj(obj){
+        Object.assign(obj, {
+            lines: this.lines.map(x => x.toObj()),
+            ts: Array.from(this.ts)
+        });
+    }
+
     get color(){
         return this.arc.getAttribute("stroke");
     }
@@ -1776,18 +1800,9 @@ class Angle extends Shape {
                 line.select(true);
             }
             else{
-                this.arc = document.createElementNS("http://www.w3.org/2000/svg","path");
-
-                this.arc.setAttribute("fill", "none");
-                this.arc.setAttribute("stroke", "red");
-                this.arc.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
-                this.arc.addEventListener("click", this.arc_click);
-                this.arc.style.cursor = "pointer";
 
                 this.draw_arc();
         
-                view.G0.appendChild(this.arc);
-
                 for(let line2 of this.lines){
 
                     line2.shape_listeners.push(this);
@@ -2109,6 +2124,9 @@ export function deserializeShapes(obj:any) : Action {
 
     case Intersection.name:
         return new Intersection();
+
+    case Angle.name:
+        return new Angle();
 
     default:
         return null;
