@@ -1838,7 +1838,7 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
         case "Intersection":  return new Intersection();
         case "Angle":         return new Angle();
         case "TextBox":      return new TextBox();
-        case "Label":           return new Label();
+        case "Label":           return new Label("こんにちは");
     } 
 }
 
@@ -1895,35 +1895,48 @@ function showProperty(obj: any){
 
 
 class Label extends Shape {
-    text: SVGTextElement;
+    text: string;
+    svg_text: SVGTextElement;
 
-    constructor(){
+    constructor(text: string){
         super();
 
-        this.text = document.createElementNS("http://www.w3.org/2000/svg","text");
+        this.text = text;
+
+        this.svg_text = document.createElementNS("http://www.w3.org/2000/svg","text");
         if(view.flipY){
             
-            this.text.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
+            this.svg_text.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
-        this.text.setAttribute("stroke", "navy");
-        this.text.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
-        this.text.textContent = "こんにちは";
-        this.text.style.fontSize = "1";
+        this.svg_text.setAttribute("stroke", "navy");
+        this.svg_text.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
+        this.svg_text.textContent = text;
+        this.svg_text.style.fontSize = "1";
 
-        view.G0.appendChild(this.text);
+        view.G0.appendChild(this.svg_text);
+    }
+
+    *restore(){
+        this.process_event([this.handles[0]]);
+    }
+
+    makeObj(obj){
+        Object.assign(obj, {
+            text: this.text
+        });
     }
 
     process_event =(sources: Shape[])=>{
         console.assert(sources.length == 1 && sources[0] == this.handles[0]);
-        this.text.setAttribute("x", "" + this.handles[0].pos.x);
-        this.text.setAttribute("y", "" + this.handles[0].pos.y);
+        this.svg_text.setAttribute("x", "" + this.handles[0].pos.x);
+        this.svg_text.setAttribute("y", "" + this.handles[0].pos.y);
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
         this.add_handle(click_handle(ev, pt));
 
-        this.text.setAttribute("x", "" + this.handles[0].pos.x);
-        this.text.setAttribute("y", "" + this.handles[0].pos.y);
+        this.svg_text.setAttribute("x", "" + this.handles[0].pos.x);
+        this.svg_text.setAttribute("y", "" + this.handles[0].pos.y);
         finish_tool();
     }
 }
@@ -2127,6 +2140,9 @@ export function deserializeShapes(obj:any) : Action {
 
     case Angle.name:
         return new Angle();
+
+    case Label.name:
+        return new Label(obj.text);
 
     default:
         return null;
