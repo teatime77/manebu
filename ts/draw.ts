@@ -265,10 +265,6 @@ export class Vec2 {
     x: number;
     y: number;
 
-    static fromObj(obj:any): Vec2 {
-        return new Vec2(obj.x, obj.y);
-    }
-
     constructor(x:number, y: number){
         this.x = x;
         this.y = y;
@@ -484,7 +480,7 @@ class EventQueue {
 
 export abstract class Shape extends Action {
     handles : Point[] = [];
-    shape_listeners:Shape[] = [];
+    listeners:Shape[] = [];
 
     process_event(sources: Shape[]){}
 
@@ -499,6 +495,15 @@ export abstract class Shape extends Action {
         view.shapes.set(this.id, this);
     }
 
+    makeObj(obj){
+        if(this.listeners.length != 0){
+
+            Object.assign(obj, {
+                listeners: this.listeners.map(x => ({ref:x.id}))
+            });
+        }
+    }
+
     initChildren(children:Shape[]){
         for(let x of children){
             if(x != null){
@@ -511,18 +516,18 @@ export abstract class Shape extends Action {
 
         if(use_this_handle_move){
 
-            handle.shape_listeners.push(this);
+            handle.listeners.push(this);
         }
         this.handles.push(handle);
     }
 
     bind(pt: Point){
-        this.shape_listeners.push(pt);
+        this.listeners.push(pt);
         pt.bind_to = this;
     }
 
     make_event_graph(src:Shape|null){
-        for(let shape of this.shape_listeners){
+        for(let shape of this.listeners){
             
             view.event_queue.add_event_make_event_graph(shape, this);
         }
@@ -597,21 +602,10 @@ function calc_foot_of_perpendicular(pos:Vec2, line: LineSegment) : Vec2 {
     return foot;
 }
 
-class SvgAction extends Action {
-    svg: SVGSVGElement;
-
-    constructor(){
-        super();
-    }
-
-    init(){
-    }
-}
-
 export class Point extends Shape {
     pos : Vec2;
-    circle : SVGCircleElement;
     bind_to: Shape|null = null;
+    circle : SVGCircleElement;
 
     pos_in_line: number|undefined;
     angle_in_circle: number|undefined;
@@ -635,6 +629,7 @@ export class Point extends Shape {
     }
 
     makeObj(obj){
+        super.makeObj(obj);
         Object.assign(obj, { pos: this.pos });
     }
 
@@ -782,15 +777,8 @@ class LineSegment extends Shape {
         view.G0.appendChild(this.line);
     }
 
-    init(){
-        super.init();
-
-        for(let p of this.handles){
-            p.shape_listeners.push(this);
-        }
-    }
-
     *restore(){
+        this.line.style.cursor = "move";
         this.update_pos();
     }
 
@@ -934,7 +922,7 @@ class Rect extends Shape {
     init(){
         super.init();
 
-        this.handles.slice(0, 3).forEach(x => x.shape_listeners.push(this));
+        this.handles.slice(0, 3).forEach(x => x.listeners.push(this));
 
         this.lines.forEach(x => x.init());
     }
@@ -1170,7 +1158,7 @@ class Circle extends Shape {
 
     *restore(){
         for(let p of this.handles){
-            p.shape_listeners.push(this);
+            p.listeners.push(this);
         }
 
         this.process_event(this.handles);
@@ -1529,7 +1517,7 @@ class Perpendicular extends Shape {
                 return;
             }
 
-            this.line.shape_listeners.push(this);
+            this.line.listeners.push(this);
 
             this.foot = initPoint( calc_foot_of_perpendicular(this.handles[0].pos, this.line!) );
 
@@ -1552,7 +1540,10 @@ class ParallelLine extends Shape {
     point : Point|null = null;
 
     init(){
-        this.line2.init();
+        if(this.line2 != null){
+
+            this.line2.init();
+        }
     }
 
     *restore(){
@@ -1593,7 +1584,7 @@ class ParallelLine extends Shape {
             }
 
             this.line1.select(true);
-            this.line1.shape_listeners.push(this);
+            this.line1.listeners.push(this);
         }
         else {
 
@@ -1602,7 +1593,7 @@ class ParallelLine extends Shape {
                 return;
             }
 
-            this.point.shape_listeners.push(this);
+            this.point.listeners.push(this);
 
             this.line2 = initLineSegment();
             this.line2.line.style.cursor = "move";
@@ -1660,7 +1651,7 @@ class Intersection extends Shape {
 
                 for(let line2 of this.lines){
 
-                    line2.shape_listeners.push(this);
+                    line2.listeners.push(this);
                 }
 
                 finish_tool();
@@ -1805,7 +1796,7 @@ class Angle extends Shape {
         
                 for(let line2 of this.lines){
 
-                    line2.shape_listeners.push(this);
+                    line2.listeners.push(this);
                 }
 
                 finish_tool();
@@ -1969,7 +1960,7 @@ export class Image extends Shape {
                 var y1 = this.handles[0].pos.y;
                 var x2 = this.handles[1].pos.x;
                 var y2 = this.handles[1].pos.y;
-                
+
                 this.image.setAttribute("x", `${x1}`);
                 this.image.setAttribute("y", `${y1}`);
 

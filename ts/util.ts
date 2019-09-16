@@ -3,6 +3,7 @@ declare var MathJax:any;
 export var padding = 10;
 const endMark = "😀";
 export var actionMap : Map<number, Action>;
+var pendingRefs : any[];
 var isPlaying: boolean = false;
 var stopPlaying: boolean = false;
 
@@ -133,8 +134,8 @@ function objToStr(obj: any, nest: number){
             return `${t1}{ "ref": ${obj.ref} }`;
         }
 
-        if(obj.type_name == Point.name){
-            
+        if(obj.type_name == Point.name && obj.listeners == undefined){
+
             return `${t1}{ "type_name": "${obj.type_name}", "id": ${obj.id}, "pos": { "type_name": "${Vec2.name}", "x": ${obj.pos.x}, "y": ${obj.pos.y} } }`;
         }
 
@@ -165,10 +166,15 @@ function objToStr(obj: any, nest: number){
 }
 
 
-export function fromObj(obj: any){
-
+export function fromObj(parent:any, key:any, obj: any){
     if(Array.isArray(obj)){
-        return (obj as any[]).map(x => fromObj(x));
+
+        var v = [];
+        for(let [i, x] of (obj as any[]).entries()){
+            v.push( fromObj(v, i, x) );
+        }
+
+        return v;
     }
 
     if(typeof obj == "object"){
@@ -178,9 +184,14 @@ export function fromObj(obj: any){
 
         if(obj.ref != undefined){
             
-            act = actionMap.get(obj.ref);
-            console.assert(act != undefined);
-            return act;
+            if(actionMap.has(obj.ref)){
+                return actionMap.get(obj.ref);
+            }
+            else{
+                
+                pendingRefs.push({ parent:parent, key:key, ref: obj.ref });
+                return obj;
+            }
         }
 
         if(obj.type_name == Vec2.name){
@@ -213,7 +224,7 @@ export function fromObj(obj: any){
         }
 
         for (let [key, value] of Object.entries(obj)){
-            act[key] = fromObj(value);
+            act[key] = fromObj(obj, key, value);
         }
 
         console.assert(!actionMap.has(act.id));
@@ -258,8 +269,15 @@ export function deserializeActions(text: string){
     var obj = JSON.parse(reviseJson(text));
 
     actionMap = new Map<number, Action>();
+    pendingRefs = [];
+    actions = fromObj(null,null, obj);
 
-    actions = fromObj(obj);
+    for(let pending of pendingRefs){
+        console.assert(actionMap.has(pending.ref));
+
+        var act = actionMap.get(pending.ref);
+        pending.parent[pending.key] = act;
+    }
 }
 
 
