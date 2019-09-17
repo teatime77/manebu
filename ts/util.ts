@@ -43,7 +43,7 @@ function tab(indent: number){
     return " ".repeat(4 * indent);
 }
 
-export function make_html_lines(text: string){
+export function makeHtmlLines(text: string){
     const lines = text.split('\n');
     const html_lines = [];            
 
@@ -236,7 +236,7 @@ export function fromObj(parent:any, key:any, obj: any){
 }
 
 export function serializeActions() : string {
-    for(let [i,x] of all_actions.entries()){
+    for(let [i,x] of allActions.entries()){
         x.id = i;
     }
     actionMap = new Map<number, Action>();

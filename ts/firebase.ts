@@ -219,7 +219,7 @@ function readFileTree(user_uid: string){
     });
 }
 
-export function firebase_init(){
+export function initFirebase(){
     firebase.auth().onAuthStateChanged(function(user: any) {
         login_uid = null;
         guest_uid = default_uid;

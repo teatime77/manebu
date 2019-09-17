@@ -23,7 +23,7 @@ function setVoice(){
     });
 }
 
-export function init_speech(){
+export function initSpeech(){
     if ('speechSynthesis' in window) {
         msg("このブラウザは音声合成に対応しています。🎉");
     }

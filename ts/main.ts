@@ -24,7 +24,7 @@ let divMsg : HTMLDivElement = null;
 export let focusedActionIdx : number = -1;
 const IDX = 0;
 const NODE_NAME = 1;
-export let all_actions : Action[] = [];
+export let allActions : Action[] = [];
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -42,8 +42,8 @@ export function msg(text: string){
     }
 }
 
-export function getBlockId(block_id: number) : string {
-    return `manebu-id-${block_id}`;
+export function getBlockId(blockId: number) : string {
+    return `manebu-id-${blockId}`;
 }
 
 export function getActionId(id: string) : number {
@@ -86,15 +86,15 @@ function getJaxIndex(node){
 }
 
 function getJaxesInBlock(div: HTMLDivElement) : JaxNode[]{
-    const all_jaxes = (MathJax.Hub.getAllJax() as ElementJax[]).map(x => x.root);
+    const allJaxes = (MathJax.Hub.getAllJax() as ElementJax[]).map(x => x.root);
 
-    const all_doms = all_jaxes.map(x => getDomFromJax(x));
+    const allDoms = allJaxes.map(x => getDomFromJax(x));
 
-    const doms_in_span = all_doms.filter(x => getDomAncestors(x).includes(div) );
+    const domsInSpan = allDoms.filter(x => getDomAncestors(x).includes(div) );
 
-    const jaxes_in_span = doms_in_span.map(x => all_jaxes[all_doms.indexOf(x)]);
+    const jaxesInSpan = domsInSpan.map(x => allJaxes[allDoms.indexOf(x)]);
 
-    return jaxes_in_span;
+    return jaxesInSpan;
 }
 
 function makeDomJaxMap(jaxes: JaxNode[]) : [Map<HTMLElement, JaxNode>, Map<JaxNode, HTMLElement>]{
@@ -112,15 +112,15 @@ function makeDomJaxMap(jaxes: JaxNode[]) : [Map<HTMLElement, JaxNode>, Map<JaxNo
     return [dom2jax, jax2dom];
 }
 
-function getJaxPath(jax_idx: number, jax_list:JaxNode[], max_nest: number) : any[]{
+function getJaxPath(jaxIdx: number, jaxList:JaxNode[], maxNest: number) : any[]{
     const path : any[] = [];
 
-    let parent = jax_list[0];
+    let parent = jaxList[0];
 
-    path.push([jax_idx, parent.nodeName]);
+    path.push([jaxIdx, parent.nodeName]);
 
-    for(let nest = 1; nest <= max_nest; nest++){
-        let jax = jax_list[nest];
+    for(let nest = 1; nest <= maxNest; nest++){
+        let jax = jaxList[nest];
         let idx = parent.childNodes.indexOf(jax);
         console.assert(idx != -1);
         path.push([ idx, jax.nodeName]);
@@ -142,7 +142,7 @@ function getJaxFromPath(jaxes:JaxNode[], path:any[]) : JaxNode {
     return node;
 }
 
-function onclick_block(div: HTMLDivElement, ev:MouseEvent){
+function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
     msg("clicked");
 
     if(tmpSelection != null){
@@ -152,28 +152,28 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
 
     ev.stopPropagation();
 
-    let mjx_math = null;
+    let mjxMath = null;
     for(let ele = ev.srcElement as HTMLElement;; ele = ele.parentNode as HTMLElement){
 
         if(ele.tagName != "SPAN"){
             break;
         }
         if(ele.className == "mjx-math"){
-            mjx_math = ele;
+            mjxMath = ele;
             break;
         }
     }
-    if(mjx_math == null){
+    if(mjxMath == null){
         return;
     }
 
     const jaxes = getJaxesInBlock(div);
     const [dom2jax, jax2dom] = makeDomJaxMap(jaxes);
 
-    function check_path(text: string, path:any[], node_sv: JaxNode){
+    function checkPath(text: string, path:any[], node2: JaxNode){
         msg(`${text}: ${path.map(x => `${x[IDX]}:${x[NODE_NAME]}`).join(',')}`);
         const node = getJaxFromPath(jaxes, path);
-        console.assert(node == node_sv);
+        console.assert(node == node2);
     }
 
     const sel = window.getSelection();
@@ -184,53 +184,53 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
 
         msg(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
 
-        const st_a = getDomAncestors(rng.startContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
-        let jax_idx;
-        for(jax_idx = 0; jax_idx < jaxes.length; jax_idx++){
-            if(jaxes[jax_idx] == st_a[0]){
+        const stAncs = getDomAncestors(rng.startContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
+        let jaxIdx;
+        for(jaxIdx = 0; jaxIdx < jaxes.length; jaxIdx++){
+            if(jaxes[jaxIdx] == stAncs[0]){
                 break;
             }
         }
 
-        msg(`all jax: ${jax_idx}`);
+        msg(`all jax: ${jaxIdx}`);
 
         if(rng.startContainer == rng.endContainer){
 
-            if(st_a.length != 0){
+            if(stAncs.length != 0){
 
-                const start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
-                check_path("path", start_path, last(st_a));
+                const startPath = getJaxPath(jaxIdx, stAncs, stAncs.length - 1);
+                checkPath("path", startPath, last(stAncs));
 
-                tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, null);
+                tmpSelection = new SelectionAction(getActionId(div.id), "math", startPath, null);
             }
         }
         else{
 
-            const ed_a = getDomAncestors(rng.endContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
+            const edAncs = getDomAncestors(rng.endContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
 
-            for(let nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
-                if(st_a[nest] != ed_a[nest]){
+            for(let nest = 0; nest < Math.min(stAncs.length, edAncs.length); nest++){
+                if(stAncs[nest] != edAncs[nest]){
 
                     console.assert(nest != 0);
 
-                    let parent_jax = st_a[nest - 1];
+                    let parentJax = stAncs[nest - 1];
 
-                    if(parent_jax.nodeName == "msubsup"){
+                    if(parentJax.nodeName == "msubsup"){
 
-                        let start_path = getJaxPath(jax_idx, st_a, nest - 1);
-                        check_path("path", start_path, parent_jax);
+                        let startPath = getJaxPath(jaxIdx, stAncs, nest - 1);
+                        checkPath("path", startPath, parentJax);
 
-                        tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, null);
+                        tmpSelection = new SelectionAction(getActionId(div.id), "math", startPath, null);
                     }
                     else{
 
-                        let start_path = getJaxPath(jax_idx, st_a, nest);
-                        let end_path   = getJaxPath(jax_idx, ed_a, nest);
+                        let startPath = getJaxPath(jaxIdx, stAncs, nest);
+                        let endPath   = getJaxPath(jaxIdx, edAncs, nest);
 
-                        check_path("path1", start_path, st_a[nest]);
-                        check_path("path2", end_path  , ed_a[nest]);
+                        checkPath("path1", startPath, stAncs[nest]);
+                        checkPath("path2", endPath  , edAncs[nest]);
 
-                        tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, end_path);
+                        tmpSelection = new SelectionAction(getActionId(div.id), "math", startPath, endPath);
                     }
                     break;
                 }
@@ -254,7 +254,7 @@ export class Action {
         this.id = ActionId;
         ActionId++;
 
-        all_actions.push(this);
+        allActions.push(this);
     }
 
     toObj(){
@@ -351,9 +351,9 @@ export class Action {
                 }
             }
             else{
-                const min_idx = Math.min(idx, focusedActionIdx);
-                const max_idx = Math.max(idx, focusedActionIdx);
-                for(let i = min_idx; i <= max_idx; i++){
+                const minIdx = Math.min(idx, focusedActionIdx);
+                const maxIdx = Math.max(idx, focusedActionIdx);
+                for(let i = minIdx; i <= maxIdx; i++){
                     actions[i].setEnable(i <= idx);
                 }
             }
@@ -391,12 +391,12 @@ class DivAction extends Action {
     }
 
     makeTextDiv(text: string) : HTMLDivElement {
-        let next_ele = null;
+        let nextEle = null;
         if(focusedActionIdx != -1){
 
             for(let act of actions.slice(focusedActionIdx + 1)){
                 if(act instanceof DivAction){
-                    next_ele = act.div;
+                    nextEle = act.div;
                     break;
                 }
             }
@@ -407,11 +407,11 @@ class DivAction extends Action {
         div.id = getBlockId(this.id);
         div.title = div.id
     
-        divMath.insertBefore(div, next_ele);
+        divMath.insertBefore(div, nextEle);
     
         div.tabIndex = 0;
     
-        const html = make_html_lines(text);
+        const html = makeHtmlLines(text);
         div.innerHTML = html;
         reprocessMathJax(html);
     
@@ -428,7 +428,7 @@ export class TextBlockAction extends DivAction {
     
         this.div = this.makeTextDiv(this.text);
         this.div.addEventListener("click", function(ev:MouseEvent){
-            onclick_block(this, ev);
+            onclickBlock(this, ev);
         });
     
         this.div.addEventListener('keydown', (event) => {
@@ -474,12 +474,12 @@ export class SelectionAction extends Action {
     selectedDoms : HTMLElement[];
     isTmp: boolean = false;
 
-    constructor(block_id: number, dom_type:string, start_path:any[], end_path:any[] | null){
+    constructor(blockId: number, domType:string, startPath:any[], endPath:any[] | null){
         super();
-        this.block_id = block_id;
-        this.dom_type = dom_type;
-        this.start_path = start_path;
-        this.end_path   = end_path;
+        this.block_id = blockId;
+        this.dom_type = domType;
+        this.start_path = startPath;
+        this.end_path   = endPath;
     }
 
     makeObj(obj){
@@ -533,27 +533,27 @@ export class SelectionAction extends Action {
         const div = document.getElementById(getBlockId(this.block_id)) as HTMLDivElement;
         const jaxes = getJaxesInBlock(div);
     
-        const start_jax = getJaxFromPath(jaxes, this.start_path);
-        const st_i = last(this.start_path)[IDX];
+        const startJax = getJaxFromPath(jaxes, this.start_path);
+        const startIdx = last(this.start_path)[IDX];
     
-        const parent_jax = start_jax.parent;
-        console.assert(getJaxIndex(start_jax) == st_i);
-        console.assert(start_jax.nodeName == last(this.start_path)[NODE_NAME])
+        const parentJax = startJax.parent;
+        console.assert(getJaxIndex(startJax) == startIdx);
+        console.assert(startJax.nodeName == last(this.start_path)[NODE_NAME])
     
         if(this.end_path == null){
     
-            this.selectedDoms.push(getDomFromJax(start_jax));
+            this.selectedDoms.push(getDomFromJax(startJax));
         }
         else{
     
-            const end_jax = getJaxFromPath(jaxes, this.end_path);
+            const endJax = getJaxFromPath(jaxes, this.end_path);
     
-            const ed_i = last(this.end_path)[IDX];
+            const endIdx = last(this.end_path)[IDX];
     
-            console.assert(getJaxIndex(end_jax) == ed_i);
-            console.assert(end_jax.nodeName == last(this.end_path)[NODE_NAME])
+            console.assert(getJaxIndex(endJax) == endIdx);
+            console.assert(endJax.nodeName == last(this.end_path)[NODE_NAME])
         
-            const nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
+            const nodes = parentJax.childNodes.slice(startIdx, endIdx + 1);
             for(let nd of nodes){
     
                 if(nd != null){
@@ -602,14 +602,14 @@ export class EndAction extends Action {
 
     *play(){
 
-        const del_ele = document.getElementById(getBlockId(this.id));
+        const delEle = document.getElementById(getBlockId(this.id));
         if(inEditor){
 
-            del_ele.style.backgroundColor = "gainsboro";
+            delEle.style.backgroundColor = "gainsboro";
         }
         else{
 
-            del_ele.style.display = "none";
+            delEle.style.display = "none";
         }
 
     }
@@ -623,9 +623,9 @@ export class ImgAction extends Action {
     image: Image;
     file_name: string;
 
-    constructor(file_name: string){
+    constructor(fileName: string){
         super();
-        this.file_name = file_name;
+        this.file_name = fileName;
     }
 
     init(){
@@ -659,14 +659,14 @@ export class ShapeAction extends Action {
 function addAction(act: Action){
     actions.splice(focusedActionIdx + 1, 0, act);
             
-    const next_ele = divActions.children[focusedActionIdx].nextElementSibling;
-    if(next_ele == null){
+    const nextEle = divActions.children[focusedActionIdx].nextElementSibling;
+    if(nextEle == null){
 
         divActions.appendChild(act.summaryDom());
     }
     else{
 
-        divActions.insertBefore(act.summaryDom(), next_ele);
+        divActions.insertBefore(act.summaryDom(), nextEle);
     }
 }
 
@@ -691,7 +691,7 @@ function reprocessMathJax(html: string){
 function updateFocusedTextBlock(){
     const act = actions[focusedActionIdx] as TextBlockAction;
 
-    const html = make_html_lines(textMath.value);
+    const html = makeHtmlLines(textMath.value);
     act.div.innerHTML = html;
     act.text = textMath.value;
 
@@ -701,27 +701,27 @@ function updateFocusedTextBlock(){
 }
 
 function monitorTextMath(){
-    let timer_id = -1;
+    let timerId = -1;
 
     textMath.addEventListener("focus", function(){
         console.assert(0 <= focusedActionIdx && focusedActionIdx < actions.length && actions[focusedActionIdx].constructor == TextBlockAction);
         const act1 = actions[focusedActionIdx] as TextBlockAction;
 
         textMath.value = act1.text;
-        let prev_value = textMath.value;
-        timer_id = setInterval(function(){
-            if(prev_value == textMath.value){
+        let prevValue = textMath.value;
+        timerId = setInterval(function(){
+            if(prevValue == textMath.value){
                 return;
             }
 
-            prev_value = textMath.value;
+            prevValue = textMath.value;
 
             updateFocusedTextBlock();
         }, 100);
     });
 
     textMath.addEventListener("blur", function(){
-        clearInterval(timer_id);
+        clearInterval(timerId);
 
         if(textMath.value.trim() == ""){
             const act = actions[focusedActionIdx] as TextBlockAction;
@@ -760,7 +760,7 @@ function monitorTextMath(){
     });
 }
 
-export function init_manebu(in_editor: boolean){
+export function initManebu(in_editor: boolean){
     inEditor = in_editor;
     divMsg = document.getElementById("div-msg") as HTMLDivElement;
     divMath = document.getElementById("div-math") as HTMLDivElement;
@@ -768,8 +768,8 @@ export function init_manebu(in_editor: boolean){
 
     msg("body loaded");
 
-    firebase_init();
-    init_speech();
+    initFirebase();
+    initSpeech();
 
     if(! inEditor){
         return;

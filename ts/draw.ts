@@ -1355,7 +1355,7 @@ class TextBox extends CompositeShape {
 
         const text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
         self.text = text;
-        self.div!.innerHTML = make_html_lines(text);
+        self.div!.innerHTML = makeHtmlLines(text);
         TextBox.dialog.close();
 
         self.typeset_done = false;
@@ -1393,7 +1393,7 @@ class TextBox extends CompositeShape {
         this.div.style.left  = `${this.offset_pos.x}px`;
         this.div.style.top   = `${this.offset_pos.y}px`;
 
-        this.div.innerHTML = make_html_lines(this.text);
+        this.div.innerHTML = makeHtmlLines(this.text);
         this.typeset_done = false;
 
         MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
