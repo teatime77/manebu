@@ -133,7 +133,7 @@ function objToStr(obj: any, nest: number){
             return `${t1}{ "ref": ${obj.ref} }`;
         }
 
-        if(obj.typeName == Point.name && obj.listeners == undefined && obj.bind_to == undefined){
+        if(obj.typeName == Point.name && obj.listeners == undefined && obj.bindTo == undefined){
 
             return `${t1}{ "typeName": "${obj.typeName}", "id": ${obj.id}, "pos": { "typeName": "${Vec2.name}", "x": ${obj.pos.x}, "y": ${obj.pos.y} } }`;
         }
@@ -411,7 +411,7 @@ export function openActionData(actionText: string){
             },
             { "typeName": "Point", "id": 14, "pos": { "typeName": "Vec2", "x": -3.2256812110509663, "y": -8.64027115178669 } }
         ],
-        "is_square": false,
+        "isSquare": false,
         "lines": [
             {
                 "typeName": "LineSegment",
@@ -476,7 +476,7 @@ export function openActionData(actionText: string){
             { "ref": 22 },
             { "ref": 24 }
         ],
-        "by_diameter": false
+        "byDiameter": false
     },
     {
         "typeName": "Triangle",
@@ -499,7 +499,7 @@ export function openActionData(actionText: string){
                             { "ref": 29 }
                         ],
                         "pos": { "typeName": "Vec2", "x": -2.6329187497839692, "y": -6.013612255067246 },
-                        "bind_to": { "ref": 15 }
+                        "bindTo": { "ref": 15 }
                     },
                     {
                         "typeName": "Point",
@@ -510,7 +510,7 @@ export function openActionData(actionText: string){
                             { "ref": 25 }
                         ],
                         "pos": { "typeName": "Vec2", "x": -5.070420278465556, "y": -2.0126726912957262 },
-                        "bind_to": { "ref": 15 }
+                        "bindTo": { "ref": 15 }
                     }
                 ],
                 "listeners": [
@@ -533,7 +533,7 @@ export function openActionData(actionText: string){
                             { "ref": 30 }
                         ],
                         "pos": { "typeName": "Vec2", "x": 0.43042039596777126, "y": -2.0126726500335446 },
-                        "bind_to": { "ref": 15 }
+                        "bindTo": { "ref": 15 }
                     }
                 ],
                 "listeners": [
@@ -646,8 +646,8 @@ export function openActionData(actionText: string){
         "text": 😀$$
 \frac{1}{2 \pi \sigma^2} \int_{-\infty}^\infty \exp^{ - \frac{{(x - \mu)}^2}{2 \sigma^2}  } dx
 $$😀,
-        "clicked_pos": { "typeName": "Vec2", "x": 3.1600000858306885, "y": -5.079999923706055 },
-        "offset_pos": { "typeName": "Vec2", "x": 329, "y": 123 }
+        "clickedPos": { "typeName": "Vec2", "x": 3.1600000858306885, "y": -5.079999923706055 },
+        "offsetPos": { "typeName": "Vec2", "x": 329, "y": 123 }
     },
     {
         "typeName": "Label",
