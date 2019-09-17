@@ -84,7 +84,7 @@ function showFileTreeView(){
                 (x as HTMLSpanElement).style.backgroundColor = "white";
             }
 
-            const fileId = parseInt( this.dataset.file_id );
+            const fileId = parseInt( this.dataset.fileId );
             selectedFile = getFileById(fileId);
             console.assert(selectedFile != undefined);
 
@@ -94,7 +94,7 @@ function showFileTreeView(){
                 txtRaw.value = data;
             });
         });
-        span.dataset.file_id = "" + file.id;
+        span.dataset.fileId = "" + file.id;
 
         li.appendChild(span);
 
@@ -140,11 +140,11 @@ function showContents(){
 
             const link = document.createElement("button");
             link.innerHTML = file.name;
-            link.dataset.file_id = "" + file.id;
+            link.dataset.fileId = "" + file.id;
             link.addEventListener("click", function(ev:MouseEvent){
                 ev.stopPropagation();
 
-                const fileId = parseInt( this.dataset.file_id );
+                const fileId = parseInt( this.dataset.fileId );
 
                 const file = getFileById(fileId);
                 console.assert(file != undefined);
@@ -264,7 +264,7 @@ export function initFirebase(){
     fileTreeView = document.getElementById("file-tree-view") as HTMLUListElement;
     dlgFolder = document.getElementById("dlg-Folder") as HTMLDivElement;
     txtRaw = document.getElementById("txt-raw") as HTMLTextAreaElement;
-    dropZone = document.getElementById('drop_zone') as HTMLDivElement;
+    dropZone = document.getElementById('drop-zone') as HTMLDivElement;
 
     dropZone.addEventListener('dragover', handleDragOver, false);
     dropZone.addEventListener('drop', handleFileSelect, false);
