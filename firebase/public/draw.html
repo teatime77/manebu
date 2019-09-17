@@ -29,7 +29,7 @@ var exports = {};
 
 <script type="text/javascript">
 
-function body_onload(){
+function bodyOnload(){
     console.log("body load");
     manebu.initManebu(true);
     manebu.initDraw();
@@ -83,13 +83,13 @@ path {
 </style>
 </head>
 
-<body onload="body_onload()">
+<body onload="bodyOnload()">
 <div style="display: grid; grid-template-rows:50px 1fr 150px 30px 100px; grid-template-columns:150px 1fr 300px; width: 100%; height: 100%;">
     <div style="grid-row: 1; grid-column: 1/span 3; background-color: cornsilk; ">
         <button onclick="window.location.href='login.html'">ログイン</button>
         <button onclick="window.location.href='draw.html'">作図</button>
         <button id="btn-open-folder" disabled=true onclick="manebu.openFolder()">フォルダーを開く</button>
-        <button onclick="manebu.firebase_update()">更新</button>  
+        <button onclick="manebu.firebaseUpdate()">更新</button>  
         <button onclick="manebu.playActions()">再生</button>
         <button onclick="manebu.stop()">停止</button>
         <button onclick="manebu.backup()">バックアップ</button>
@@ -146,8 +146,8 @@ $$</textarea><br/>
 <div id="dlg-Folder" style="display: none; position:fixed; border-style:outset; border-width: 5px; background-color: cornsilk; grid-template-rows:50px 1fr 50px; grid-template-columns:1fr 1fr;">
     <div style="grid-row: 1; grid-column: 1; " >
         名前: <input id="text-name" type="text" size=20 value="" /><br/>
-        <button onclick="manebu.make_folder()">フォルダーを作成</button>  
-        <button onclick="manebu.make_file()">ファイルを作成</button>  
+        <button onclick="manebu.makeFolder()">フォルダーを作成</button>  
+        <button onclick="manebu.makeFile()">ファイルを作成</button>  
 
     </div>
     <div style="grid-row: 1; grid-column: 2; " >
