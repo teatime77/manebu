@@ -1,9 +1,9 @@
 /// <reference path="main.ts" />
 namespace manebu {
-export var is_speaking = false;
-var voice_list = null;
-var jp_voice : SpeechSynthesisVoice = null;
-var prev_idx = 0;
+export let is_speaking = false;
+let voice_list = null;
+let jp_voice : SpeechSynthesisVoice = null;
+let prev_idx = 0;
 
 function setVoice(){
     const voices = speechSynthesis.getVoices()

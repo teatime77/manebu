@@ -1,11 +1,10 @@
 namespace manebu{
-declare var MathJax:any;
-export var padding = 10;
+declare let MathJax:any;
+export const padding = 10;
 const endMark = "😀";
-export var actionMap : Map<number, Action>;
-var pendingRefs : any[];
-var isPlaying: boolean = false;
-var stopPlaying: boolean = false;
+export let actionMap : Map<number, Action>;
+let pendingRefs : any[];
+let stopPlaying: boolean = false;
 
 function ltrim(stringToTrim) {
 	return stringToTrim.replace(/^\s+/,"");
@@ -17,14 +16,14 @@ export function array_last<T>(arr:T[]) : T{
 }
 
 export function array_remove<T>(arr:T[], x:T) {
-    var index = arr.indexOf(x);
+    const index = arr.indexOf(x);
     if (index != -1) {
         arr.splice(index, 1);
     }
 }
 
 function get_indent(line: string) : [number, string]{
-    var indent = 0;
+    let indent = 0;
     while(true){
         if(line.startsWith("\t")){
             indent++;
@@ -45,14 +44,14 @@ function tab(indent: number){
 }
 
 export function make_html_lines(text: string){
-    var lines = text.split('\n');
-    var html_lines = [];            
+    const lines = text.split('\n');
+    const html_lines = [];            
 
-    var in_math = false;
-    var ul_indent = -1;
-    var prev_line = "";
+    let in_math = false;
+    let ul_indent = -1;
+    let prev_line = "";
     for(let current_line of lines){
-        var current_line_trim = current_line.trim();
+        let current_line_trim = current_line.trim();
 
         let [indent, line] = get_indent(current_line);
         indent--;
@@ -120,8 +119,8 @@ export function tostr(text: string){
 }
 
 function objToStr(obj: any, nest: number){
-    var t1 = " ".repeat(4 * nest);
-    var t2 = " ".repeat(4 * (nest + 1));
+    const t1 = " ".repeat(4 * nest);
+    const t2 = " ".repeat(4 * (nest + 1));
 
     if(Array.isArray(obj)){
         return `${t1}[\n` + (obj as any[]).map(x => objToStr(x, nest + 1)).join(`,\n`) + `\n${t1}]`;
@@ -148,7 +147,7 @@ function objToStr(obj: any, nest: number){
             msg(``);
         }
 
-        var lines = [];
+        let lines = [];
         for (let [key, value] of Object.entries(obj)){
             lines.push(`${t2}"${key}": ${ltrim(objToStr(value, nest + 1))}`)
         }
@@ -169,7 +168,7 @@ function objToStr(obj: any, nest: number){
 export function fromObj(parent:any, key:any, obj: any){
     if(Array.isArray(obj)){
 
-        var v = [];
+        let v = [];
         for(let [i, x] of (obj as any[]).entries()){
             v.push( fromObj(v, i, x) );
         }
@@ -180,7 +179,7 @@ export function fromObj(parent:any, key:any, obj: any){
     if(typeof obj == "object"){
         msg(`${obj.id} ${obj.type_name}`)
 
-        var act;
+        let act;
 
         if(obj.ref != undefined){
             
@@ -242,22 +241,22 @@ export function serializeActions() : string {
     }
     actionMap = new Map<number, Action>();
 
-    var action_objs = actions.map(x => x.toObj());
+    const action_objs = actions.map(x => x.toObj());
 
     return objToStr(action_objs, 0);
 }
 
 export function reviseJson(text:string){
-    var ret = "";
+    let ret = "";
 
-    var el = endMark.length;
+    const el = endMark.length;
     while(true){
-        var k1 = text.indexOf(endMark);
+        let k1 = text.indexOf(endMark);
         if(k1 == -1){
             return ret + text;
         }
 
-        var k2 = text.indexOf(endMark, k1 + el);
+        let k2 = text.indexOf(endMark, k1 + el);
         console.assert(k2 != -1);
 
         ret += text.substring(0, k1) + JSON.stringify(text.substring(k1 + el, k2));
@@ -266,7 +265,7 @@ export function reviseJson(text:string){
 }
 
 export function deserializeActions(text: string){
-    var obj = JSON.parse(reviseJson(text));
+    const obj = JSON.parse(reviseJson(text));
 
     actionMap = new Map<number, Action>();
     pendingRefs = [];
@@ -275,14 +274,14 @@ export function deserializeActions(text: string){
     for(let pending of pendingRefs){
         console.assert(actionMap.has(pending.ref));
 
-        var act = actionMap.get(pending.ref);
+        let act = actionMap.get(pending.ref);
         pending.parent[pending.key] = act;
     }
 }
 
 
 function* waitActions(){
-    var typeset_done = false;
+    let typeset_done = false;
     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
     MathJax.Hub.Queue([function(){
         typeset_done = true;
@@ -296,14 +295,12 @@ function* waitActions(){
 }
 
 export function runGenerator(gen: IterableIterator<any>){
-    isPlaying = true;
     stopPlaying = false;
 
-    var id = setInterval(function(){
-        var ret = gen.next();
+    const id = setInterval(function(){
+        const ret = gen.next();
         if(ret.done || stopPlaying){        
 
-            isPlaying = false;
             clearInterval(id);
             msg("停止しました。");
         }

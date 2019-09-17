@@ -1,18 +1,18 @@
 namespace manebu {
-declare var firebase:any;
-declare var navigator;
+declare let firebase:any;
+declare let navigator;
 
-var textName  : HTMLInputElement;
-var fileTreeView : HTMLUListElement;
-var dlgFolder : HTMLDivElement;
-var txtRaw : HTMLTextAreaElement;
-export var dropZone : HTMLDivElement;
+let textName  : HTMLInputElement;
+let fileTreeView : HTMLUListElement;
+let dlgFolder : HTMLDivElement;
+let txtRaw : HTMLTextAreaElement;
+export let dropZone : HTMLDivElement;
 
-var db;
+let db;
 
 const default_uid = "Rb6xnDguG5Z9Jij6XLIPHV4oNge2";
-var login_uid = null;
-var guest_uid = default_uid;
+let login_uid = null;
+let guest_uid = default_uid;
 
 class Doc {
     ctime  : number;
@@ -37,8 +37,8 @@ class FileInfo {
 }
 
 
-var rootFile : FileInfo | null = null;
-var selectedFile: FileInfo;
+let rootFile : FileInfo | null = null;
+let selectedFile: FileInfo;
 
 function getAllFileInfo() : FileInfo[] {
     function fnc(info: FileInfo, files: FileInfo[]){
@@ -53,7 +53,7 @@ function getAllFileInfo() : FileInfo[] {
         }
     }
 
-    var files : FileInfo[] = [];
+    const files : FileInfo[] = [];
     fnc(rootFile, files);
 
     return files;
@@ -69,22 +69,22 @@ function getFileById(id: number) : FileInfo | undefined{
 
 function showFileTreeView(){
     function fnc(file:FileInfo, ul: HTMLUListElement){
-        var li = document.createElement("li") as HTMLLIElement;
+        const li = document.createElement("li") as HTMLLIElement;
         ul.appendChild(li);
 
-        var span = document.createElement("span");
+        const span = document.createElement("span");
         span.className = "span-file";
         span.innerHTML = file.name;
         span.addEventListener("click", function(ev:MouseEvent){
             ev.stopPropagation();
 
-            var spans = fileTreeView.getElementsByClassName("span-file");
+            const spans = fileTreeView.getElementsByClassName("span-file");
             for(let x of spans){
 
                 (x as HTMLSpanElement).style.backgroundColor = "white";
             }
 
-            var file_id = parseInt( this.dataset.file_id );
+            const file_id = parseInt( this.dataset.file_id );
             selectedFile = getFileById(file_id);
             console.assert(selectedFile != undefined);
 
@@ -99,7 +99,7 @@ function showFileTreeView(){
         li.appendChild(span);
 
         if(file.children != undefined){
-            var ul2 = document.createElement("ul");
+            const ul2 = document.createElement("ul");
             li.appendChild(ul2);
 
             for(let x of file.children){
@@ -115,7 +115,7 @@ function showFileTreeView(){
 function readFile(file: FileInfo, fnc:(data:string)=>void){
     db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
         if (doc.exists) {
-            var doc_data = doc.data() as Doc;
+            const doc_data = doc.data() as Doc;
 
             fnc(doc_data.text);
         } 
@@ -132,21 +132,21 @@ function readFile(file: FileInfo, fnc:(data:string)=>void){
 
 function showContents(){
     function fnc(file:FileInfo, ul: HTMLUListElement){
-        var li = document.createElement("li") as HTMLLIElement;
+        const li = document.createElement("li") as HTMLLIElement;
         ul.appendChild(li);
 
         if(file.children == undefined){
             // ファイルの場合
 
-            var link = document.createElement("button");
+            const link = document.createElement("button");
             link.innerHTML = file.name;
             link.dataset.file_id = "" + file.id;
             link.addEventListener("click", function(ev:MouseEvent){
                 ev.stopPropagation();
 
-                var file_id = parseInt( this.dataset.file_id );
+                const file_id = parseInt( this.dataset.file_id );
 
-                var file = getFileById(file_id);
+                const file = getFileById(file_id);
                 console.assert(file != undefined);
 
                 readFile(file, openActionData);
@@ -159,11 +159,11 @@ function showContents(){
         else{
             // フォルダーの場合
 
-            var span = document.createElement("span");
+            const span = document.createElement("span");
             span.innerHTML = file.name;
             li.appendChild(span);
 
-            var ul2 = document.createElement("ul");
+            const ul2 = document.createElement("ul");
             li.appendChild(ul2);
 
             for(let x of file.children){
@@ -172,7 +172,7 @@ function showContents(){
         }
     }
 
-    var root_ul = document.getElementById("ulContents") as HTMLUListElement;
+    const root_ul = document.getElementById("ulContents") as HTMLUListElement;
     root_ul.innerHTML = "";
     fnc(rootFile, root_ul);
 }
@@ -181,7 +181,7 @@ function readFileTree(user_uid: string){
     db.collection('users').doc(user_uid).collection('docs').doc("root").get()
     .then(function(doc) {
         if (doc.exists) {
-            var doc_data = doc.data() as Doc;
+            const doc_data = doc.data() as Doc;
 
             if(doc_data.text != undefined){
 
@@ -228,7 +228,7 @@ export function firebase_init(){
             // User is signed in.
             msg(`login A ${user.uid} ${user.displayName} ${user.email}`);
     
-            var user1 = firebase.auth().currentUser;
+            const user1 = firebase.auth().currentUser;
     
             if (user1) {
                 // User is signed in.
@@ -271,7 +271,7 @@ export function firebase_init(){
 }
 
 function writeUserData(){
-    var ctime = Math.round((new Date()).getTime());
+    const ctime = Math.round((new Date()).getTime());
 
     db.collection('users').doc(login_uid).collection('docs').doc("root").set({
         ctime  : ctime,
@@ -303,8 +303,8 @@ export function saveFolder(){
 
 
 export function make_folder(){
-    var name = textName.value.trim();
-    var new_folder = new FileInfo(name, false);
+    const name = textName.value.trim();
+    const new_folder = new FileInfo(name, false);
 
     selectedFile.children.push(new_folder);
 
@@ -312,7 +312,7 @@ export function make_folder(){
 }
 
 function writeFile(file: FileInfo, text: string){
-    var ctime = Math.round((new Date()).getTime());
+    const ctime = Math.round((new Date()).getTime());
 
     db.collection('users').doc(login_uid).collection('docs').doc("" + file.id).set({
         ctime  : ctime,
@@ -328,14 +328,14 @@ function writeFile(file: FileInfo, text: string){
 }
 
 export function firebase_update(){
-    var text = serializeActions();
+    const text = serializeActions();
     msg(`${text}`);
 
     msg("------------------------------------");
-    var s = reviseJson(text);
+    const s = reviseJson(text);
     msg(s);
     msg("------------------------------------");
-    var obj = JSON.parse(s);
+    const obj = JSON.parse(s);
     msg(`${JSON.stringify(obj)}`);
 
     writeFile(selectedFile, text);
@@ -357,11 +357,11 @@ function hidePopup(div: HTMLDivElement){
 }
 
 export function openFile(){
-    var file = selectedFile;
+    const file = selectedFile;
 
     db.collection('users').doc(guest_uid).collection('docs').doc("" + file.id).get().then(function(doc) {
         if (doc.exists) {
-            var doc_data = doc.data() as Doc;
+            const doc_data = doc.data() as Doc;
 
             openActionData(doc_data.text);       
 
@@ -382,8 +382,8 @@ export function openFile(){
 }
 
 export function make_file(){
-    var name = textName.value.trim();
-    var new_file = new FileInfo(name, true);
+    const name = textName.value.trim();
+    const new_file = new FileInfo(name, true);
 
     writeFile(new_file, "");
 
@@ -394,9 +394,9 @@ export function make_file(){
 
 function getImgRef(file_name: string, mode:string){
     // Create a root reference
-    var storageRef = firebase.storage().ref();
+    const storageRef = firebase.storage().ref();
 
-    var uid: string;
+    let uid: string;
     switch(mode){
     case "r": uid = guest_uid; break;
     case "w": uid = login_uid; break;
@@ -407,7 +407,7 @@ function getImgRef(file_name: string, mode:string){
 }
 
 export function setSvgImg(img: SVGImageElement, file_name: string){
-    var img_ref = getImgRef(file_name, "r");
+    const img_ref = getImgRef(file_name, "r");
 
     img_ref.getDownloadURL().then(function(downloadURL) {
         msg(`download URL: [${downloadURL}]`);
@@ -417,7 +417,7 @@ export function setSvgImg(img: SVGImageElement, file_name: string){
 }
 
 export function setImgSrc(img: HTMLImageElement, file_name: string){
-    var img_ref = getImgRef(file_name, "r");
+    const img_ref = getImgRef(file_name, "r");
 
     img_ref.getDownloadURL().then(function(downloadURL) {
         msg(`download URL: [${downloadURL}]`);
@@ -429,7 +429,7 @@ export function setImgSrc(img: HTMLImageElement, file_name: string){
 function uploadFile(file: File){
 
     // Create a reference to 'mountains.jpg'
-    var img_ref = getImgRef(file.name, "w");
+    const img_ref = getImgRef(file.name, "w");
 
     img_ref.put(file).then(function(snapshot) {
         snapshot.ref.getDownloadURL().then(function(downloadURL) {
@@ -438,7 +438,7 @@ function uploadFile(file: File){
             dropZone.style.display = "none";            
         });
 
-        var act = new Image(file.name);
+        const act = new Image(file.name);
         actions.push(act);
     });    
 }
@@ -451,7 +451,7 @@ function handleFileSelect(ev: DragEvent) {
     ev.stopPropagation();
     ev.preventDefault();
 
-    var files = ev.dataTransfer.files; // FileList object.
+    const files = ev.dataTransfer.files; // FileList object.
 
     for (let f of files) {
         msg(`drop name:${escape(f.name)} type:${f.type} size:${f.size} mtime:${f.lastModified.toLocaleString()} `);
@@ -470,10 +470,10 @@ export function backup(){
 
     db.collection('users').doc(login_uid).collection('docs').get()
     .then((querySnapshot) => {
-        var text: string = "";
+        let text: string = "";
 
         querySnapshot.forEach((dt) => {
-            var doc = dt.data() as Doc;
+            const doc = dt.data() as Doc;
 
             text += `id: ${dt.id}\n`;
             text += `ctime: ${doc.ctime}\n`;

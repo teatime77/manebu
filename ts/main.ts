@@ -1,7 +1,7 @@
 /// <reference path="speech.ts" />
 /// <reference path="firebase.ts" />
 namespace manebu {
-declare var MathJax:any;
+declare let MathJax:any;
 class JaxNode {
     CHTMLnodeID: number;
     nodeName: string;
@@ -14,17 +14,17 @@ class ElementJax {
     Rerender(){}
 }
 
-export var divActions : HTMLDivElement;
-export var textMath : HTMLTextAreaElement;
-export var divMath : HTMLDivElement;
-var tmpSelection : SelectionAction | null = null;
-export var inEditor : boolean;
-export var ActionId = 0;
-var divMsg : HTMLDivElement = null;
-export var focusedActionIdx : number = -1;
+export let divActions : HTMLDivElement;
+export let textMath : HTMLTextAreaElement;
+export let divMath : HTMLDivElement;
+let tmpSelection : SelectionAction | null = null;
+export let inEditor : boolean;
+export let ActionId = 0;
+let divMsg : HTMLDivElement = null;
+export let focusedActionIdx : number = -1;
 const IDX = 0;
 const NODE_NAME = 1;
-export var all_actions : Action[] = [];
+export let all_actions : Action[] = [];
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -86,24 +86,24 @@ function getJaxIndex(node){
 }
 
 function getJaxesInBlock(div: HTMLDivElement) : JaxNode[]{
-    var all_jaxes = (MathJax.Hub.getAllJax() as ElementJax[]).map(x => x.root);
+    const all_jaxes = (MathJax.Hub.getAllJax() as ElementJax[]).map(x => x.root);
 
-    var all_doms = all_jaxes.map(x => getDomFromJax(x));
+    const all_doms = all_jaxes.map(x => getDomFromJax(x));
 
-    var doms_in_span = all_doms.filter(x => getDomAncestors(x).includes(div) );
+    const doms_in_span = all_doms.filter(x => getDomAncestors(x).includes(div) );
 
-    var jaxes_in_span = doms_in_span.map(x => all_jaxes[all_doms.indexOf(x)]);
+    const jaxes_in_span = doms_in_span.map(x => all_jaxes[all_doms.indexOf(x)]);
 
     return jaxes_in_span;
 }
 
 function makeDomJaxMap(jaxes: JaxNode[]) : [Map<HTMLElement, JaxNode>, Map<JaxNode, HTMLElement>]{
-    var dom2jax = new Map<HTMLElement, JaxNode>();
-    var jax2dom = new Map<JaxNode, HTMLElement>();
+    const dom2jax = new Map<HTMLElement, JaxNode>();
+    const jax2dom = new Map<JaxNode, HTMLElement>();
     for(let ej of jaxes){
         for(let node of getJaxDescendants(ej)){
 
-            var ele = getDomFromJax(node);
+            let ele = getDomFromJax(node);
             dom2jax.set(ele, node);
             jax2dom.set(node, ele);
         }
@@ -113,15 +113,15 @@ function makeDomJaxMap(jaxes: JaxNode[]) : [Map<HTMLElement, JaxNode>, Map<JaxNo
 }
 
 function getJaxPath(jax_idx: number, jax_list:JaxNode[], max_nest: number) : any[]{
-    var path : any[] = [];
+    const path : any[] = [];
 
-    var parent = jax_list[0];
+    let parent = jax_list[0];
 
     path.push([jax_idx, parent.nodeName]);
 
-    for(var nest = 1; nest <= max_nest; nest++){
-        var jax = jax_list[nest];
-        var idx = parent.childNodes.indexOf(jax);
+    for(let nest = 1; nest <= max_nest; nest++){
+        let jax = jax_list[nest];
+        let idx = parent.childNodes.indexOf(jax);
         console.assert(idx != -1);
         path.push([ idx, jax.nodeName]);
         parent = jax;
@@ -131,7 +131,7 @@ function getJaxPath(jax_idx: number, jax_list:JaxNode[], max_nest: number) : any
 }
 
 function getJaxFromPath(jaxes:JaxNode[], path:any[]) : JaxNode {
-    var node = jaxes[path[0][IDX]];
+    let node = jaxes[path[0][IDX]];
     console.assert(node.nodeName == path[0][NODE_NAME])
 
     for(let obj of path.slice(1)){
@@ -150,11 +150,10 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
         tmpSelection = null;
     }
 
-    var ev = window.event as MouseEvent;
     ev.stopPropagation();
 
-    var mjx_math = null;
-    for(var ele = ev.srcElement as HTMLElement;; ele = ele.parentNode as HTMLElement){
+    let mjx_math = null;
+    for(let ele = ev.srcElement as HTMLElement;; ele = ele.parentNode as HTMLElement){
 
         if(ele.tagName != "SPAN"){
             break;
@@ -168,25 +167,25 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
         return;
     }
 
-    var jaxes = getJaxesInBlock(div);
-    var [dom2jax, jax2dom] = makeDomJaxMap(jaxes);
+    const jaxes = getJaxesInBlock(div);
+    const [dom2jax, jax2dom] = makeDomJaxMap(jaxes);
 
     function check_path(text: string, path:any[], node_sv: JaxNode){
         msg(`${text}: ${path.map(x => `${x[IDX]}:${x[NODE_NAME]}`).join(',')}`);
-        var node = getJaxFromPath(jaxes, path);
+        const node = getJaxFromPath(jaxes, path);
         console.assert(node == node_sv);
     }
 
-    var sel = window.getSelection();
+    const sel = window.getSelection();
     
     if(sel.rangeCount == 1){
 
-        var rng = sel.getRangeAt(0);
+        const rng = sel.getRangeAt(0);
 
         msg(`start:${rng.startContainer.textContent} end:${rng.endContainer.textContent}`);
 
-        var st_a = getDomAncestors(rng.startContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
-        var jax_idx;
+        const st_a = getDomAncestors(rng.startContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
+        let jax_idx;
         for(jax_idx = 0; jax_idx < jaxes.length; jax_idx++){
             if(jaxes[jax_idx] == st_a[0]){
                 break;
@@ -199,7 +198,7 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
 
             if(st_a.length != 0){
 
-                var start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
+                const start_path = getJaxPath(jax_idx, st_a, st_a.length - 1);
                 check_path("path", start_path, last(st_a));
 
                 tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, null);
@@ -207,26 +206,26 @@ function onclick_block(div: HTMLDivElement, ev:MouseEvent){
         }
         else{
 
-            var ed_a = getDomAncestors(rng.endContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
+            const ed_a = getDomAncestors(rng.endContainer).filter(x => dom2jax.has(x)).map(x => dom2jax.get(x)).reverse();
 
-            for(var nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
+            for(let nest = 0; nest < Math.min(st_a.length, ed_a.length); nest++){
                 if(st_a[nest] != ed_a[nest]){
 
                     console.assert(nest != 0);
 
-                    var parent_jax = st_a[nest - 1];
+                    let parent_jax = st_a[nest - 1];
 
                     if(parent_jax.nodeName == "msubsup"){
 
-                        var start_path = getJaxPath(jax_idx, st_a, nest - 1);
+                        let start_path = getJaxPath(jax_idx, st_a, nest - 1);
                         check_path("path", start_path, parent_jax);
 
                         tmpSelection = new SelectionAction(getActionId(div.id), "math", start_path, null);
                     }
                     else{
 
-                        var start_path = getJaxPath(jax_idx, st_a, nest);
-                        var end_path   = getJaxPath(jax_idx, ed_a, nest);
+                        let start_path = getJaxPath(jax_idx, st_a, nest);
+                        let end_path   = getJaxPath(jax_idx, ed_a, nest);
 
                         check_path("path1", start_path, st_a[nest]);
                         check_path("path2", end_path  , ed_a[nest]);
@@ -264,8 +263,8 @@ export class Action {
         }
         actionMap.set(this.id, this);
         
-        var obj = { type_name: this.typeName(), id: this.id };
-        
+        const obj = { type_name: this.typeName(), id: this.id };
+
         if(this instanceof CompositeShape){
             Object.assign(obj, { handles : this.handles.map(x => x.toObj()) });
         }
@@ -285,7 +284,7 @@ export class Action {
     init(){        
     }
 
-    *restore(){}
+    *restore():any{}
 
     enable(){
     }
@@ -311,7 +310,7 @@ export class Action {
     }
 
     summaryDom() : HTMLSpanElement {
-        var span = document.createElement("span");
+        const span = document.createElement("span");
         span.dataset.id = "" + this.id;
         span.textContent = this.summary();
         span.tabIndex = 0;
@@ -323,8 +322,8 @@ export class Action {
                 ev.stopPropagation();
                 ev.preventDefault();
 
-                var spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
-                var idx = spans.indexOf(this);
+                const spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
+                const idx = spans.indexOf(this);
                 console.assert(idx != -1);
                 if(ev.key == "ArrowDown"){
 
@@ -342,8 +341,8 @@ export class Action {
 
         span.addEventListener("focus", function(ev:FocusEvent){
             msg("focus");
-            var spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
-            var idx = spans.indexOf(this);
+            const spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
+            const idx = spans.indexOf(this);
             console.assert(idx != -1);
     
             if(focusedActionIdx == -1){
@@ -352,9 +351,9 @@ export class Action {
                 }
             }
             else{
-                var min_idx = Math.min(idx, focusedActionIdx);
-                var max_idx = Math.max(idx, focusedActionIdx);
-                for(var i = min_idx; i <= max_idx; i++){
+                const min_idx = Math.min(idx, focusedActionIdx);
+                const max_idx = Math.max(idx, focusedActionIdx);
+                for(let i = min_idx; i <= max_idx; i++){
                     actions[i].setEnable(i <= idx);
                 }
             }
@@ -363,7 +362,7 @@ export class Action {
     
             focusedActionIdx = idx;
 
-            var act = actions[focusedActionIdx];
+            const act = actions[focusedActionIdx];
             if(act.constructor == TextBlockAction){
                 textMath.value = (act as TextBlockAction).text;
             }
@@ -376,8 +375,8 @@ export class Action {
     }
 }
 
-export var actions : Action[] = [];
-export var selections : SelectionAction[] = [];
+export let actions : Action[] = [];
+export let selections : SelectionAction[] = [];
 
 class DivAction extends Action {
     text: string;
@@ -392,7 +391,7 @@ class DivAction extends Action {
     }
 
     makeTextDiv(text: string) : HTMLDivElement {
-        var next_ele = null;
+        let next_ele = null;
         if(focusedActionIdx != -1){
 
             for(let act of actions.slice(focusedActionIdx + 1)){
@@ -402,7 +401,7 @@ class DivAction extends Action {
                 }
             }
         }
-        var div = document.createElement("div");
+        const div = document.createElement("div");
         div.className = "manebu-text-block";
     
         div.id = getBlockId(this.id);
@@ -412,7 +411,7 @@ class DivAction extends Action {
     
         div.tabIndex = 0;
     
-        var html = make_html_lines(text);
+        const html = make_html_lines(text);
         div.innerHTML = html;
         reprocessMathJax(html);
     
@@ -531,13 +530,13 @@ export class SelectionAction extends Action {
 
         this.selectedDoms = [];
     
-        var div = document.getElementById(getBlockId(this.block_id)) as HTMLDivElement;
-        var jaxes = getJaxesInBlock(div);
+        const div = document.getElementById(getBlockId(this.block_id)) as HTMLDivElement;
+        const jaxes = getJaxesInBlock(div);
     
-        var start_jax = getJaxFromPath(jaxes, this.start_path);
-        var st_i = last(this.start_path)[IDX];
+        const start_jax = getJaxFromPath(jaxes, this.start_path);
+        const st_i = last(this.start_path)[IDX];
     
-        var parent_jax = start_jax.parent;
+        const parent_jax = start_jax.parent;
         console.assert(getJaxIndex(start_jax) == st_i);
         console.assert(start_jax.nodeName == last(this.start_path)[NODE_NAME])
     
@@ -547,14 +546,14 @@ export class SelectionAction extends Action {
         }
         else{
     
-            var end_jax = getJaxFromPath(jaxes, this.end_path);
+            const end_jax = getJaxFromPath(jaxes, this.end_path);
     
-            var ed_i = last(this.end_path)[IDX];
+            const ed_i = last(this.end_path)[IDX];
     
             console.assert(getJaxIndex(end_jax) == ed_i);
             console.assert(end_jax.nodeName == last(this.end_path)[NODE_NAME])
         
-            var nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
+            const nodes = parent_jax.childNodes.slice(st_i, ed_i + 1);
             for(let nd of nodes){
     
                 if(nd != null){
@@ -603,7 +602,7 @@ export class EndAction extends Action {
 
     *play(){
 
-        var del_ele = document.getElementById(getBlockId(this.id));
+        const del_ele = document.getElementById(getBlockId(this.id));
         if(inEditor){
 
             del_ele.style.backgroundColor = "gainsboro";
@@ -660,7 +659,7 @@ export class ShapeAction extends Action {
 function addAction(act: Action){
     actions.splice(focusedActionIdx + 1, 0, act);
             
-    var next_ele = divActions.children[focusedActionIdx].nextElementSibling;
+    const next_ele = divActions.children[focusedActionIdx].nextElementSibling;
     if(next_ele == null){
 
         divActions.appendChild(act.summaryDom());
@@ -690,9 +689,9 @@ function reprocessMathJax(html: string){
 }
 
 function updateFocusedTextBlock(){
-    var act = actions[focusedActionIdx] as TextBlockAction;
+    const act = actions[focusedActionIdx] as TextBlockAction;
 
-    var html = make_html_lines(textMath.value);
+    const html = make_html_lines(textMath.value);
     act.div.innerHTML = html;
     act.text = textMath.value;
 
@@ -702,14 +701,14 @@ function updateFocusedTextBlock(){
 }
 
 function monitorTextMath(){
-    var timer_id = -1;
+    let timer_id = -1;
 
     textMath.addEventListener("focus", function(){
         console.assert(0 <= focusedActionIdx && focusedActionIdx < actions.length && actions[focusedActionIdx].constructor == TextBlockAction);
-        var act1 = actions[focusedActionIdx] as TextBlockAction;
+        const act1 = actions[focusedActionIdx] as TextBlockAction;
 
         textMath.value = act1.text;
-        var prev_value = textMath.value;
+        let prev_value = textMath.value;
         timer_id = setInterval(function(){
             if(prev_value == textMath.value){
                 return;
@@ -725,7 +724,7 @@ function monitorTextMath(){
         clearInterval(timer_id);
 
         if(textMath.value.trim() == ""){
-            var act = actions[focusedActionIdx] as TextBlockAction;
+            const act = actions[focusedActionIdx] as TextBlockAction;
 
             actions.splice(focusedActionIdx, 1);
             divMath.removeChild(act.div);
@@ -747,13 +746,11 @@ function monitorTextMath(){
         console.assert(focusedActionIdx != -1);
         if(ev.ctrlKey && ev.code == "Enter"){
 
-            var act = actions[focusedActionIdx] as TextBlockAction;
-
             updateFocusedTextBlock();
 
             textMath.value = "";
 
-            var act = new TextBlockAction("");
+            const act = new TextBlockAction("");
             addAction(act);
         
             act.init();        
@@ -781,7 +778,7 @@ export function init_manebu(in_editor: boolean){
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
     textMath.disabled = false;
 
-    var act = new TextBlockAction("");
+    const act = new TextBlockAction("");
     actions.push(act);
     divActions.appendChild(act.summaryDom());
 

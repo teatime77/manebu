@@ -7,17 +7,17 @@ const stroke_width = 4;
 const this_stroke_width = 2;
 const grid_line_width = 1;
 
-declare var MathJax:any;
+declare let MathJax:any;
 
 function initPoint(pt:Vec2){
-    var point = new Point(pt);
+    const point = new Point(pt);
     point.init();
 
     return point;
 }
 
 function initLineSegment(){
-    var line = new LineSegment();
+    const line = new LineSegment();
     line.init();
 
     return line;
@@ -79,7 +79,7 @@ export class View extends Action {
         this.CTM = this.svg.getCTM()!;
         this.CTMInv = this.CTM.inverse();
     
-        var rc = this.svg.getBoundingClientRect() as DOMRect;
+        const rc = this.svg.getBoundingClientRect() as DOMRect;
         this.svg_ratio = this.svg.viewBox.baseVal.width / rc.width;
     
         this.defs = document.createElementNS("http://www.w3.org/2000/svg","defs") as SVGDefsElement;
@@ -209,7 +209,7 @@ export class View extends Action {
 
     setGridBgBox(){
         // viewBoxを得る。
-        var vb = this.svg.viewBox.baseVal;
+        const vb = this.svg.viewBox.baseVal;
 
         // グリッドの背景の矩形をviewBoxに合わせる。
         this.gridBg.setAttribute("x", `${vb.x}`);
@@ -225,11 +225,11 @@ export class View extends Action {
         }
 
         // viewBoxを得る。
-        var vb = this.svg.viewBox.baseVal;
+        const vb = this.svg.viewBox.baseVal;
 
-        var pattern_id = `pattern-${this.id}`;
+        const pattern_id = `pattern-${this.id}`;
 
-        var pattern = document.createElementNS("http://www.w3.org/2000/svg","pattern") as SVGPatternElement;
+        const pattern = document.createElementNS("http://www.w3.org/2000/svg","pattern") as SVGPatternElement;
         pattern.setAttribute("id", pattern_id);
         pattern.setAttribute("patternUnits", "userSpaceOnUse");
         pattern.setAttribute("x", `${vb.x}`);
@@ -239,7 +239,7 @@ export class View extends Action {
     
         this.defs.appendChild(pattern);
 
-        var rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
         rect.setAttribute("x", "0");
         rect.setAttribute("y", "0");
         rect.setAttribute("width", `${this._gridWidth}`);
@@ -254,12 +254,12 @@ export class View extends Action {
     }
 }
 
-var view : View;
+let view : View;
 
-var tblProperty : HTMLTableElement;
-var angle_dlg : HTMLDialogElement;
-var angle_dlg_ok : HTMLInputElement;
-var angle_dlg_color : HTMLInputElement;
+let tblProperty : HTMLTableElement;
+let angle_dlg : HTMLDialogElement;
+let angle_dlg_ok : HTMLInputElement;
+let angle_dlg_color : HTMLInputElement;
 
 export class Vec2 {
     x: number;
@@ -271,7 +271,7 @@ export class Vec2 {
     }
 
     toJSON(key){
-        var obj = { type_name: Vec2.name };
+        const obj = { type_name: Vec2.name };
         Object.assign(obj, this);
 
         return JSON.stringify(obj);
@@ -298,8 +298,8 @@ export class Vec2 {
     }
 
     dist(pt:Vec2) : number {
-        var dx = pt.x - this.x;
-        var dy = pt.y - this.y;
+        const dx = pt.x - this.x;
+        const dy = pt.y - this.y;
 
         return Math.sqrt(dx * dx + dy * dy);
     }
@@ -309,7 +309,7 @@ export class Vec2 {
     }
 
     unit() : Vec2{
-        var d = this.len();
+        const d = this.len();
 
         if(d == 0){
 
@@ -350,7 +350,7 @@ class Mat2 {
     }
 
     inv() : Mat2 {
-        var det = this.det();
+        const det = this.det();
         console.assert(det != 0);
 
         return new Mat2(this.a22 / det, - this.a12 / det, - this.a21 / det, this.a11 / det)
@@ -362,14 +362,14 @@ function to_svg(x:number) : number{
 }
 
 function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null){
-	var point = view.svg.createSVGPoint();
+	const point = view.svg.createSVGPoint();
 	
     //画面上の座標を取得する．
     point.x = ev.offsetX;
     point.y = ev.offsetY;
 
     //座標に逆行列を適用する．
-    var p = point.matrixTransform(view.CTMInv);    
+    const p = point.matrixTransform(view.CTMInv);    
 
     if(view.flipY){
 
@@ -378,7 +378,7 @@ function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null)
 
     if(view.snapToGrid){
 
-        var ele = document.elementFromPoint(ev.clientX, ev.clientY);
+        const ele = document.elementFromPoint(ev.clientX, ev.clientY);
         if(ele == view.svg || ele == view.gridBg || (dragged_point != null && ele == dragged_point.circle)){
             p.x = Math.round(p.x / view.gridWidth ) * view.gridWidth;
             p.y = Math.round(p.y / view.gridHeight) * view.gridHeight;
@@ -389,10 +389,10 @@ function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null)
 }
 
 function click_handle(ev: MouseEvent, pt:Vec2) : Point{
-    var handle = get_point(ev);
+    let handle = get_point(ev);
     if(handle == null){
 
-        var line = get_line(ev);
+        const line = get_line(ev);
         if(line != null){
 
             handle = initPoint(pt);
@@ -401,7 +401,7 @@ function click_handle(ev: MouseEvent, pt:Vec2) : Point{
             line.bind(handle)
         }
         else{
-            var circle = get_circle(ev);
+            const circle = get_circle(ev);
             if(circle != null){
 
                 handle = initPoint(pt);
@@ -423,9 +423,9 @@ function click_handle(ev: MouseEvent, pt:Vec2) : Point{
 }
 
 function zip(v1:any[], v2:any[]):any[]{
-    var v = [];
-    var min_len = Math.min(v1.length, v2.length);
-    for(var i = 0; i < min_len; i++){
+    const v = [];
+    const min_len = Math.min(v1.length, v2.length);
+    for(let i = 0; i < min_len; i++){
         v.push([v1[i], v2[i]])
     }
 
@@ -446,7 +446,7 @@ class EventQueue {
     events : ShapeEvent[] = [];
 
     add_event(destination:Shape, source: Shape){
-        var event = this.events.find(x=>x.destination == destination);
+        const event = this.events.find(x=>x.destination == destination);
         if(event == undefined){
             this.events.push( new ShapeEvent(destination, [source]) );
         }
@@ -464,10 +464,10 @@ class EventQueue {
     }
 
     process_queue =()=>{
-        var processed : Shape[] = [];
+        const processed : Shape[] = [];
 
         while(this.events.length != 0){
-            var event = this.events[0];
+            let event = this.events[0];
             if(! processed.includes(event.destination)){
                 processed.push(event.destination);
 
@@ -537,7 +537,7 @@ export abstract class CompositeShape extends Shape {
 }
 
 function finish_tool(){
-    var v = Array.from(view.G0.childNodes.values());
+    const v = Array.from(view.G0.childNodes.values());
     for(let x of v){
         view.G0.removeChild(x);
         view.G1.appendChild(x);
@@ -554,17 +554,17 @@ function finish_tool(){
 }
 
 function get_point(ev: MouseEvent) : Point | null{
-    var pt = Array.from(view.shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
+    const pt = Array.from(view.shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
     return pt == undefined ? null : pt;
 }
 
 function get_line(ev: MouseEvent) : LineSegment | null{
-    var line = Array.from(view.shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
+    const line = Array.from(view.shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
     return line == undefined ? null : line;
 }
 
 function get_circle(ev: MouseEvent) : Circle | null{
-    var circle = Array.from(view.shapes.values()).find(x => x.constructor.name == "Circle" && (x as Circle).circle == ev.target && (x as Circle).handles.length == 2) as (Circle|undefined);
+    const circle = Array.from(view.shapes.values()).find(x => x.constructor.name == "Circle" && (x as Circle).circle == ev.target && (x as Circle).handles.length == 2) as (Circle|undefined);
     return circle == undefined ? null : circle;
 }
 
@@ -582,24 +582,24 @@ function lines_intersection(l1:LineSegment, l2:LineSegment) : Vec2 {
     l1.p12.y, - l2.p12.y   v = l2.p1.y - l1.p1.y
     
     */
-    var m = new Mat2(l1.p12.x, - l2.p12.x, l1.p12.y, - l2.p12.y);
-    var v = new Vec2(l2.p1.x - l1.p1.x, l2.p1.y - l1.p1.y);
-    var mi = m.inv();
-    var uv = mi.dot(v);
-    var u = uv.x;
+    const m = new Mat2(l1.p12.x, - l2.p12.x, l1.p12.y, - l2.p12.y);
+    const v = new Vec2(l2.p1.x - l1.p1.x, l2.p1.y - l1.p1.y);
+    const mi = m.inv();
+    const uv = mi.dot(v);
+    const u = uv.x;
 
     return l1.p1.add(l1.p12.mul(u));
 }
 
 function calc_foot_of_perpendicular(pos:Vec2, line: LineSegment) : Vec2 {
-    var p1 = line.handles[0].pos;
-    var p2 = line.handles[1].pos;
+    const p1 = line.handles[0].pos;
+    const p2 = line.handles[1].pos;
 
-    var e = p2.sub(p1).unit();
-    var v = pos.sub(p1);
-    var h = e.dot(v);
+    const e = p2.sub(p1).unit();
+    const v = pos.sub(p1);
+    const h = e.dot(v);
 
-    var foot = p1.add(e.mul(h));
+    const foot = p1.add(e.mul(h));
 
     return foot;
 }
@@ -661,7 +661,7 @@ export class Point extends Shape {
     click =(ev: MouseEvent, pt:Vec2): void => {
         this.pos = pt;
 
-        var line = get_line(ev);
+        const line = get_line(ev);
 
         if(line == null){
 
@@ -850,13 +850,13 @@ class LineSegment extends CompositeShape {
         for(let src of sources){
             if(src == this.handles[0]){
 
-                var handle: Point = this.handles[0];
+                const handle = this.handles[0];
                 this.line.setAttribute("x1", "" + handle.pos.x);
                 this.line.setAttribute("y1", "" + handle.pos.y);
             }
             else if(src == this.handles[1]){
                 
-                var handle: Point = this.handles[1];
+                const handle = this.handles[1];
                 this.line.setAttribute("x2", "" + handle.pos.x);
                 this.line.setAttribute("y2", "" + handle.pos.y);
             }
@@ -888,7 +888,7 @@ class LineSegment extends CompositeShape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var pt = get_svg_point(ev, null);
+        const pt = get_svg_point(ev, null);
 
         this.line!.setAttribute("x2", "" + pt.x);
         this.line!.setAttribute("y2", "" + pt.y);
@@ -903,7 +903,7 @@ class LineSegment extends CompositeShape {
     }
 
     adjust(handle: Point) {
-        var pos_in_line;
+        let pos_in_line;
 
         if(this.len == 0){
             pos_in_line = 0;
@@ -956,9 +956,9 @@ class Rect extends CompositeShape {
         }
         this.in_set_rect_pos = true;
 
-        var p1 = this.handles[0].pos; 
+        const p1 = this.handles[0].pos; 
 
-        var p2;
+        let p2;
 
         if(this.handles.length == 1){
 
@@ -969,11 +969,11 @@ class Rect extends CompositeShape {
             p2 = this.handles[1].pos; 
         }
 
-        var p12 = p2.sub(p1);
+        const p12 = p2.sub(p1);
 
-        var e = (new Vec2(- p12.y, p12.x)).unit();
+        const e = (new Vec2(- p12.y, p12.x)).unit();
 
-        var h;
+        let h;
         if(this.is_square){
 
             h = p12.len();
@@ -982,7 +982,7 @@ class Rect extends CompositeShape {
 
             if(this.h == -1 || idx == 2){
 
-                var pa;
+                let pa;
                 if(this.handles.length < 4){
         
                     pa = pt!;
@@ -993,7 +993,7 @@ class Rect extends CompositeShape {
                     pa = this.handles[2].pos; 
                 }
         
-                var p0a = pa.sub(p1);
+                const p0a = pa.sub(p1);
                 h = e.dot(p0a);
     
                 if(this.handles.length == 4){
@@ -1005,20 +1005,20 @@ class Rect extends CompositeShape {
             }
         }
 
-        var eh = e.mul(h);
-        var p3 = p2.add(eh);
-        var p4 = p3.add(p1.sub(p2));
+        const eh = e.mul(h);
+        const p3 = p2.add(eh);
+        const p4 = p3.add(p1.sub(p2));
 
-        var line1 = this.lines[0];
+        const line1 = this.lines[0];
         line1.set_poins(p1, p2);
 
-        var line2 = this.lines[1];
+        const line2 = this.lines[1];
         line2.set_poins(p2, p3);
 
-        var line3 = this.lines[2];
+        const line3 = this.lines[2];
         line3.set_poins(p3, p4);
 
-        var line4 = this.lines[3];
+        const line4 = this.lines[3];
         line4.set_poins(p4, p1);
 
         if(clicked){
@@ -1029,7 +1029,7 @@ class Rect extends CompositeShape {
 
                 line1.line.style.cursor = "move";
                 
-                var handle3 = initPoint(p3);
+                const handle3 = initPoint(p3);
                 this.handles.push(handle3);
             }
 
@@ -1048,7 +1048,7 @@ class Rect extends CompositeShape {
                 line2.add_handle(this.handles[2], false);
                 line2.line.style.cursor = "move";
 
-                var handle4 = initPoint(p4);
+                const handle4 = initPoint(p4);
                 this.handles.push(handle4);
 
                 line3.add_handle(this.handles[2], false);
@@ -1099,22 +1099,22 @@ class Rect extends CompositeShape {
     process_event =(sources: Shape[])=>{
         for(let source of sources){
             console.assert(source.constructor.name == "Point");
-            var i = this.handles.indexOf(source as Point);
+            let i = this.handles.indexOf(source as Point);
             console.assert([0, 1, 2].includes(i));
         }
 
-        var handle = sources[0] as Point;
+        const handle = sources[0] as Point;
 
-        var idx = this.handles.indexOf(handle);
+        const idx = this.handles.indexOf(handle);
         this.set_rect_pos(handle.pos, idx, false);
     }
 
     click =(ev: MouseEvent, pt:Vec2): void =>{
         if(this.lines.length == 0){
 
-            for(var i = 0; i < 4; i++){
+            for(let i = 0; i < 4; i++){
 
-                var line = initLineSegment();
+                const line = initLineSegment();
                 this.lines.push(line);
             }
         }
@@ -1134,7 +1134,7 @@ class Rect extends CompositeShape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var pt = get_svg_point(ev, null);
+        const pt = get_svg_point(ev, null);
 
         this.set_rect_pos(pt, -1, false);
     }
@@ -1254,7 +1254,7 @@ class Circle extends CompositeShape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var pt = get_svg_point(ev, null);
+        const pt = get_svg_point(ev, null);
 
         if(this.by_diameter){
 
@@ -1264,8 +1264,8 @@ class Circle extends CompositeShape {
     }
 
     adjust(handle: Point) {
-        var v = handle.pos.sub(this.center!);
-        var theta = Math.atan2(v.y, v.x);
+        const v = handle.pos.sub(this.center!);
+        const theta = Math.atan2(v.y, v.x);
 
         handle.pos = new Vec2(this.center!.x + this.radius * Math.cos(theta), this.center!.y + this.radius * Math.sin(theta));
 
@@ -1293,15 +1293,15 @@ class Triangle extends CompositeShape {
     }
 
     click =(ev: MouseEvent, pt:Vec2): void =>{
-        var line = initLineSegment();
+        const line = initLineSegment();
 
         if(this.lines.length == 0){
             line.add_handle(click_handle(ev, pt));
         }
         else{
 
-            var last_line = array_last(this.lines);
-            var handle = click_handle(ev, pt);
+            const last_line = array_last(this.lines);
+            const handle = click_handle(ev, pt);
             last_line.add_handle(handle);
             last_line.update_pos();
             last_line.line.style.cursor = "move";
@@ -1311,7 +1311,7 @@ class Triangle extends CompositeShape {
 
         if(this.lines.length == 2){
 
-            var handle1 = this.lines[0].handles[0];
+            const handle1 = this.lines[0].handles[0];
 
             line.add_handle(handle1);
             line.line.style.cursor = "move";
@@ -1324,7 +1324,7 @@ class Triangle extends CompositeShape {
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        var last_line = array_last(this.lines);
+        const last_line = array_last(this.lines);
         last_line.pointermove(ev);
     }
 }
@@ -1340,10 +1340,10 @@ class TextBox extends CompositeShape {
     typeset_done: boolean;
 
     static ontypeset(self: TextBox){
-        var rc = self.div!.getBoundingClientRect();
+        const rc = self.div!.getBoundingClientRect();
         self.rect.setAttribute("width", `${to_svg(rc.width)}`);
 
-        var h = to_svg(rc.height);
+        const h = to_svg(rc.height);
         self.rect.setAttribute("y", `${self.clicked_pos!.y}`);
         self.rect.setAttribute("height", `${h}`);
 
@@ -1351,9 +1351,9 @@ class TextBox extends CompositeShape {
     }
 
     static ok_click(){
-        var self = TextBox.text_box;
+        const self = TextBox.text_box;
 
-        var text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
+        const text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
         self.text = text;
         self.div!.innerHTML = make_html_lines(text);
         TextBox.dialog.close();
@@ -1420,8 +1420,6 @@ class TextBox extends CompositeShape {
         this.rect.setAttribute("x", "" + pt.x);
         this.rect.setAttribute("y", "" + pt.y);
 
-        var ev = window.event as MouseEvent;
-
         this.div.style.left  = `${this.offset_pos.x}px`;
         this.div.style.top   = `${this.offset_pos.y}px`;
 
@@ -1444,8 +1442,8 @@ class Midpoint extends CompositeShape {
     }
 
     calc_midpoint(){
-        var p1 = this.handles[0].pos;
-        var p2 = this.handles[1].pos;
+        const p1 = this.handles[0].pos;
+        const p2 = this.handles[1].pos;
 
         return new Vec2((p1.x + p2.x)/2, (p1.y + p2.y)/2);
     }
@@ -1573,8 +1571,8 @@ class ParallelLine extends CompositeShape {
     }
 
     calc_parallel_line(){
-        var p1 = this.point!.pos.add(this.line1!.e.mul(infinity));
-        var p2 = this.point!.pos.sub(this.line1!.e.mul(infinity));
+        const p1 = this.point!.pos.add(this.line1!.e.mul(infinity));
+        const p2 = this.point!.pos.sub(this.line1!.e.mul(infinity));
 
         this.line2!.set_poins(p1, p2);
     }
@@ -1649,7 +1647,7 @@ class Intersection extends CompositeShape {
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        var line = get_line(ev);
+        const line = get_line(ev);
         
         if(line != null){
             this.lines.push(line);
@@ -1661,7 +1659,7 @@ class Intersection extends CompositeShape {
             }
             else{
 
-                var v = lines_intersection(this.lines[0], this.lines[1]);
+                const v = lines_intersection(this.lines[0], this.lines[1]);
                 this.intersection = initPoint(v);
 
                 for(let line2 of this.lines){
@@ -1720,23 +1718,23 @@ class Angle extends CompositeShape {
     }
 
     draw_arc(){
-        var line1 = this.lines[0];
-        var line2 = this.lines[1];
+        const line1 = this.lines[0];
+        const line2 = this.lines[1];
 
-        var q1 = line1.p1.add(line1.p12.mul(this.ts[0]));
-        var q2 = line2.p1.add(line2.p12.mul(this.ts[1]));
+        const q1 = line1.p1.add(line1.p12.mul(this.ts[0]));
+        const q2 = line2.p1.add(line2.p12.mul(this.ts[1]));
 
-        var p = lines_intersection(this.lines[0], this.lines[1]);
+        const p = lines_intersection(this.lines[0], this.lines[1]);
 
-        var sign1 = Math.sign(q1.sub(p).dot(line1.e));
-        var sign2 = Math.sign(q2.sub(p).dot(line2.e));
+        const sign1 = Math.sign(q1.sub(p).dot(line1.e));
+        const sign2 = Math.sign(q2.sub(p).dot(line2.e));
 
-        var r = to_svg(40);        
-        var p1 = p.add(this.lines[0].e.mul(r * sign1));
-        var p2 = p.add(this.lines[1].e.mul(r * sign2));
+        const r = to_svg(40);        
+        const p1 = p.add(this.lines[0].e.mul(r * sign1));
+        const p2 = p.add(this.lines[1].e.mul(r * sign2));
 
-        var theta1 = Math.atan2(q1.y - p.y, q1.x - p.x);
-        var theta2 = Math.atan2(q2.y - p.y, q2.x - p.x);
+        let theta1 = Math.atan2(q1.y - p.y, q1.x - p.x);
+        let theta2 = Math.atan2(q2.y - p.y, q2.x - p.x);
 
         if(theta1 < 0){
             theta1 += 2 * Math.PI;
@@ -1745,14 +1743,14 @@ class Angle extends CompositeShape {
             theta2 += 2 * Math.PI;
         }
         
-        var d_theta = theta2 - theta1;
+        let d_theta = theta2 - theta1;
         if(d_theta < 0){
             d_theta += 2 * Math.PI;
         }
 
-        var large_arc_sweep_flag = (Math.PI < d_theta ? 1 : 0);
+        const large_arc_sweep_flag = (Math.PI < d_theta ? 1 : 0);
 
-        var d = `M${p1.x} ${p1.y} A ${r} ${r} 0 ${large_arc_sweep_flag} 1 ${p2.x} ${p2.y}`;
+        const d = `M${p1.x} ${p1.y} A ${r} ${r} 0 ${large_arc_sweep_flag} 1 ${p2.x} ${p2.y}`;
 
         this.arc!.setAttribute("d", d);
     }
@@ -1794,12 +1792,12 @@ class Angle extends CompositeShape {
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        var line = get_line(ev);
+        const line = get_line(ev);
         
         if(line != null){
             this.lines.push(line);
 
-            var t = pt.sub(line.p1).dot(line.e) / line.len;
+            const t = pt.sub(line.p1).dot(line.e) / line.len;
             this.ts.push(t);
 
             if(this.lines.length == 1){
@@ -1830,9 +1828,9 @@ function setToolType(){
 }
 
 function make_tool_by_type(tool_type: string): Shape|undefined {
-    var v = tool_type.split('.');
-    var type_name = v[0];
-    var arg = v.length == 2 ? v[1] : null;
+    const v = tool_type.split('.');
+    const type_name = v[0];
+    const arg = v.length == 2 ? v[1] : null;
 
     switch(type_name){
         case "Point":         return new Point(new Vec2(0,0));
@@ -1851,24 +1849,24 @@ function make_tool_by_type(tool_type: string): Shape|undefined {
 }
 
 function showProperty(obj: any){
-    var proto = Object.getPrototypeOf(obj);
+    const proto = Object.getPrototypeOf(obj);
 
     tblProperty.innerHTML = "";
 
     for(let name of Object.getOwnPropertyNames(proto)){
-        var desc = Object.getOwnPropertyDescriptor(proto, name);
+        const desc = Object.getOwnPropertyDescriptor(proto, name);
         if(desc.get != undefined && desc.set != undefined){
             
-            var tr = document.createElement("tr");
+            const tr = document.createElement("tr");
 
-            var name_td = document.createElement("td");
+            const name_td = document.createElement("td");
             name_td.innerText = name;
 
-            var value_td = document.createElement("td");
+            const value_td = document.createElement("td");
 
-            var value = desc.get.apply(obj);
+            const value = desc.get.apply(obj);
             
-            var inp = document.createElement("input");
+            const inp = document.createElement("input");
             switch(typeof value){
             case "string":
             case "number":
@@ -1976,39 +1974,39 @@ export class Image extends CompositeShape {
             if(this.handles.length != 0){
                 // this.process_event(this.handles);
 
-                var x1 = this.handles[0].pos.x;
-                var y1 = this.handles[0].pos.y;
-                var x2 = this.handles[1].pos.x;
-                var y2 = this.handles[1].pos.y;
+                const x1 = this.handles[0].pos.x;
+                const y1 = this.handles[0].pos.y;
+                const x2 = this.handles[1].pos.x;
+                const y2 = this.handles[1].pos.y;
 
                 this.image.setAttribute("x", `${x1}`);
                 this.image.setAttribute("y", `${y1}`);
 
-                var w = x2 - x1;
-                var h = y2 - y1;
+                const w = x2 - x1;
+                const h = y2 - y1;
                 this.image.setAttribute("width", `${w}`);
                 this.image.setAttribute("height", `${h}`);
                     
                 return;
             }
-            var rc = this.image.getBoundingClientRect();
+            const rc = this.image.getBoundingClientRect();
             msg(`img loaded w:${rc.width} h:${rc.height}`);
     
             // 縦横比 = 縦 / 横
-            var ratio = rc.height / rc.width;
+            const ratio = rc.height / rc.width;
     
             // viewBoxを得る。
-            var vb = view.svg.viewBox.baseVal;
+            const vb = view.svg.viewBox.baseVal;
     
             // 縦横比を保って幅がsvgの半分になるようにする。
-            var w = vb.width / 2;
-            var h = ratio * vb.width / 2;
+            const w = vb.width / 2;
+            const h = ratio * vb.width / 2;
             this.image.setAttribute("width", `${w}`);
             this.image.setAttribute("height", `${h}`);
     
             // svgの中央に配置する。
-            var x = vb.x + (vb.width  - w) / 2 ;
-            var y = vb.y + (vb.height - h) / 2;
+            const x = vb.x + (vb.width  - w) / 2 ;
+            const y = vb.y + (vb.height - h) / 2;
             this.image.setAttribute("x", `${x}`);
             this.image.setAttribute("y", `${y}`);
     
@@ -2038,8 +2036,8 @@ export class Image extends CompositeShape {
     process_event =(sources: Shape[])=>{
         for(let src of sources){
             if(src == this.handles[0]){
-                var x = this.handles[0].pos.x;
-                var y = this.handles[0].pos.y;
+                const x = this.handles[0].pos.x;
+                const y = this.handles[0].pos.y;
 
                 this.image.setAttribute("x", `${x}`);
                 this.image.setAttribute("y", `${y}`);
@@ -2050,8 +2048,8 @@ export class Image extends CompositeShape {
                 this.handles[1].set_pos();
             }
             else if(src == this.handles[1]){
-                var w = this.handles[1].pos.x - this.handles[0].pos.x;
-                var h = this.handles[1].pos.y - this.handles[0].pos.y;
+                const w = this.handles[1].pos.x - this.handles[0].pos.x;
+                const h = this.handles[1].pos.y - this.handles[0].pos.y;
                 
                 this.image.setAttribute("width", `${w}`);
                 this.image.setAttribute("height", `${h}`);
@@ -2074,7 +2072,7 @@ function svg_click(ev: MouseEvent){
         for(let shape of view.shapes.values()){
 
             for(let name of Object.getOwnPropertyNames(shape)){
-                var desc = Object.getOwnPropertyDescriptor(shape, name);
+                const desc = Object.getOwnPropertyDescriptor(shape, name);
 
                 if(desc.value == ev.srcElement){
 
@@ -2089,7 +2087,7 @@ function svg_click(ev: MouseEvent){
         return;
     }
 
-    var pt = get_svg_point(ev, null);
+    const pt = get_svg_point(ev, null);
 
     if(view.tool == null){
         view.tool = make_tool_by_type(view.tool_type)!;
@@ -2114,13 +2112,13 @@ function svg_pointermove(ev: PointerEvent){
 }
 
 export function addShape(){
-    var obj = {
+    const obj = {
         "_width" : "500px",
         "_height" : "500px",
         "_viewBox" : "-10 -10 20 20",
     };   
 
-    var view1 = new View(obj);
+    const view1 = new View(obj);
     actions.push(view1);
     view1.init();
     divActions.appendChild(view1.summaryDom());
@@ -2131,7 +2129,7 @@ export function init_draw(){
 
     TextBox.initDialog();
 
-    var tool_types = document.getElementsByName("tool-type");
+    const tool_types = document.getElementsByName("tool-type");
     for(let x of tool_types){
         x.addEventListener("click", setToolType);
     }
