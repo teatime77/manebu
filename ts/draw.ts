@@ -271,7 +271,7 @@ export class Vec2 {
     }
 
     toJSON(key){
-        const obj = { type_name: Vec2.name };
+        const obj = { typeName: Vec2.name };
         Object.assign(obj, this);
 
         return JSON.stringify(obj);
@@ -2091,7 +2091,7 @@ function svgClick(ev: MouseEvent){
 
     if(view.tool == null){
         view.tool = makeToolByType(view.tool_type)!;
-        console.assert(view.tool.typeName() == view.tool_type.split('.')[0]);
+        console.assert(view.tool.getTypeName() == view.tool_type.split('.')[0]);
         view.tool.init();
     }
 
@@ -2138,7 +2138,7 @@ export function initDraw(){
 }
 
 export function deserializeShapes(obj:any) : Action {
-    switch(obj["type_name"]){
+    switch(obj["typeName"]){
     case View.name:
         return new View(obj);
 

@@ -263,7 +263,7 @@ export class Action {
         }
         actionMap.set(this.id, this);
         
-        const obj = { type_name: this.typeName(), id: this.id };
+        const obj = { typeName: this.getTypeName(), id: this.id };
 
         if(this instanceof CompositeShape){
             Object.assign(obj, { handles : this.handles.map(x => x.toObj()) });
@@ -277,7 +277,7 @@ export class Action {
     makeObj(obj){
     }
 
-    typeName(){
+    getTypeName(){
         return this.constructor.name;
     }
 
@@ -306,7 +306,7 @@ export class Action {
     }
 
     summary() : string {
-        return this.typeName();
+        return this.getTypeName();
     }
 
     summaryDom() : HTMLSpanElement {
