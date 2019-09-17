@@ -467,27 +467,27 @@ export class SpeechAction extends DivAction {
 }
 
 export class SelectionAction extends Action {
-    block_id: number;
-    dom_type: string;
-    start_path:any[];
-    end_path:any[] | null;
+    blockId: number;
+    domType: string;
+    startPath:any[];
+    endPath:any[] | null;
     selectedDoms : HTMLElement[];
     isTmp: boolean = false;
 
     constructor(blockId: number, domType:string, startPath:any[], endPath:any[] | null){
         super();
-        this.block_id = blockId;
-        this.dom_type = domType;
-        this.start_path = startPath;
-        this.end_path   = endPath;
+        this.blockId = blockId;
+        this.domType = domType;
+        this.startPath = startPath;
+        this.endPath   = endPath;
     }
 
     makeObj(obj){
         Object.assign(obj, {
-            block_id: this.block_id ,
-            dom_type: this.dom_type ,
-            start_path: this.start_path,
-            end_path: this.end_path 
+            blockId: this.blockId ,
+            domType: this.domType ,
+            startPath: this.startPath,
+            endPath: this.endPath 
         });
     }
 
@@ -526,32 +526,32 @@ export class SelectionAction extends Action {
     }
 
     setSelectedDoms(){
-        console.assert(this.dom_type == "math");
+        console.assert(this.domType == "math");
 
         this.selectedDoms = [];
     
-        const div = document.getElementById(getBlockId(this.block_id)) as HTMLDivElement;
+        const div = document.getElementById(getBlockId(this.blockId)) as HTMLDivElement;
         const jaxes = getJaxesInBlock(div);
     
-        const startJax = getJaxFromPath(jaxes, this.start_path);
-        const startIdx = last(this.start_path)[IDX];
+        const startJax = getJaxFromPath(jaxes, this.startPath);
+        const startIdx = last(this.startPath)[IDX];
     
         const parentJax = startJax.parent;
         console.assert(getJaxIndex(startJax) == startIdx);
-        console.assert(startJax.nodeName == last(this.start_path)[NODE_NAME])
+        console.assert(startJax.nodeName == last(this.startPath)[NODE_NAME])
     
-        if(this.end_path == null){
+        if(this.endPath == null){
     
             this.selectedDoms.push(getDomFromJax(startJax));
         }
         else{
     
-            const endJax = getJaxFromPath(jaxes, this.end_path);
+            const endJax = getJaxFromPath(jaxes, this.endPath);
     
-            const endIdx = last(this.end_path)[IDX];
+            const endIdx = last(this.endPath)[IDX];
     
             console.assert(getJaxIndex(endJax) == endIdx);
-            console.assert(endJax.nodeName == last(this.end_path)[NODE_NAME])
+            console.assert(endJax.nodeName == last(this.endPath)[NODE_NAME])
         
             const nodes = parentJax.childNodes.slice(startIdx, endIdx + 1);
             for(let nd of nodes){
@@ -621,15 +621,15 @@ export class EndAction extends Action {
 
 export class ImgAction extends Action {
     image: Image;
-    file_name: string;
+    fileName: string;
 
     constructor(fileName: string){
         super();
-        this.file_name = fileName;
+        this.fileName = fileName;
     }
 
     init(){
-        this.image = new Image(this.file_name);
+        this.image = new Image(this.fileName);
     }
 
     *play(){

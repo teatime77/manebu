@@ -206,7 +206,7 @@ export function fromObj(parent:any, key:any, obj: any){
             act = new SpeechAction(obj.text);
             break;
         case SelectionAction.name:
-            act = new SelectionAction(obj.block_id, obj.dom_type, obj.start_path, obj.end_path);
+            act = new SelectionAction(obj.blockId, obj.domType, obj.startPath, obj.endPath);
             break;
         case UnselectionAction.name:
             act = new UnselectionAction();
