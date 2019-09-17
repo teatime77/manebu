@@ -1,25 +1,25 @@
 /// <reference path="main.ts" />
 namespace manebu {
-export let is_speaking = false;
-let voice_list = null;
-let jp_voice : SpeechSynthesisVoice = null;
-let prev_idx = 0;
+export let isSpeaking = false;
+let voiceList = null;
+let jpVoice : SpeechSynthesisVoice = null;
+let prevIdx = 0;
 
 function setVoice(){
     const voices = speechSynthesis.getVoices()
-    voice_list = [];
+    voiceList = [];
     voices.forEach(voice => { //　アロー関数 (ES6)
         msg(`${voice.lang} [${voice.name}] ${voice.default} ${voice.localService} ${voice.voiceURI}`);
 
         if(voice.name == "Microsoft Haruka Desktop - Japanese"){
             msg("set Haruka voice");
-            jp_voice = voice;
+            jpVoice = voice;
         }
-        if(jp_voice == null && (voice.lang == "ja-JP" || voice.lang == "ja_JP")){
+        if(jpVoice == null && (voice.lang == "ja-JP" || voice.lang == "ja_JP")){
             msg(`set jp voice[${voice.name}]`);
-            jp_voice = voice;
+            jpVoice = voice;
         }
-        voice_list.push(voice.name);
+        voiceList.push(voice.name);
     });
 }
 
@@ -38,29 +38,29 @@ export function initSpeech(){
 }
 
 export function* speak(text: string){
-    if(voice_list == null){
+    if(voiceList == null){
         setVoice();
     }
 
-    while(is_speaking){
+    while(isSpeaking){
         yield;
     }
 
     const uttr = new SpeechSynthesisUtterance(text);
 
-    if(jp_voice != null){
-        uttr.voice = jp_voice;
+    if(jpVoice != null){
+        uttr.voice = jpVoice;
     }
 
-    is_speaking = true;
+    isSpeaking = true;
     uttr.onend = function(ev: SpeechSynthesisEvent ) {
-        is_speaking = false;
-        msg(`end: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prev_idx, ev.charIndex)}`);
+        isSpeaking = false;
+        msg(`end: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prevIdx, ev.charIndex)}`);
     };
 
     uttr.onboundary = function(ev: SpeechSynthesisEvent ) { 
-        msg(`bdr: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prev_idx, ev.charIndex)}`);
-        prev_idx = ev.charIndex;
+        msg(`bdr: idx:${ev.charIndex} name:${ev.name} type:${ev.type} text:${ev.utterance.text.substring(prevIdx, ev.charIndex)}`);
+        prevIdx = ev.charIndex;
     };
 
     speechSynthesis.speak(uttr);
