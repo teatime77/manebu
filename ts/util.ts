@@ -15,14 +15,14 @@ export function arrayLast<T>(arr:T[]) : T{
     return arr[arr.length - 1];
 }
 
-export function array_remove<T>(arr:T[], x:T) {
+export function arrayRemove<T>(arr:T[], x:T) {
     const index = arr.indexOf(x);
     if (index != -1) {
         arr.splice(index, 1);
     }
 }
 
-function get_indent(line: string) : [number, string]{
+function getIndent(line: string) : [number, string]{
     let indent = 0;
     while(true){
         if(line.startsWith("\t")){
@@ -45,68 +45,68 @@ function tab(indent: number){
 
 export function makeHtmlLines(text: string){
     const lines = text.split('\n');
-    const html_lines = [];            
+    const htmlLines = [];            
 
-    let in_math = false;
-    let ul_indent = -1;
-    let prev_line = "";
-    for(let current_line of lines){
-        let current_line_trim = current_line.trim();
+    let inMath = false;
+    let ulIndent = -1;
+    let prevLine = "";
+    for(let currentLine of lines){
+        let currentLineTrim = currentLine.trim();
 
-        let [indent, line] = get_indent(current_line);
+        let [indent, line] = getIndent(currentLine);
         indent--;
 
-        if(current_line_trim == "$$"){
-            in_math = ! in_math;
-            html_lines.push(current_line);
+        if(currentLineTrim == "$$"){
+            inMath = ! inMath;
+            htmlLines.push(currentLine);
         }
         else{
-            if(in_math){
+            if(inMath){
 
-                html_lines.push(current_line);
+                htmlLines.push(currentLine);
             }
             else{
 
                 if(line.startsWith("# ")){
-                    html_lines.push(tab(indent + 1) + "<strong><span>" + line.substring(2) + "</span></strong><br/>")
+                    htmlLines.push(tab(indent + 1) + "<strong><span>" + line.substring(2) + "</span></strong><br/>")
                 }
                 else if(line.startsWith("- ")){
-                    if(ul_indent < indent){
-                        console.assert(ul_indent + 1 == indent);
-                        html_lines.push(tab(indent) + "<ul>")
-                        ul_indent++;
+                    if(ulIndent < indent){
+                        console.assert(ulIndent + 1 == indent);
+                        htmlLines.push(tab(indent) + "<ul>")
+                        ulIndent++;
                     }
                     else{
-                        while(ul_indent > indent){
-                            html_lines.push(tab(ul_indent) + "</ul>")
-                            ul_indent--;
+                        while(ulIndent > indent){
+                            htmlLines.push(tab(ulIndent) + "</ul>")
+                            ulIndent--;
                         }                            
                     }
-                    html_lines.push(tab(indent + 1) + "<li><span>" + line.substring(2) + "</span></li>")
+                    htmlLines.push(tab(indent + 1) + "<li><span>" + line.substring(2) + "</span></li>")
                 }
                 else{
 
-                    if(prev_line.endsWith("</li>")){
-                        html_lines[html_lines.length - 1] = prev_line.substring(0, prev_line.length - 5) + "<br/>";
-                        html_lines.push(tab(indent + 1) + "<span>" + line + "</span></li>")
+                    if(prevLine.endsWith("</li>")){
+                        htmlLines[htmlLines.length - 1] = prevLine.substring(0, prevLine.length - 5) + "<br/>";
+                        htmlLines.push(tab(indent + 1) + "<span>" + line + "</span></li>")
                     }
                     else{
 
-                        html_lines.push(tab(indent + 1) + "<span>" + line + "</span><br/>")
+                        htmlLines.push(tab(indent + 1) + "<span>" + line + "</span><br/>")
                     }
                 }
             }
         }
 
-        prev_line = html_lines[html_lines.length - 1];
+        prevLine = htmlLines[htmlLines.length - 1];
     }
 
-    while(ul_indent != -1){
-        html_lines.push(tab(ul_indent) + "</ul>")
-        ul_indent--;
+    while(ulIndent != -1){
+        htmlLines.push(tab(ulIndent) + "</ul>")
+        ulIndent--;
     }
 
-    return html_lines.join("\n");
+    return htmlLines.join("\n");
 }
 
 export function tostr(text: string){
@@ -241,9 +241,9 @@ export function serializeActions() : string {
     }
     actionMap = new Map<number, Action>();
 
-    const action_objs = actions.map(x => x.toObj());
+    const actionObjs = actions.map(x => x.toObj());
 
-    return objToStr(action_objs, 0);
+    return objToStr(actionObjs, 0);
 }
 
 export function reviseJson(text:string){
@@ -281,13 +281,13 @@ export function deserializeActions(text: string){
 
 
 function* waitActions(){
-    let typeset_done = false;
+    let typesetDone = false;
     MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
     MathJax.Hub.Queue([function(){
-        typeset_done = true;
+        typesetDone = true;
     }]);
 
-    while(! typeset_done){
+    while(! typesetDone){
         yield;
     }
 
@@ -307,10 +307,10 @@ export function runGenerator(gen: IterableIterator<any>){
     },100);
 }
 
-export function openActionData(action_text: string){
+export function openActionData(actionText: string){
     divMath.innerHTML = "";
 
-    deserializeActions(action_text);
+    deserializeActions(actionText);
 
     if(actions.length == 0){
         ActionId = 0;
