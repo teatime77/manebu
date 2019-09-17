@@ -10,7 +10,7 @@ function ltrim(stringToTrim) {
 	return stringToTrim.replace(/^\s+/,"");
 }
 
-export function array_last<T>(arr:T[]) : T{
+export function arrayLast<T>(arr:T[]) : T{
     console.assert(arr.length != 0);
     return arr[arr.length - 1];
 }

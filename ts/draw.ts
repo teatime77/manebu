@@ -3,9 +3,9 @@
 namespace manebu{
 
 const infinity = 20;
-const stroke_width = 4;
-const this_stroke_width = 2;
-const grid_line_width = 1;
+const strokeWidth = 4;
+const thisStrokeWidth = 2;
+const gridLineWidth = 1;
 
 declare let MathJax:any;
 
@@ -104,8 +104,8 @@ export class View extends Action {
         this.svg.appendChild(this.G1);
         this.svg.appendChild(this.G2);
     
-        this.svg.addEventListener("click", svg_click);
-        this.svg.addEventListener("pointermove", svg_pointermove);  
+        this.svg.addEventListener("click", svgClick);
+        this.svg.addEventListener("pointermove", svgPointermove);  
 
         setToolType();
     }
@@ -246,7 +246,7 @@ export class View extends Action {
         rect.setAttribute("height", `${this._gridHeight}`);
         rect.setAttribute("fill", "transparent");
         rect.setAttribute("stroke", "black");
-        rect.setAttribute("stroke-width", `${to_svg(grid_line_width)}`);
+        rect.setAttribute("stroke-width", `${toSvg(gridLineWidth)}`);
     
         pattern.appendChild(rect);
     
@@ -257,9 +257,9 @@ export class View extends Action {
 let view : View;
 
 let tblProperty : HTMLTableElement;
-let angle_dlg : HTMLDialogElement;
-let angle_dlg_ok : HTMLInputElement;
-let angle_dlg_color : HTMLInputElement;
+let angleDlg : HTMLDialogElement;
+let angleDlgOk : HTMLInputElement;
+let angleDlgColor : HTMLInputElement;
 
 export class Vec2 {
     x: number;
@@ -357,11 +357,11 @@ class Mat2 {
     }
 }
 
-function to_svg(x:number) : number{
+function toSvg(x:number) : number{
     return x * view.svg_ratio;
 }
 
-function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null){
+function getSvgPoint(ev: MouseEvent | PointerEvent, dragged_point: Point|null){
 	const point = view.svg.createSVGPoint();
 	
     //画面上の座標を取得する．
@@ -388,11 +388,11 @@ function get_svg_point(ev: MouseEvent | PointerEvent, dragged_point: Point|null)
     return new Vec2(p.x, p.y);
 }
 
-function click_handle(ev: MouseEvent, pt:Vec2) : Point{
-    let handle = get_point(ev);
+function clickHandle(ev: MouseEvent, pt:Vec2) : Point{
+    let handle = getPoint(ev);
     if(handle == null){
 
-        const line = get_line(ev);
+        const line = getLine(ev);
         if(line != null){
 
             handle = initPoint(pt);
@@ -458,12 +458,12 @@ class EventQueue {
         }
     }
 
-    add_event_make_event_graph(destination:Shape, source: Shape){
+    addEventMakeEventGraph(destination:Shape, source: Shape){
         this.add_event(destination, source);
-        destination.make_event_graph(source);
+        destination.makeEventGraph(source);
     }
 
-    process_queue =()=>{
+    processQueue =()=>{
         const processed : Shape[] = [];
 
         while(this.events.length != 0){
@@ -471,7 +471,7 @@ class EventQueue {
             if(! processed.includes(event.destination)){
                 processed.push(event.destination);
 
-                event.destination.process_event(event.sources);
+                event.destination.processEvent(event.sources);
             }
             this.events.shift();
         }
@@ -479,7 +479,7 @@ class EventQueue {
 }
 
 export abstract class Shape extends Action {
-    process_event(sources: Shape[]){}
+    processEvent(sources: Shape[]){}
     listeners:Shape[] = [];
 
     select(selected: boolean){}
@@ -507,10 +507,10 @@ export abstract class Shape extends Action {
         pt.bind_to = this;
     }
 
-    make_event_graph(src:Shape|null){
+    makeEventGraph(src:Shape|null){
         for(let shape of this.listeners){
             
-            view.event_queue.add_event_make_event_graph(shape, this);
+            view.event_queue.addEventMakeEventGraph(shape, this);
         }
     }
 }
@@ -518,7 +518,7 @@ export abstract class Shape extends Action {
 export abstract class CompositeShape extends Shape {
     handles : Point[] = [];
 
-    add_handle(handle: Point, use_this_handle_move: boolean = true){
+    addHandle(handle: Point, use_this_handle_move: boolean = true){
 
         if(use_this_handle_move){
 
@@ -536,7 +536,7 @@ export abstract class CompositeShape extends Shape {
     }
 }
 
-function finish_tool(){
+function finishTool(){
     const v = Array.from(view.G0.childNodes.values());
     for(let x of v){
         view.G0.removeChild(x);
@@ -553,12 +553,12 @@ function finish_tool(){
     view.tool = null;
 }
 
-function get_point(ev: MouseEvent) : Point | null{
+function getPoint(ev: MouseEvent) : Point | null{
     const pt = Array.from(view.shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
     return pt == undefined ? null : pt;
 }
 
-function get_line(ev: MouseEvent) : LineSegment | null{
+function getLine(ev: MouseEvent) : LineSegment | null{
     const line = Array.from(view.shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
     return line == undefined ? null : line;
 }
@@ -568,9 +568,9 @@ function get_circle(ev: MouseEvent) : Circle | null{
     return circle == undefined ? null : circle;
 }
 
-function lines_intersection(l1:LineSegment, l2:LineSegment) : Vec2 {
-    l1.set_vecs();
-    l2.set_vecs();
+function linesIntersection(l1:LineSegment, l2:LineSegment) : Vec2 {
+    l1.setVecs();
+    l2.setVecs();
 
     /*
     l1.p1 + u l1.p12 = l2.p1 + v l2.p12
@@ -591,7 +591,7 @@ function lines_intersection(l1:LineSegment, l2:LineSegment) : Vec2 {
     return l1.p1.add(l1.p12.mul(u));
 }
 
-function calc_foot_of_perpendicular(pos:Vec2, line: LineSegment) : Vec2 {
+function calcFootOfPerpendicular(pos:Vec2, line: LineSegment) : Vec2 {
     const p1 = line.handles[0].pos;
     const p2 = line.handles[1].pos;
 
@@ -615,7 +615,7 @@ export class Point extends Shape {
         this.pos = pt;
         //---------- 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
-        this.circle.setAttribute("r", `${to_svg(5)}`);
+        this.circle.setAttribute("r", `${toSvg(5)}`);
         this.circle.setAttribute("fill", "blue");
         this.circle.addEventListener("pointerdown", this.pointerdown);
         this.circle.addEventListener("pointermove", this.pointermove);
@@ -623,7 +623,7 @@ export class Point extends Shape {
 
         this.circle.style.cursor = "pointer";
 
-        this.set_pos();
+        this.setPos();
     
         view.G2.appendChild(this.circle);
     }
@@ -646,7 +646,7 @@ export class Point extends Shape {
 
     set x(value:any){
         this.pos.x =  parseInt(value);
-        this.set_pos();
+        this.setPos();
     }
 
     get y(){
@@ -655,17 +655,17 @@ export class Point extends Shape {
 
     set y(value:any){
         this.pos.y =  parseInt(value);
-        this.set_pos();
+        this.setPos();
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
         this.pos = pt;
 
-        const line = get_line(ev);
+        const line = getLine(ev);
 
         if(line == null){
 
-            this.set_pos();
+            this.setPos();
         }
         else{
 
@@ -673,10 +673,10 @@ export class Point extends Shape {
             line.adjust(this);
         }
 
-        finish_tool();
+        finishTool();
     }
 
-    set_pos(){
+    setPos(){
         this.circle.setAttribute("cx", "" + this.pos.x);
         this.circle.setAttribute("cy", "" + this.pos.y);
     }
@@ -695,7 +695,7 @@ export class Point extends Shape {
     }
 
     private dragPoint(ev: PointerEvent){
-        this.pos = get_svg_point(ev, this);
+        this.pos = getSvgPoint(ev, this);
         if(this.bind_to != undefined){
 
             if(this.bind_to instanceof LineSegment){
@@ -710,11 +710,11 @@ export class Point extends Shape {
         }
         else{
 
-            this.set_pos();
+            this.setPos();
         }
     }
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         if(this.bind_to != undefined){
 
             if(this.bind_to instanceof LineSegment){
@@ -746,8 +746,8 @@ export class Point extends Shape {
 
         this.dragPoint(ev);
 
-        this.make_event_graph(null);
-        view.event_queue.process_queue();
+        this.makeEventGraph(null);
+        view.event_queue.processQueue();
     }
 
     pointerup =(ev: PointerEvent)=>{
@@ -760,8 +760,8 @@ export class Point extends Shape {
 
         this.dragPoint(ev);
 
-        this.make_event_graph(null);
-        view.event_queue.process_queue();
+        this.makeEventGraph(null);
+        view.event_queue.processQueue();
     }
 }
 
@@ -778,14 +778,14 @@ class LineSegment extends CompositeShape {
         //---------- 
         this.line = document.createElementNS("http://www.w3.org/2000/svg","line");
         this.line.setAttribute("stroke", "navy");
-        this.line.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
+        this.line.setAttribute("stroke-width", `${toSvg(strokeWidth)}`);
 
         view.G0.appendChild(this.line);
     }
 
     *restore(){
         this.line.style.cursor = "move";
-        this.update_pos();
+        this.updatePos();
     }
 
     get color(){
@@ -809,7 +809,7 @@ class LineSegment extends CompositeShape {
         }
     }
 
-    set_poins(p1:Vec2, p2:Vec2){
+    setPoints(p1:Vec2, p2:Vec2){
         this.line.setAttribute("x1", "" + p1.x);
         this.line.setAttribute("y1", "" + p1.y);
 
@@ -823,12 +823,12 @@ class LineSegment extends CompositeShape {
                 this.handles[1].pos = p2;
                 this.handles[1]
 
-                this.set_vecs();
+                this.setVecs();
             }
         }
     }
 
-    update_pos(){
+    updatePos(){
         this.line.setAttribute("x1", "" + this.handles[0].pos.x);
         this.line.setAttribute("y1", "" + this.handles[0].pos.y);
 
@@ -842,11 +842,11 @@ class LineSegment extends CompositeShape {
             this.line.setAttribute("x2", "" + this.handles[1].pos.x);
             this.line.setAttribute("y2", "" + this.handles[1].pos.y);
 
-            this.set_vecs();
+            this.setVecs();
         }
     }
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         for(let src of sources){
             if(src == this.handles[0]){
 
@@ -865,11 +865,11 @@ class LineSegment extends CompositeShape {
             }
         }
 
-        this.set_vecs();
+        this.setVecs();
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        this.add_handle(click_handle(ev, pt));
+        this.addHandle(clickHandle(ev, pt));
 
         this.line.setAttribute("x2", "" + pt.x);
         this.line.setAttribute("y2", "" + pt.y);
@@ -880,21 +880,21 @@ class LineSegment extends CompositeShape {
         }
         else{
             this.line.style.cursor = "move";
-            this.set_vecs();
+            this.setVecs();
 
-            finish_tool();
+            finishTool();
         }    
 
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        const pt = get_svg_point(ev, null);
+        const pt = getSvgPoint(ev, null);
 
         this.line!.setAttribute("x2", "" + pt.x);
         this.line!.setAttribute("y2", "" + pt.y);
     }
 
-    set_vecs(){
+    setVecs(){
         this.p1 = this.handles[0].pos;
         this.p2 = this.handles[1].pos;
         this.p12 = this.p2.sub(this.p1);
@@ -903,16 +903,16 @@ class LineSegment extends CompositeShape {
     }
 
     adjust(handle: Point) {
-        let pos_in_line;
+        let posInLine;
 
         if(this.len == 0){
-            pos_in_line = 0;
+            posInLine = 0;
         }
         else{
-            pos_in_line = this.e.dot(handle.pos.sub(this.p1)) / this.len;
+            posInLine = this.e.dot(handle.pos.sub(this.p1)) / this.len;
         }
-        handle.pos = this.p1.add(this.p12.mul(pos_in_line));
-        handle.set_pos();
+        handle.pos = this.p1.add(this.p12.mul(posInLine));
+        handle.setPos();
     }
 }
 
@@ -922,9 +922,9 @@ class Rect extends CompositeShape {
     h : number = -1;
     in_set_rect_pos : boolean = false;
 
-    constructor(is_square: boolean){
+    constructor(isSquare: boolean){
         super();
-        this.is_square = is_square;
+        this.is_square = isSquare;
     }
 
     init(){
@@ -950,7 +950,7 @@ class Rect extends CompositeShape {
         });
     }
 
-    set_rect_pos(pt: Vec2|null, idx: number, clicked:boolean){
+    setRectPos(pt: Vec2|null, idx: number, clicked:boolean){
         if(this.in_set_rect_pos){
             return;
         }
@@ -1010,22 +1010,22 @@ class Rect extends CompositeShape {
         const p4 = p3.add(p1.sub(p2));
 
         const line1 = this.lines[0];
-        line1.set_poins(p1, p2);
+        line1.setPoints(p1, p2);
 
         const line2 = this.lines[1];
-        line2.set_poins(p2, p3);
+        line2.setPoints(p2, p3);
 
         const line3 = this.lines[2];
-        line3.set_poins(p3, p4);
+        line3.setPoints(p3, p4);
 
         const line4 = this.lines[3];
-        line4.set_poins(p4, p1);
+        line4.setPoints(p4, p1);
 
         if(clicked){
             if(this.handles.length == 2 && this.is_square){
 
-                line1.add_handle(this.handles[1], false);
-                line2.add_handle(this.handles[1], false);
+                line1.addHandle(this.handles[1], false);
+                line2.addHandle(this.handles[1], false);
 
                 line1.line.style.cursor = "move";
                 
@@ -1035,28 +1035,28 @@ class Rect extends CompositeShape {
 
             switch(this.handles.length){
             case 1:
-                line1.add_handle(this.handles[0], false);
+                line1.addHandle(this.handles[0], false);
                 break;
             case 2:
-                line1.add_handle(this.handles[1], false);
-                line2.add_handle(this.handles[1], false);
+                line1.addHandle(this.handles[1], false);
+                line2.addHandle(this.handles[1], false);
 
                 line1.line.style.cursor = "move";
 
                 break;
             case 3:
-                line2.add_handle(this.handles[2], false);
+                line2.addHandle(this.handles[2], false);
                 line2.line.style.cursor = "move";
 
                 const handle4 = initPoint(p4);
                 this.handles.push(handle4);
 
-                line3.add_handle(this.handles[2], false);
-                line3.add_handle(handle4, false);
+                line3.addHandle(this.handles[2], false);
+                line3.addHandle(handle4, false);
                 line3.line.style.cursor = "move";
 
-                line4.add_handle(handle4, false);
-                line4.add_handle(this.handles[0], false);
+                line4.addHandle(handle4, false);
+                line4.addHandle(this.handles[0], false);
                 line4.line.style.cursor = "move";
                 break;
             }
@@ -1065,26 +1065,26 @@ class Rect extends CompositeShape {
         if(3 <= this.handles.length){
 
             this.handles[2].pos = p3;
-            this.handles[2].set_pos();
+            this.handles[2].setPos();
     
             if(this.handles.length == 4){
 
                 this.handles[3].pos = p4;
-                this.handles[3].set_pos();        
+                this.handles[3].setPos();        
             }
         }
 
         this.in_set_rect_pos = false;
     }
 
-    make_event_graph(src:Shape|null){
-        super.make_event_graph(src);
+    makeEventGraph(src:Shape|null){
+        super.makeEventGraph(src);
 
         // event_queue.add_event_make_event_graph(this.handles[0], this);
 
         if(src == this.handles[0] || src == this.handles[1]){
 
-            view.event_queue.add_event_make_event_graph(this.handles[2], this);
+            view.event_queue.addEventMakeEventGraph(this.handles[2], this);
         }
         else{
             console.assert(src == this.handles[2]);
@@ -1092,11 +1092,11 @@ class Rect extends CompositeShape {
 
         for(let line of this.lines){
 
-            view.event_queue.add_event_make_event_graph(line, this);
+            view.event_queue.addEventMakeEventGraph(line, this);
         }
     }
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         for(let source of sources){
             console.assert(source.constructor.name == "Point");
             let i = this.handles.indexOf(source as Point);
@@ -1106,7 +1106,7 @@ class Rect extends CompositeShape {
         const handle = sources[0] as Point;
 
         const idx = this.handles.indexOf(handle);
-        this.set_rect_pos(handle.pos, idx, false);
+        this.setRectPos(handle.pos, idx, false);
     }
 
     click =(ev: MouseEvent, pt:Vec2): void =>{
@@ -1119,42 +1119,42 @@ class Rect extends CompositeShape {
             }
         }
 
-        this.add_handle(click_handle(ev, pt));
+        this.addHandle(clickHandle(ev, pt));
 
-        this.set_rect_pos(pt, -1, true);
+        this.setRectPos(pt, -1, true);
 
         if(this.handles.length == 4){
 
             for(let line of this.lines){
                 console.assert(line.handles.length == 2);
-                line.set_vecs();
+                line.setVecs();
             }
-            finish_tool();
+            finishTool();
         }    
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        const pt = get_svg_point(ev, null);
+        const pt = getSvgPoint(ev, null);
 
-        this.set_rect_pos(pt, -1, false);
+        this.setRectPos(pt, -1, false);
     }
 }
 
 class Circle extends CompositeShape {
     circle: SVGCircleElement;
     center: Vec2|null = null;
-    radius: number = to_svg(1);
+    radius: number = toSvg(1);
     by_diameter:boolean 
 
-    constructor(by_diameter:boolean){
+    constructor(byDiameter:boolean){
         super();
 
-        this.by_diameter = by_diameter;
+        this.by_diameter = byDiameter;
         //---------- 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("fill", "none");// "transparent");
         this.circle.setAttribute("stroke", "navy");
-        this.circle.setAttribute("stroke-width", `${to_svg(stroke_width)}`);     
+        this.circle.setAttribute("stroke-width", `${toSvg(strokeWidth)}`);     
         this.circle.setAttribute("fill-opacity", "0");
         
         view.G0.appendChild(this.circle);    
@@ -1170,7 +1170,7 @@ class Circle extends CompositeShape {
             p.listeners.push(this);
         }
 
-        this.process_event(this.handles);
+        this.processEvent(this.handles);
     }
 
     makeObj(obj){
@@ -1186,25 +1186,25 @@ class Circle extends CompositeShape {
         this.circle.setAttribute("stroke", c);
     }
 
-    set_center(pt: Vec2){
+    setCenter(pt: Vec2){
         this.center = this.handles[0].pos.add(pt).mul(0.5);
 
         this.circle.setAttribute("cx", "" + this.center.x);
         this.circle.setAttribute("cy", "" + this.center.y);
     }
 
-    set_radius(pt: Vec2){
+    setRadius(pt: Vec2){
         this.radius = this.center!.dist(pt);
         this.circle!.setAttribute("r", "" +  this.radius );
     }
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         for(let src of sources){
             if(src == this.handles[0]){
 
                 if(this.by_diameter){
 
-                    this.set_center(this.handles[1].pos);
+                    this.setCenter(this.handles[1].pos);
                 }
                 else{
         
@@ -1213,15 +1213,15 @@ class Circle extends CompositeShape {
                     this.circle.setAttribute("cy", "" + this.handles[0].pos.y);
                 }
         
-                this.set_radius(this.handles[1].pos);
+                this.setRadius(this.handles[1].pos);
             }
             else if(src == this.handles[1]){
 
                 if(this.by_diameter){
-                    this.set_center(this.handles[1].pos);
+                    this.setCenter(this.handles[1].pos);
                 }
 
-                this.set_radius(this.handles[1].pos);
+                this.setRadius(this.handles[1].pos);
             }
             else{
                 console.assert(false);
@@ -1230,7 +1230,7 @@ class Circle extends CompositeShape {
     }
 
     click =(ev: MouseEvent, pt:Vec2): void =>{
-        this.add_handle(click_handle(ev, pt));
+        this.addHandle(clickHandle(ev, pt));
 
         if(this.handles.length == 1){
 
@@ -1243,24 +1243,24 @@ class Circle extends CompositeShape {
         else{
             if(this.by_diameter){
 
-                this.set_center(pt);
+                this.setCenter(pt);
             }
     
-            this.set_radius(pt);
+            this.setRadius(pt);
             this.circle.style.cursor = "move";
     
-            finish_tool();
+            finishTool();
         }
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        const pt = get_svg_point(ev, null);
+        const pt = getSvgPoint(ev, null);
 
         if(this.by_diameter){
 
-            this.set_center(pt);
+            this.setCenter(pt);
         }
-        this.set_radius(pt);
+        this.setRadius(pt);
     }
 
     adjust(handle: Point) {
@@ -1269,7 +1269,7 @@ class Circle extends CompositeShape {
 
         handle.pos = new Vec2(this.center!.x + this.radius * Math.cos(theta), this.center!.y + this.radius * Math.sin(theta));
 
-        handle.set_pos();
+        handle.setPos();
     }
 }
 
@@ -1296,36 +1296,36 @@ class Triangle extends CompositeShape {
         const line = initLineSegment();
 
         if(this.lines.length == 0){
-            line.add_handle(click_handle(ev, pt));
+            line.addHandle(clickHandle(ev, pt));
         }
         else{
 
-            const last_line = array_last(this.lines);
-            const handle = click_handle(ev, pt);
-            last_line.add_handle(handle);
-            last_line.update_pos();
-            last_line.line.style.cursor = "move";
+            const lastLine = arrayLast(this.lines);
+            const handle = clickHandle(ev, pt);
+            lastLine.addHandle(handle);
+            lastLine.updatePos();
+            lastLine.line.style.cursor = "move";
 
-            line.add_handle(handle);
+            line.addHandle(handle);
         }
 
         if(this.lines.length == 2){
 
             const handle1 = this.lines[0].handles[0];
 
-            line.add_handle(handle1);
+            line.addHandle(handle1);
             line.line.style.cursor = "move";
 
-            finish_tool();
+            finishTool();
         }
 
         this.lines.push(line);
-        line.update_pos();
+        line.updatePos();
     }
 
     pointermove =(ev: PointerEvent) : void =>{
-        const last_line = array_last(this.lines);
-        last_line.pointermove(ev);
+        const lastLine = arrayLast(this.lines);
+        lastLine.pointermove(ev);
     }
 }
 
@@ -1341,16 +1341,16 @@ class TextBox extends CompositeShape {
 
     static ontypeset(self: TextBox){
         const rc = self.div!.getBoundingClientRect();
-        self.rect.setAttribute("width", `${to_svg(rc.width)}`);
+        self.rect.setAttribute("width", `${toSvg(rc.width)}`);
 
-        const h = to_svg(rc.height);
+        const h = toSvg(rc.height);
         self.rect.setAttribute("y", `${self.clicked_pos!.y}`);
         self.rect.setAttribute("height", `${h}`);
 
         self.typeset_done = true;
     }
 
-    static ok_click(){
+    static okClick(){
         const self = TextBox.text_box;
 
         const text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
@@ -1365,7 +1365,7 @@ class TextBox extends CompositeShape {
 
     static initDialog(){
         TextBox.dialog = document.getElementById('text-box-dlg') as HTMLDialogElement;
-        (document.getElementById("text-box-ok") as HTMLInputElement).addEventListener("click", TextBox.ok_click);
+        (document.getElementById("text-box-ok") as HTMLInputElement).addEventListener("click", TextBox.okClick);
     }
 
     constructor(){
@@ -1373,11 +1373,11 @@ class TextBox extends CompositeShape {
         TextBox.text_box = this;
         //---------- 
         this.rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        this.rect.setAttribute("width", `${to_svg(1)}`);
-        this.rect.setAttribute("height", `${to_svg(1)}`);
+        this.rect.setAttribute("width", `${toSvg(1)}`);
+        this.rect.setAttribute("height", `${toSvg(1)}`);
         this.rect.setAttribute("fill", "transparent");
         this.rect.setAttribute("stroke", "navy");
-        this.rect.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
+        this.rect.setAttribute("stroke-width", `${toSvg(thisStrokeWidth)}`);
         view.G1.appendChild(this.rect);
 
         this.div = document.createElement("div");
@@ -1424,7 +1424,7 @@ class TextBox extends CompositeShape {
         this.div.style.top   = `${this.offset_pos.y}px`;
 
         TextBox.dialog.showModal();
-        finish_tool();
+        finishTool();
     }
 }
 
@@ -1441,32 +1441,32 @@ class Midpoint extends CompositeShape {
         Object.assign(obj, { midpoint: this.midpoint.toObj() });
     }
 
-    calc_midpoint(){
+    calcMidpoint(){
         const p1 = this.handles[0].pos;
         const p2 = this.handles[1].pos;
 
         return new Vec2((p1.x + p2.x)/2, (p1.y + p2.y)/2);
     }
 
-    make_event_graph(src:Shape|null){
-        super.make_event_graph(src);
+    makeEventGraph(src:Shape|null){
+        super.makeEventGraph(src);
 
-        view.event_queue.add_event_make_event_graph(this.midpoint!, this);
+        view.event_queue.addEventMakeEventGraph(this.midpoint!, this);
     }
 
-    process_event =(sources: Shape[])=>{
-        this.midpoint!.pos = this.calc_midpoint();
-        this.midpoint!.set_pos();
+    processEvent =(sources: Shape[])=>{
+        this.midpoint!.pos = this.calcMidpoint();
+        this.midpoint!.setPos();
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        this.add_handle(click_handle(ev, pt));
+        this.addHandle(clickHandle(ev, pt));
 
         if(this.handles.length == 2){
 
-            this.midpoint = initPoint( this.calc_midpoint() );
+            this.midpoint = initPoint( this.calcMidpoint() );
 
-            finish_tool();
+            finishTool();
         }
     }
 }
@@ -1496,22 +1496,22 @@ class Perpendicular extends CompositeShape {
         });
     }
 
-    make_event_graph(src:Shape|null){
-        super.make_event_graph(src);
+    makeEventGraph(src:Shape|null){
+        super.makeEventGraph(src);
 
-        view.event_queue.add_event_make_event_graph(this.foot!, this);
+        view.event_queue.addEventMakeEventGraph(this.foot!, this);
     }
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         if(this.in_handle_move){
             return;
         }
         this.in_handle_move = true;
 
-        this.foot!.pos = calc_foot_of_perpendicular(this.handles[0].pos, this.line!);
-        this.foot!.set_pos();
+        this.foot!.pos = calcFootOfPerpendicular(this.handles[0].pos, this.line!);
+        this.foot!.setPos();
 
-        this.perpendicular!.set_poins(this.handles[0].pos, this.foot!.pos);
+        this.perpendicular!.setPoints(this.handles[0].pos, this.foot!.pos);
 
         this.in_handle_move = false;
     }
@@ -1519,28 +1519,28 @@ class Perpendicular extends CompositeShape {
     click =(ev: MouseEvent, pt:Vec2): void => {
         if(this.handles.length == 0){
 
-            this.add_handle(click_handle(ev, pt));
+            this.addHandle(clickHandle(ev, pt));
         }
         else {
 
-            this.line = get_line(ev);
+            this.line = getLine(ev);
             if(this.line == null){
                 return;
             }
 
             this.line.listeners.push(this);
 
-            this.foot = initPoint( calc_foot_of_perpendicular(this.handles[0].pos, this.line!) );
+            this.foot = initPoint( calcFootOfPerpendicular(this.handles[0].pos, this.line!) );
 
             this.perpendicular = initLineSegment();
             this.perpendicular.line.style.cursor = "move";
-            this.perpendicular.add_handle(this.handles[0]);
-            this.perpendicular.add_handle(this.foot, false);
+            this.perpendicular.addHandle(this.handles[0]);
+            this.perpendicular.addHandle(this.foot, false);
 
-            this.perpendicular.set_vecs();
-            this.perpendicular.update_pos();
+            this.perpendicular.setVecs();
+            this.perpendicular.updatePos();
 
-            finish_tool();
+            finishTool();
         }
     }
 }
@@ -1570,27 +1570,27 @@ class ParallelLine extends CompositeShape {
         });
     }
 
-    calc_parallel_line(){
+    calcParallelLine(){
         const p1 = this.point!.pos.add(this.line1!.e.mul(infinity));
         const p2 = this.point!.pos.sub(this.line1!.e.mul(infinity));
 
-        this.line2!.set_poins(p1, p2);
+        this.line2!.setPoints(p1, p2);
     }
 
-    make_event_graph(src:Shape|null){
-        super.make_event_graph(src);
+    makeEventGraph(src:Shape|null){
+        super.makeEventGraph(src);
 
-        view.event_queue.add_event_make_event_graph(this.line2!, this);
+        view.event_queue.addEventMakeEventGraph(this.line2!, this);
     }
 
-    process_event =(sources: Shape[])=>{
-        this.calc_parallel_line();
+    processEvent =(sources: Shape[])=>{
+        this.calcParallelLine();
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
         if(this.line1 == null){
 
-            this.line1 = get_line(ev);
+            this.line1 = getLine(ev);
             if(this.line1 == null){
                 return;
             }
@@ -1600,7 +1600,7 @@ class ParallelLine extends CompositeShape {
         }
         else {
 
-            this.point = get_point(ev);
+            this.point = getPoint(ev);
             if(this.point == null){
                 return;
             }
@@ -1610,14 +1610,14 @@ class ParallelLine extends CompositeShape {
             this.line2 = initLineSegment();
             this.line2.line.style.cursor = "move";
 
-            this.line2.add_handle(initPoint(new Vec2(0,0)));
-            this.line2.add_handle(initPoint(new Vec2(0,0)));
-            this.calc_parallel_line();
+            this.line2.addHandle(initPoint(new Vec2(0,0)));
+            this.line2.addHandle(initPoint(new Vec2(0,0)));
+            this.calcParallelLine();
             for(let handle of this.line2.handles){
-                handle.set_pos();
+                handle.setPos();
             }
 
-            finish_tool();
+            finishTool();
         }
     }
 }
@@ -1635,19 +1635,19 @@ class Intersection extends CompositeShape {
         });
     }
 
-    make_event_graph(src:Shape|null){
-        super.make_event_graph(src);
+    makeEventGraph(src:Shape|null){
+        super.makeEventGraph(src);
 
-        view.event_queue.add_event_make_event_graph(this.intersection!, this);
+        view.event_queue.addEventMakeEventGraph(this.intersection!, this);
     }
 
-    process_event =(sources: Shape[])=>{
-        this.intersection!.pos = lines_intersection(this.lines[0], this.lines[1]);
-        this.intersection!.set_pos();
+    processEvent =(sources: Shape[])=>{
+        this.intersection!.pos = linesIntersection(this.lines[0], this.lines[1]);
+        this.intersection!.setPos();
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        const line = get_line(ev);
+        const line = getLine(ev);
         
         if(line != null){
             this.lines.push(line);
@@ -1659,7 +1659,7 @@ class Intersection extends CompositeShape {
             }
             else{
 
-                const v = lines_intersection(this.lines[0], this.lines[1]);
+                const v = linesIntersection(this.lines[0], this.lines[1]);
                 this.intersection = initPoint(v);
 
                 for(let line2 of this.lines){
@@ -1667,7 +1667,7 @@ class Intersection extends CompositeShape {
                     line2.listeners.push(this);
                 }
 
-                finish_tool();
+                finishTool();
             }
         }
     }
@@ -1690,15 +1690,15 @@ class Angle extends CompositeShape {
 
         this.arc.setAttribute("fill", "none");
         this.arc.setAttribute("stroke", "red");
-        this.arc.setAttribute("stroke-width", `${to_svg(this_stroke_width)}`);
-        this.arc.addEventListener("click", this.arc_click);
+        this.arc.setAttribute("stroke-width", `${toSvg(thisStrokeWidth)}`);
+        this.arc.addEventListener("click", this.arcClick);
         this.arc.style.cursor = "pointer";
 
         view.G0.appendChild(this.arc);
     }
 
     *restore(){
-        this.draw_arc();
+        this.drawArc();
     }
     
     makeObj(obj){
@@ -1717,19 +1717,19 @@ class Angle extends CompositeShape {
         this.arc.setAttribute("stroke", c);
     }
 
-    draw_arc(){
+    drawArc(){
         const line1 = this.lines[0];
         const line2 = this.lines[1];
 
         const q1 = line1.p1.add(line1.p12.mul(this.ts[0]));
         const q2 = line2.p1.add(line2.p12.mul(this.ts[1]));
 
-        const p = lines_intersection(this.lines[0], this.lines[1]);
+        const p = linesIntersection(this.lines[0], this.lines[1]);
 
         const sign1 = Math.sign(q1.sub(p).dot(line1.e));
         const sign2 = Math.sign(q2.sub(p).dot(line2.e));
 
-        const r = to_svg(40);        
+        const r = toSvg(40);        
         const p1 = p.add(this.lines[0].e.mul(r * sign1));
         const p2 = p.add(this.lines[1].e.mul(r * sign2));
 
@@ -1743,56 +1743,56 @@ class Angle extends CompositeShape {
             theta2 += 2 * Math.PI;
         }
         
-        let d_theta = theta2 - theta1;
-        if(d_theta < 0){
-            d_theta += 2 * Math.PI;
+        let deltaTheta = theta2 - theta1;
+        if(deltaTheta < 0){
+            deltaTheta += 2 * Math.PI;
         }
 
-        const large_arc_sweep_flag = (Math.PI < d_theta ? 1 : 0);
+        const largeArcSweepFlag = (Math.PI < deltaTheta ? 1 : 0);
 
-        const d = `M${p1.x} ${p1.y} A ${r} ${r} 0 ${large_arc_sweep_flag} 1 ${p2.x} ${p2.y}`;
+        const d = `M${p1.x} ${p1.y} A ${r} ${r} 0 ${largeArcSweepFlag} 1 ${p2.x} ${p2.y}`;
 
         this.arc!.setAttribute("d", d);
     }
 
-    process_event =(sources: Shape[])=>{
-        this.draw_arc();
+    processEvent =(sources: Shape[])=>{
+        this.drawArc();
     }
 
-    ok_click(){
-        this.arc!.setAttribute("stroke", angle_dlg_color.value.trim());
+    okClick(){
+        this.arc!.setAttribute("stroke", angleDlgColor.value.trim());
 
-        angle_dlg.close();
+        angleDlg.close();
     }
 
 
     static initDialog(){
-        angle_dlg = document.getElementById('angle-dlg') as HTMLDialogElement;
-        angle_dlg_ok = document.getElementById('angle-dlg-ok') as HTMLInputElement;
-        angle_dlg_color = document.getElementById('angle-dlg-color') as HTMLInputElement;
+        angleDlg = document.getElementById('angle-dlg') as HTMLDialogElement;
+        angleDlgOk = document.getElementById('angle-dlg-ok') as HTMLInputElement;
+        angleDlgColor = document.getElementById('angle-dlg-color') as HTMLInputElement;
 
-        angle_dlg.addEventListener("keydown", ev=>{
+        angleDlg.addEventListener("keydown", ev=>{
             if(ev.key == 'Enter'){
-                Angle.current.ok_click();
+                Angle.current.okClick();
             }    
         });
 
-        angle_dlg_ok.addEventListener("click", ev=>{
-            Angle.current.ok_click();    
+        angleDlgOk.addEventListener("click", ev=>{
+            Angle.current.okClick();    
         });
     
     }
 
-    arc_click = (ev: MouseEvent)=>{
+    arcClick = (ev: MouseEvent)=>{
         Angle.current = this;
-        angle_dlg_color.value = this.arc!.getAttribute("stroke")!;
+        angleDlgColor.value = this.arc!.getAttribute("stroke")!;
 
-        angle_dlg.showModal();
+        angleDlg.showModal();
         // angle_dlg_ok.removeEventListener("click", this.ok_click);
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        const line = get_line(ev);
+        const line = getLine(ev);
         
         if(line != null){
             this.lines.push(line);
@@ -1807,14 +1807,14 @@ class Angle extends CompositeShape {
             }
             else{
 
-                this.draw_arc();
+                this.drawArc();
         
                 for(let line2 of this.lines){
 
                     line2.listeners.push(this);
                 }
 
-                finish_tool();
+                finishTool();
             }
         }
     }
@@ -1827,12 +1827,12 @@ function setToolType(){
     view.tool_type = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
 }
 
-function make_tool_by_type(tool_type: string): Shape|undefined {
-    const v = tool_type.split('.');
-    const type_name = v[0];
+function makeToolByType(toolType: string): Shape|undefined {
+    const v = toolType.split('.');
+    const typeName = v[0];
     const arg = v.length == 2 ? v[1] : null;
 
-    switch(type_name){
+    switch(typeName){
         case "Point":         return new Point(new Vec2(0,0));
         case "LineSegment":  return new LineSegment();
         case "Rect":          return new Rect(arg == "2");
@@ -1859,10 +1859,10 @@ function showProperty(obj: any){
             
             const tr = document.createElement("tr");
 
-            const name_td = document.createElement("td");
-            name_td.innerText = name;
+            const nameTd = document.createElement("td");
+            nameTd.innerText = name;
 
-            const value_td = document.createElement("td");
+            const valueTd = document.createElement("td");
 
             const value = desc.get.apply(obj);
             
@@ -1889,10 +1889,10 @@ function showProperty(obj: any){
                 })(inp, desc));
                 break;
             }
-            value_td.appendChild(inp);
+            valueTd.appendChild(inp);
 
-            tr.appendChild(name_td);
-            tr.appendChild(value_td);
+            tr.appendChild(nameTd);
+            tr.appendChild(valueTd);
 
             tblProperty.appendChild(tr);
         }
@@ -1916,7 +1916,7 @@ class Label extends CompositeShape {
             this.svg_text.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
         this.svg_text.setAttribute("stroke", "navy");
-        this.svg_text.setAttribute("stroke-width", `${to_svg(stroke_width)}`);
+        this.svg_text.setAttribute("stroke-width", `${toSvg(strokeWidth)}`);
         this.svg_text.textContent = text;
         this.svg_text.style.fontSize = "1";
 
@@ -1924,7 +1924,7 @@ class Label extends CompositeShape {
     }
 
     *restore(){
-        this.process_event([this.handles[0]]);
+        this.processEvent([this.handles[0]]);
     }
 
     makeObj(obj){
@@ -1934,18 +1934,18 @@ class Label extends CompositeShape {
         });
     }
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         console.assert(sources.length == 1 && sources[0] == this.handles[0]);
         this.svg_text.setAttribute("x", "" + this.handles[0].pos.x);
         this.svg_text.setAttribute("y", "" + this.handles[0].pos.y);
     }
 
     click =(ev: MouseEvent, pt:Vec2): void => {
-        this.add_handle(click_handle(ev, pt));
+        this.addHandle(clickHandle(ev, pt));
 
         this.svg_text.setAttribute("x", "" + this.handles[0].pos.x);
         this.svg_text.setAttribute("y", "" + this.handles[0].pos.y);
-        finish_tool();
+        finishTool();
     }
 }
 
@@ -1955,10 +1955,10 @@ export class Image extends CompositeShape {
 
     image: SVGImageElement;
 
-    constructor(file_name: string){
+    constructor(fileName: string){
         super();
 
-        this.fileName = file_name;
+        this.fileName = fileName;
 
         this.image = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
         if(view.flipY){
@@ -1966,7 +1966,7 @@ export class Image extends CompositeShape {
             this.image.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
         this.image.setAttribute("preserveAspectRatio", "none");
-        setSvgImg(this.image, file_name);
+        setSvgImg(this.image, fileName);
 
         view.G0.appendChild(this.image);
     
@@ -2010,8 +2010,8 @@ export class Image extends CompositeShape {
             this.image.setAttribute("x", `${x}`);
             this.image.setAttribute("y", `${y}`);
     
-            this.add_handle(initPoint(new Vec2(x, y)));
-            this.add_handle(initPoint(new Vec2(x + w, y + h)));
+            this.addHandle(initPoint(new Vec2(x, y)));
+            this.addHandle(initPoint(new Vec2(x + w, y + h)));
         });
     }
 
@@ -2020,12 +2020,12 @@ export class Image extends CompositeShape {
         Object.assign(obj, { fileName: this.fileName });
     }
 
-    make_event_graph(src:Shape|null){
-        super.make_event_graph(src);
+    makeEventGraph(src:Shape|null){
+        super.makeEventGraph(src);
 
         if(src == this.handles[0]){
 
-            view.event_queue.add_event_make_event_graph(this.handles[1], this);
+            view.event_queue.addEventMakeEventGraph(this.handles[1], this);
         }
         else{
             console.assert(src == this.handles[1]);
@@ -2033,7 +2033,7 @@ export class Image extends CompositeShape {
     }
 
 
-    process_event =(sources: Shape[])=>{
+    processEvent =(sources: Shape[])=>{
         for(let src of sources){
             if(src == this.handles[0]){
                 const x = this.handles[0].pos.x;
@@ -2045,7 +2045,7 @@ export class Image extends CompositeShape {
                 this.handles[1].pos.x = x + this.image.width.baseVal.value;
                 this.handles[1].pos.y = y + this.image.height.baseVal.value;
 
-                this.handles[1].set_pos();
+                this.handles[1].setPos();
             }
             else if(src == this.handles[1]){
                 const w = this.handles[1].pos.x - this.handles[0].pos.x;
@@ -2062,7 +2062,7 @@ export class Image extends CompositeShape {
 }
 
 
-function svg_click(ev: MouseEvent){
+function svgClick(ev: MouseEvent){
     if(view.capture != null){
         return;
     }
@@ -2087,10 +2087,10 @@ function svg_click(ev: MouseEvent){
         return;
     }
 
-    const pt = get_svg_point(ev, null);
+    const pt = getSvgPoint(ev, null);
 
     if(view.tool == null){
-        view.tool = make_tool_by_type(view.tool_type)!;
+        view.tool = makeToolByType(view.tool_type)!;
         console.assert(view.tool.typeName() == view.tool_type.split('.')[0]);
         view.tool.init();
     }
@@ -2101,7 +2101,7 @@ function svg_click(ev: MouseEvent){
     }
 }
 
-function svg_pointermove(ev: PointerEvent){
+function svgPointermove(ev: PointerEvent){
     if(view.capture != null){
         return;
     }
@@ -2124,13 +2124,13 @@ export function addShape(){
     divActions.appendChild(view1.summaryDom());
 }
 
-export function init_draw(){
+export function initDraw(){
     tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
 
     TextBox.initDialog();
 
-    const tool_types = document.getElementsByName("tool-type");
-    for(let x of tool_types){
+    const toolTypes = document.getElementsByName("tool-type");
+    for(let x of toolTypes){
         x.addEventListener("click", setToolType);
     }
 
