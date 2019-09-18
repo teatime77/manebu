@@ -59,14 +59,16 @@ export class View extends Action {
         this.div.style.width = obj._width;
         this.div.style.height = obj._height;
         this.div.style.position = "relative";
-        this.div.style.borderStyle = "ridge";
-        this.div.style.borderWidth = "3px";
+        // this.div.style.borderStyle = "ridge";
+        // this.div.style.borderWidth = "3px";
+        this.div.style.padding = "0px";
 
         this.svg = document.createElementNS("http://www.w3.org/2000/svg","svg") as SVGSVGElement;
 
         this.svg.style.width = obj._width;
         this.svg.style.height = obj._height;
         this.svg.style.backgroundColor = "wheat";
+        this.svg.style.margin = "0px";
     
         // viewBox="-10 -10 20 20"
         this.svg.setAttribute("viewBox", obj._viewBox);
@@ -251,6 +253,18 @@ export class View extends Action {
         pattern.appendChild(rect);
     
         this.gridBg.setAttribute("fill", `url(#${patternId})`);
+    }
+
+    getDomPos(pt: Vec2) : Vec2 {
+        const rc1 = this.svg.getBoundingClientRect() as DOMRect;
+        const rc2 = this.div.getBoundingClientRect() as DOMRect;
+
+        console.assert(rc1.x == rc2.x && rc1.y == rc2.y && rc1.width == rc2.width && rc1.height == rc2.height);
+
+        const x = rc1.width  * (pt.x - this.svg.viewBox.baseVal.x) / this.svg.viewBox.baseVal.width;
+        const y = rc1.height * (pt.y - this.svg.viewBox.baseVal.y) / this.svg.viewBox.baseVal.height;
+
+        return new Vec2(x, y);
     }
 }
 
@@ -1160,7 +1174,6 @@ class Circle extends CompositeShape {
 
     init(){
         super.init();
-
     }
 
     *restore(){
@@ -1331,10 +1344,9 @@ class TextBox extends CompositeShape {
     static dialog : HTMLDialogElement;
     static textBox : TextBox;    
     text: string;
+
     rect   : SVGRectElement;
     div : HTMLDivElement | null = null;
-    clickedPos : Vec2|null = null;
-    offsetPos : Vec2|null = null;
     typesetDone: boolean;
 
     static ontypeset(self: TextBox){
@@ -1342,7 +1354,6 @@ class TextBox extends CompositeShape {
         self.rect.setAttribute("width", `${toSvg(rc.width)}`);
 
         const h = toSvg(rc.height);
-        self.rect.setAttribute("y", `${self.clickedPos!.y}`);
         self.rect.setAttribute("height", `${h}`);
 
         self.typesetDone = true;
@@ -1385,11 +1396,9 @@ class TextBox extends CompositeShape {
     }
 
     *restore(){
-        this.rect.setAttribute("x", "" + this.clickedPos.x);
-        this.rect.setAttribute("y", "" + this.clickedPos.y);
+        this.handles[0].listeners.push(this);
 
-        this.div.style.left  = `${this.offsetPos.x}px`;
-        this.div.style.top   = `${this.offsetPos.y}px`;
+        this.updatePos();
 
         this.div.innerHTML = makeHtmlLines(this.text);
         this.typesetDone = false;
@@ -1405,24 +1414,34 @@ class TextBox extends CompositeShape {
     makeObj(obj){
         super.makeObj(obj);
         Object.assign(obj, {
-            text: this.text,
-            clickedPos: this.clickedPos,
-            offsetPos: this.offsetPos
+            text: this.text
         });
     }
 
     click =(ev: MouseEvent, pt:Vec2) : void =>{
-        this.clickedPos = pt;
-        this.offsetPos = new Vec2(ev.offsetX, ev.offsetY);
+        this.addHandle(clickHandle(ev, pt));
+
+        this.updatePos();
+
+        TextBox.dialog.showModal();
+        finishTool();
+    }
+
+    processEvent =(sources: Shape[])=>{
+        console.assert(sources.length == 1 && sources[0] == this.handles[0]);
+        this.updatePos();
+    }
+
+    updatePos(){
+        const pt = this.handles[0].pos;
 
         this.rect.setAttribute("x", "" + pt.x);
         this.rect.setAttribute("y", "" + pt.y);
 
-        this.div.style.left  = `${this.offsetPos.x}px`;
-        this.div.style.top   = `${this.offsetPos.y}px`;
+        const domPos = view.getDomPos(pt);
 
-        TextBox.dialog.showModal();
-        finishTool();
+        this.div.style.left  = `${domPos.x}px`;
+        this.div.style.top   = `${domPos.y}px`;
     }
 }
 
