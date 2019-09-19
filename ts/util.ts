@@ -178,7 +178,6 @@ export function fromObj(parent:any, key:any, obj: any){
     }
 
     if(typeof obj == "object"){
-        msg(`${obj.id} ${obj.typeName}`)
 
         let act;
 

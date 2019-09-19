@@ -401,13 +401,6 @@ export function initManebu(in_editor: boolean){
     act.init();
 
     monitorTextMath();
-
-    for (let [key, value] of Object.entries(manebu)){
-        if(typeof value == "function"){
-
-            msg(`manebu:${key} ${typeof value}`)
-        }
-    }
 }
 
 export class Action {

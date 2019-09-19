@@ -41,6 +41,17 @@ function getSvgPos(pt: Vec2) : Vec2 {
 }
 
 
+function toSvgRatio() : Vec2 {
+    const rc1 = view.svg.getBoundingClientRect() as DOMRect;
+    const rc2 = view.div.getBoundingClientRect() as DOMRect;
+
+    console.assert(rc1.x == rc2.x && rc1.y == rc2.y && rc1.width == rc2.width && rc1.height == rc2.height);
+
+    return new Vec2(view.svg.viewBox.baseVal.width / rc1.width, view.svg.viewBox.baseVal.height / rc1.height) ;
+}
+
+
+
 function getSvgPoint(ev: MouseEvent | PointerEvent, draggedPoint: Point|null){
 	const point = view.svg.createSVGPoint();
 	
@@ -2084,9 +2095,12 @@ export class Label extends CompositeShape {
             this.svgText.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
         this.svgText.setAttribute("stroke", "navy");
-        this.svgText.setAttribute("stroke-width", `${this.toSvg(strokeWidth)}`);
+
+        const p = toSvgRatio();
+        this.svgText.setAttribute("font-size", `${16 * p.y}`);
+        this.svgText.setAttribute("stroke-width", `${0.2 * p.y}`);
+
         this.svgText.textContent = obj.text;
-        this.svgText.style.fontSize = "1";
 
         this.parentView.G0.appendChild(this.svgText);
 
