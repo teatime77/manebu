@@ -135,7 +135,7 @@ function objToStr(obj: any, nest: number){
 
         if(obj.typeName == Point.name && obj.listeners == undefined && obj.bindTo == undefined){
 
-            return `${t1}{ "typeName": "${obj.typeName}", "id": ${obj.id}, "pos": { "typeName": "${Vec2.name}", "x": ${obj.pos.x}, "y": ${obj.pos.y} } }`;
+            return `${t1}{ "typeName": "${obj.typeName}", "id": ${obj.id}, "viewId": ${obj.viewId}, "pos": { "typeName": "${Vec2.name}", "x": ${obj.pos.x}, "y": ${obj.pos.y} } }`;
         }
 
         if(obj.constructor.name == Vec2.name){
@@ -211,10 +211,6 @@ export function fromObj(parent:any, key:any, obj: any){
         case UnselectionAction.name:
             act = new UnselectionAction();
             break;
-
-        case EndAction.name:
-        case ShapeAction.name:
-            console.assert(false);
 
         default:
             act = deserializeShapes(obj);

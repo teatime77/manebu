@@ -2,6 +2,7 @@
 /// <reference path="firebase.ts" />
 namespace manebu {
 declare let MathJax:any;
+
 class JaxNode {
     CHTMLnodeID: number;
     nodeName: string;
@@ -14,17 +15,20 @@ class ElementJax {
     Rerender(){}
 }
 
+const IDX = 0;
+const NODE_NAME = 1;
+
+export let inEditor : boolean;
+
 export let divActions : HTMLDivElement;
 export let textMath : HTMLTextAreaElement;
 export let divMath : HTMLDivElement;
-let tmpSelection : SelectionAction | null = null;
-export let inEditor : boolean;
-export let ActionId = 0;
 let divMsg : HTMLDivElement = null;
+
+export let ActionId = 0;
 export let focusedActionIdx : number = -1;
-const IDX = 0;
-const NODE_NAME = 1;
 export let allActions : Action[] = [];
+let tmpSelection : SelectionAction | null = null;
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -247,6 +251,139 @@ function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
     window.getSelection().removeAllRanges();
 }
 
+
+function addAction(act: Action){
+    actions.splice(focusedActionIdx + 1, 0, act);
+            
+    const nextEle = divActions.children[focusedActionIdx].nextElementSibling;
+    if(nextEle == null){
+
+        divActions.appendChild(act.summaryDom());
+    }
+    else{
+
+        divActions.insertBefore(act.summaryDom(), nextEle);
+    }
+}
+
+export function addSelection(){
+    if(tmpSelection == null){
+        return;
+    }
+
+    tmpSelection.isTmp = false;
+    tmpSelection.enable();
+    addAction(tmpSelection);
+
+    tmpSelection = null;
+}
+
+function reprocessMathJax(html: string){
+    if(html.split('\n').some(x => x.trim() == "$$")){
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+    }
+}
+
+function updateFocusedTextBlock(){
+    const act = actions[focusedActionIdx] as TextBlockAction;
+
+    const html = makeHtmlLines(textMath.value);
+    act.div.innerHTML = html;
+    act.text = textMath.value;
+
+    divActions.children[focusedActionIdx].textContent = act.summary();
+
+    reprocessMathJax(html);
+}
+
+function monitorTextMath(){
+    let timerId = -1;
+
+    textMath.addEventListener("focus", function(){
+        console.assert(0 <= focusedActionIdx && focusedActionIdx < actions.length && actions[focusedActionIdx].constructor == TextBlockAction);
+        const act1 = actions[focusedActionIdx] as TextBlockAction;
+
+        textMath.value = act1.text;
+        let prevValue = textMath.value;
+        timerId = setInterval(function(){
+            if(prevValue == textMath.value){
+                return;
+            }
+
+            prevValue = textMath.value;
+
+            updateFocusedTextBlock();
+        }, 100);
+    });
+
+    textMath.addEventListener("blur", function(){
+        clearInterval(timerId);
+
+        if(textMath.value.trim() == ""){
+            const act = actions[focusedActionIdx] as TextBlockAction;
+
+            actions.splice(focusedActionIdx, 1);
+            divMath.removeChild(act.div);
+            divActions.removeChild(divActions.children[focusedActionIdx]);
+            
+            if(focusedActionIdx == ActionId - 1){
+                ActionId--;
+            }
+            focusedActionIdx = -1;
+        }
+        else{
+
+            updateFocusedTextBlock();
+        }
+    });
+
+    textMath.addEventListener("keypress", function(ev:KeyboardEvent){
+        msg(`key press ${ev.ctrlKey} ${ev.key}`);
+        console.assert(focusedActionIdx != -1);
+        if(ev.ctrlKey && ev.code == "Enter"){
+
+            updateFocusedTextBlock();
+
+            textMath.value = "";
+
+            const act = new TextBlockAction("");
+            addAction(act);
+        
+            act.init();        
+
+            focusedActionIdx++;
+        }
+    });
+}
+
+export function initManebu(in_editor: boolean){
+    inEditor = in_editor;
+    divMsg = document.getElementById("div-msg") as HTMLDivElement;
+    divMath = document.getElementById("div-math") as HTMLDivElement;
+    divActions = document.getElementById("div-actions") as HTMLDivElement;
+
+    msg("body loaded");
+
+    initFirebase();
+    initSpeech();
+
+    if(! inEditor){
+        return;
+    }
+
+    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
+    textMath.disabled = false;
+
+    const act = new TextBlockAction("");
+    actions.push(act);
+    divActions.appendChild(act.summaryDom());
+
+    focusedActionIdx = 0;
+    act.init();
+
+    monitorTextMath();
+}
+
 export class Action {
     id: number;
 
@@ -281,7 +418,7 @@ export class Action {
         return this.constructor.name;
     }
 
-    init(){        
+    init(){
     }
 
     *restore():any{}
@@ -389,9 +526,6 @@ export class Action {
         return span;
     }
 }
-
-export let actions : Action[] = [];
-export let selections : SelectionAction[] = [];
 
 class DivAction extends Action {
     text: string;
@@ -613,199 +747,6 @@ export class UnselectionAction extends Action {
     summary() : string {
         return "非選択";
     }
-}
-
-export class EndAction extends Action {
-    constructor(id: number){
-        super();
-    }
-
-    *play(){
-
-        const delEle = document.getElementById(getBlockId(this.id));
-        if(inEditor){
-
-            delEle.style.backgroundColor = "gainsboro";
-        }
-        else{
-
-            delEle.style.display = "none";
-        }
-
-    }
-
-    summary() : string {
-        return "終了";
-    }
-}
-
-export class ImgAction extends Action {
-    image: Image;
-    fileName: string;
-
-    constructor(fileName: string){
-        super();
-        this.fileName = fileName;
-    }
-
-    init(){
-        this.image = new Image(this.fileName);
-    }
-
-    *play(){
-    }
-
-    summary() : string {
-        return "画像";
-    }
-}
-
-export class ShapeAction extends Action {
-    constructor(cmd: string, data: any){
-        super();
-    }
-
-    init(){        
-    }
-
-    *play(){
-    }
-
-    summary() : string {
-        return "図形";
-    }
-}
-
-function addAction(act: Action){
-    actions.splice(focusedActionIdx + 1, 0, act);
-            
-    const nextEle = divActions.children[focusedActionIdx].nextElementSibling;
-    if(nextEle == null){
-
-        divActions.appendChild(act.summaryDom());
-    }
-    else{
-
-        divActions.insertBefore(act.summaryDom(), nextEle);
-    }
-}
-
-export function addSelection(){
-    if(tmpSelection == null){
-        return;
-    }
-
-    tmpSelection.isTmp = false;
-    tmpSelection.enable();
-    addAction(tmpSelection);
-
-    tmpSelection = null;
-}
-
-function reprocessMathJax(html: string){
-    if(html.split('\n').some(x => x.trim() == "$$")){
-        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-    }
-}
-
-function updateFocusedTextBlock(){
-    const act = actions[focusedActionIdx] as TextBlockAction;
-
-    const html = makeHtmlLines(textMath.value);
-    act.div.innerHTML = html;
-    act.text = textMath.value;
-
-    divActions.children[focusedActionIdx].textContent = act.summary();
-
-    reprocessMathJax(html);
-}
-
-function monitorTextMath(){
-    let timerId = -1;
-
-    textMath.addEventListener("focus", function(){
-        console.assert(0 <= focusedActionIdx && focusedActionIdx < actions.length && actions[focusedActionIdx].constructor == TextBlockAction);
-        const act1 = actions[focusedActionIdx] as TextBlockAction;
-
-        textMath.value = act1.text;
-        let prevValue = textMath.value;
-        timerId = setInterval(function(){
-            if(prevValue == textMath.value){
-                return;
-            }
-
-            prevValue = textMath.value;
-
-            updateFocusedTextBlock();
-        }, 100);
-    });
-
-    textMath.addEventListener("blur", function(){
-        clearInterval(timerId);
-
-        if(textMath.value.trim() == ""){
-            const act = actions[focusedActionIdx] as TextBlockAction;
-
-            actions.splice(focusedActionIdx, 1);
-            divMath.removeChild(act.div);
-            divActions.removeChild(divActions.children[focusedActionIdx]);
-            
-            if(focusedActionIdx == ActionId - 1){
-                ActionId--;
-            }
-            focusedActionIdx = -1;
-        }
-        else{
-
-            updateFocusedTextBlock();
-        }
-    });
-
-    textMath.addEventListener("keypress", function(ev:KeyboardEvent){
-        msg(`key press ${ev.ctrlKey} ${ev.key}`);
-        console.assert(focusedActionIdx != -1);
-        if(ev.ctrlKey && ev.code == "Enter"){
-
-            updateFocusedTextBlock();
-
-            textMath.value = "";
-
-            const act = new TextBlockAction("");
-            addAction(act);
-        
-            act.init();        
-
-            focusedActionIdx++;
-        }
-    });
-}
-
-export function initManebu(in_editor: boolean){
-    inEditor = in_editor;
-    divMsg = document.getElementById("div-msg") as HTMLDivElement;
-    divMath = document.getElementById("div-math") as HTMLDivElement;
-    divActions = document.getElementById("div-actions") as HTMLDivElement;
-
-    msg("body loaded");
-
-    initFirebase();
-    initSpeech();
-
-    if(! inEditor){
-        return;
-    }
-
-    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
-    textMath.disabled = false;
-
-    const act = new TextBlockAction("");
-    actions.push(act);
-    divActions.appendChild(act.summaryDom());
-
-    focusedActionIdx = 0;
-    act.init();
-
-    monitorTextMath();
 }
 
 }

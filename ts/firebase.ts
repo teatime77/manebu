@@ -14,6 +14,12 @@ const defaultUid = "Rb6xnDguG5Z9Jij6XLIPHV4oNge2";
 let loginUid = null;
 let guestUid = defaultUid;
 
+export let actions : Action[] = [];
+export let selections : SelectionAction[] = [];
+
+let rootFile : FileInfo | null = null;
+let selectedFile: FileInfo;
+
 class Doc {
     ctime  : number;
     mtime  : number;
@@ -35,10 +41,6 @@ class FileInfo {
         }
     }
 }
-
-
-let rootFile : FileInfo | null = null;
-let selectedFile: FileInfo;
 
 function getAllFileInfo() : FileInfo[] {
     function fnc(info: FileInfo, files: FileInfo[]){

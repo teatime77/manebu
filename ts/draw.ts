@@ -8,6 +8,11 @@ const thisStrokeWidth = 2;
 const gridLineWidth = 1;
 
 declare let MathJax:any;
+let tblProperty : HTMLTableElement;
+let angleDlg : HTMLDialogElement;
+let angleDlgOk : HTMLInputElement;
+let angleDlgColor : HTMLInputElement;
+let view : View;
 
 function initPoint(pt:Vec2){
     const point = new Point(pt);
@@ -21,6 +26,474 @@ function initLineSegment(){
     line.init();
 
     return line;
+}
+
+function getSvgPoint(ev: MouseEvent | PointerEvent, draggedPoint: Point|null){
+	const point = view.svg.createSVGPoint();
+	
+    //画面上の座標を取得する．
+    point.x = ev.offsetX;
+    point.y = ev.offsetY;
+
+    //座標に逆行列を適用する．
+    const p = point.matrixTransform(view.CTMInv);    
+
+    if(view.flipY){
+
+        p.y = - p.y;
+    }
+
+    if(view.snapToGrid){
+
+        const ele = document.elementFromPoint(ev.clientX, ev.clientY);
+        if(ele == view.svg || ele == view.gridBg || (draggedPoint != null && ele == draggedPoint.circle)){
+            p.x = Math.round(p.x / view.gridWidth ) * view.gridWidth;
+            p.y = Math.round(p.y / view.gridHeight) * view.gridHeight;
+        }
+    }
+
+    return new Vec2(p.x, p.y);
+}
+
+function clickHandle(ev: MouseEvent, pt:Vec2) : Point{
+    let handle = getPoint(ev);
+    if(handle == null){
+
+        const line = getLine(ev);
+        if(line != null){
+
+            handle = initPoint(pt);
+            line.adjust(handle);
+
+            line.bind(handle)
+        }
+        else{
+            const circle = getCircle(ev);
+            if(circle != null){
+
+                handle = initPoint(pt);
+                circle.adjust(handle);
+
+                circle.bind(handle)
+            }
+            else{
+
+                handle = initPoint(pt);
+            }
+        }
+    }
+    else{
+        handle.select(true);
+    }
+
+    return handle;
+}
+
+function zip(v1:any[], v2:any[]):any[]{
+    const v = [];
+    const minLen = Math.min(v1.length, v2.length);
+    for(let i = 0; i < minLen; i++){
+        v.push([v1[i], v2[i]])
+    }
+
+    return v;
+}
+
+
+function getPoint(ev: MouseEvent) : Point | null{
+    const pt = Array.from(view.shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
+    return pt == undefined ? null : pt;
+}
+
+function getLine(ev: MouseEvent) : LineSegment | null{
+    const line = Array.from(view.shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
+    return line == undefined ? null : line;
+}
+
+function getCircle(ev: MouseEvent) : Circle | null{
+    const circle = Array.from(view.shapes.values()).find(x => x.constructor.name == "Circle" && (x as Circle).circle == ev.target && (x as Circle).handles.length == 2) as (Circle|undefined);
+    return circle == undefined ? null : circle;
+}
+
+function linesIntersection(l1:LineSegment, l2:LineSegment) : Vec2 {
+    l1.setVecs();
+    l2.setVecs();
+
+    /*
+    l1.p1 + u l1.p12 = l2.p1 + v l2.p12
+
+    l1.p1.x + u l1.p12.x = l2.p1.x + v l2.p12.x
+    l1.p1.y + u l1.p12.y = l2.p1.y + v l2.p12.y
+
+    l1.p12.x, - l2.p12.x   u = l2.p1.x - l1.p1.x
+    l1.p12.y, - l2.p12.y   v = l2.p1.y - l1.p1.y
+    
+    */
+    const m = new Mat2(l1.p12.x, - l2.p12.x, l1.p12.y, - l2.p12.y);
+    const v = new Vec2(l2.p1.x - l1.p1.x, l2.p1.y - l1.p1.y);
+    const mi = m.inv();
+    const uv = mi.dot(v);
+    const u = uv.x;
+
+    return l1.p1.add(l1.p12.mul(u));
+}
+
+function calcFootOfPerpendicular(pos:Vec2, line: LineSegment) : Vec2 {
+    const p1 = line.handles[0].pos;
+    const p2 = line.handles[1].pos;
+
+    const e = p2.sub(p1).unit();
+    const v = pos.sub(p1);
+    const h = e.dot(v);
+
+    const foot = p1.add(e.mul(h));
+
+    return foot;
+}
+
+
+function setToolType(){
+    view.toolType = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
+}
+
+function makeToolByType(toolType: string): Shape|undefined {
+    const v = toolType.split('.');
+    const typeName = v[0];
+    const arg = v.length == 2 ? v[1] : null;
+
+    switch(typeName){
+        case "Point":         return new Point(new Vec2(0,0));
+        case "LineSegment":  return new LineSegment();
+        case "Rect":          return new Rect(arg == "2");
+        case "Circle":       return new Circle(arg == "2");
+        case "Triangle":      return new Triangle();
+        case "Midpoint":      return new Midpoint();
+        case "Perpendicular": return new Perpendicular()
+        case "ParallelLine": return new ParallelLine()
+        case "Intersection":  return new Intersection();
+        case "Angle":         return new Angle();
+        case "TextBox":      return new TextBox();
+        case "Label":           return new Label("こんにちは");
+    } 
+}
+
+function showProperty(obj: any){
+    const proto = Object.getPrototypeOf(obj);
+
+    tblProperty.innerHTML = "";
+
+    for(let name of Object.getOwnPropertyNames(proto)){
+        const desc = Object.getOwnPropertyDescriptor(proto, name);
+        if(desc.get != undefined && desc.set != undefined){
+            
+            const tr = document.createElement("tr");
+
+            const nameTd = document.createElement("td");
+            nameTd.innerText = name;
+
+            const valueTd = document.createElement("td");
+
+            const value = desc.get.apply(obj);
+            
+            const inp = document.createElement("input");
+            switch(typeof value){
+            case "string":
+            case "number":
+                inp.type = "text";
+                inp.value = `${value}`;
+                inp.addEventListener("blur", (function(inp, desc){
+                    return function(ev: FocusEvent){
+                        desc.set.apply(obj, [ inp.value ]);
+                    };
+                })(inp, desc));
+
+                break;
+            case "boolean":
+                inp.type = "checkbox";
+                inp.checked = value as boolean;
+                inp.addEventListener("click", (function(inp, desc){
+                    return function(ev: MouseEvent){
+                        desc.set.apply(obj, [ inp.checked ]);
+                    };
+                })(inp, desc));
+                break;
+            }
+            valueTd.appendChild(inp);
+
+            tr.appendChild(nameTd);
+            tr.appendChild(valueTd);
+
+            tblProperty.appendChild(tr);
+        }
+    }
+}
+
+
+function svgClick(ev: MouseEvent){
+    if(view.capture != null){
+        return;
+    }
+
+    if(view.toolType == "select"){
+
+        for(let shape of view.shapes.values()){
+
+            for(let name of Object.getOwnPropertyNames(shape)){
+                const desc = Object.getOwnPropertyDescriptor(shape, name);
+
+                if(desc.value == ev.srcElement){
+
+                    showProperty(shape);
+                    return
+                }
+            }        
+        }
+
+        showProperty(view);
+        
+        return;
+    }
+
+    const pt = getSvgPoint(ev, null);
+
+    if(view.tool == null){
+        view.tool = makeToolByType(view.toolType)!;
+        console.assert(view.tool.getTypeName() == view.toolType.split('.')[0]);
+        view.tool.init();
+    }
+
+    if(view.tool != null){
+
+        view.tool.click(ev, pt);
+    }
+}
+
+function svgPointermove(ev: PointerEvent){
+    if(view.capture != null){
+        return;
+    }
+
+    if(view.tool != null){
+        view.tool.pointermove(ev);
+    }
+}
+
+export function addShape(){
+    const obj = {
+        "_width" : "500px",
+        "_height" : "500px",
+        "_viewBox" : "-10 -10 20 20",
+    };   
+
+    const view1 = new View(obj);
+    actions.push(view1);
+    view1.init();
+    divActions.appendChild(view1.summaryDom());
+}
+
+export function initDraw(){
+    tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
+
+    TextBox.initDialog();
+
+    const toolTypes = document.getElementsByName("tool-type");
+    for(let x of toolTypes){
+        x.addEventListener("click", setToolType);
+    }
+
+    Angle.initDialog();
+}
+
+export function deserializeShapes(obj:any) : Action {
+    switch(obj["typeName"]){
+    case View.name:
+        return new View(obj);
+
+    case Point.name:
+        return new Point(new Vec2(obj.pos.x, obj.pos.y));
+
+    case LineSegment.name:
+        return new LineSegment();
+
+    case Rect.name:
+        return new Rect(obj.isSquare);
+
+    case Circle.name:
+        return new Circle(obj.byDiameter);
+
+    case Triangle.name:
+        return new Triangle();
+
+    case TextBox.name:
+        return new TextBox();
+
+    case Midpoint.name:
+        return new Midpoint();
+
+    case Perpendicular.name:
+        return new Perpendicular();
+
+    case ParallelLine.name:
+        return new ParallelLine();
+
+    case Intersection.name:
+        return new Intersection();
+
+    case Angle.name:
+        return new Angle();
+
+    case Label.name:
+        return new Label(obj.text);
+
+    case Image.name:
+        return new Image(obj.fileName);
+
+    default:
+        return null;
+    }
+}
+
+
+export class Vec2 {
+    x: number;
+    y: number;
+
+    constructor(x:number, y: number){
+        this.x = x;
+        this.y = y;
+    }
+
+    toJSON(key){
+        const obj = { typeName: Vec2.name };
+        Object.assign(obj, this);
+
+        return JSON.stringify(obj);
+    }
+
+    equals(pt: Vec2): boolean {
+        return this.x == pt.x && this.y == pt.y;
+    }
+
+    add(pt: Vec2) : Vec2{
+        return new Vec2(this.x + pt.x, this.y + pt.y);
+    }
+
+    sub(pt: Vec2) : Vec2{
+        return new Vec2(this.x - pt.x, this.y - pt.y);
+    }
+
+    mul(c: number) : Vec2 {
+        return new Vec2(c * this.x, c * this.y);
+    }
+
+    len(): number {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    dist(pt:Vec2) : number {
+        const dx = pt.x - this.x;
+        const dy = pt.y - this.y;
+
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    dot(pt:Vec2) : number{
+        return this.x * pt.x + this.y * pt.y;
+    }
+
+    unit() : Vec2{
+        const d = this.len();
+
+        if(d == 0){
+
+            return new Vec2(0, 0);
+        }
+
+        return new Vec2(this.x / d, this.y / d);
+    }
+}
+
+class Mat2 {
+    a11 : number;
+    a12 : number;
+    a21 : number;
+    a22 : number;
+
+    constructor(a11:number, a12:number, a21:number, a22:number){
+        this.a11 = a11;
+        this.a12 = a12;
+        this.a21 = a21;
+        this.a22 = a22;
+    }
+
+    print(){
+        msg(`${this.a11} ${this.a12}\n${this.a21} ${this.a22}`);
+    }
+
+    det(){
+        return this.a11 * this.a22 - this.a12 * this.a21;
+    }
+
+    mul(m:Mat2):Mat2 {
+        return new Mat2(this.a11 * m.a11 + this.a12 * m.a21, this.a11 * m.a12 + this.a12 * m.a22, this.a21 * m.a11 + this.a22 * m.a21, this.a21 * m.a12 + this.a22 * m.a22);
+    }
+
+    dot(v:Vec2) : Vec2{
+        return new Vec2(this.a11 * v.x + this.a12 * v.y, this.a21 * v.x + this.a22 * v.y);
+    }
+
+    inv() : Mat2 {
+        const det = this.det();
+        console.assert(det != 0);
+
+        return new Mat2(this.a22 / det, - this.a12 / det, - this.a21 / det, this.a11 / det)
+    }
+}
+
+class ShapeEvent{
+    destination: Shape;
+    sources: Shape[];
+
+    constructor(destination: Shape, sources: Shape[]){
+        this.destination = destination;
+        this.sources = sources;
+    }
+}
+
+class EventQueue {
+    events : ShapeEvent[] = [];
+
+    addEvent(destination:Shape, source: Shape){
+        const event = this.events.find(x=>x.destination == destination);
+        if(event == undefined){
+            this.events.push( new ShapeEvent(destination, [source]) );
+        }
+        else{
+            if(!event.sources.includes(source)){
+
+                event.sources.push(source);
+            }
+        }
+    }
+
+    addEventMakeEventGraph(destination:Shape, source: Shape){
+        this.addEvent(destination, source);
+        destination.makeEventGraph(source);
+    }
+
+    processQueue =()=>{
+        const processed : Shape[] = [];
+
+        while(this.events.length != 0){
+            let event = this.events[0];
+            if(! processed.includes(event.destination)){
+                processed.push(event.destination);
+
+                event.destination.processEvent(event.sources);
+            }
+            this.events.shift();
+        }
+    }
 }
 
 export class View extends Action {
@@ -276,226 +749,6 @@ export class View extends Action {
     }    
 }
 
-let view : View;
-
-let tblProperty : HTMLTableElement;
-let angleDlg : HTMLDialogElement;
-let angleDlgOk : HTMLInputElement;
-let angleDlgColor : HTMLInputElement;
-
-export class Vec2 {
-    x: number;
-    y: number;
-
-    constructor(x:number, y: number){
-        this.x = x;
-        this.y = y;
-    }
-
-    toJSON(key){
-        const obj = { typeName: Vec2.name };
-        Object.assign(obj, this);
-
-        return JSON.stringify(obj);
-    }
-
-    equals(pt: Vec2): boolean {
-        return this.x == pt.x && this.y == pt.y;
-    }
-
-    add(pt: Vec2) : Vec2{
-        return new Vec2(this.x + pt.x, this.y + pt.y);
-    }
-
-    sub(pt: Vec2) : Vec2{
-        return new Vec2(this.x - pt.x, this.y - pt.y);
-    }
-
-    mul(c: number) : Vec2 {
-        return new Vec2(c * this.x, c * this.y);
-    }
-
-    len(): number {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
-    }
-
-    dist(pt:Vec2) : number {
-        const dx = pt.x - this.x;
-        const dy = pt.y - this.y;
-
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    dot(pt:Vec2) : number{
-        return this.x * pt.x + this.y * pt.y;
-    }
-
-    unit() : Vec2{
-        const d = this.len();
-
-        if(d == 0){
-
-            return new Vec2(0, 0);
-        }
-
-        return new Vec2(this.x / d, this.y / d);
-    }
-}
-
-class Mat2 {
-    a11 : number;
-    a12 : number;
-    a21 : number;
-    a22 : number;
-
-    constructor(a11:number, a12:number, a21:number, a22:number){
-        this.a11 = a11;
-        this.a12 = a12;
-        this.a21 = a21;
-        this.a22 = a22;
-    }
-
-    print(){
-        msg(`${this.a11} ${this.a12}\n${this.a21} ${this.a22}`);
-    }
-
-    det(){
-        return this.a11 * this.a22 - this.a12 * this.a21;
-    }
-
-    mul(m:Mat2):Mat2 {
-        return new Mat2(this.a11 * m.a11 + this.a12 * m.a21, this.a11 * m.a12 + this.a12 * m.a22, this.a21 * m.a11 + this.a22 * m.a21, this.a21 * m.a12 + this.a22 * m.a22);
-    }
-
-    dot(v:Vec2) : Vec2{
-        return new Vec2(this.a11 * v.x + this.a12 * v.y, this.a21 * v.x + this.a22 * v.y);
-    }
-
-    inv() : Mat2 {
-        const det = this.det();
-        console.assert(det != 0);
-
-        return new Mat2(this.a22 / det, - this.a12 / det, - this.a21 / det, this.a11 / det)
-    }
-}
-
-function getSvgPoint(ev: MouseEvent | PointerEvent, draggedPoint: Point|null){
-	const point = view.svg.createSVGPoint();
-	
-    //画面上の座標を取得する．
-    point.x = ev.offsetX;
-    point.y = ev.offsetY;
-
-    //座標に逆行列を適用する．
-    const p = point.matrixTransform(view.CTMInv);    
-
-    if(view.flipY){
-
-        p.y = - p.y;
-    }
-
-    if(view.snapToGrid){
-
-        const ele = document.elementFromPoint(ev.clientX, ev.clientY);
-        if(ele == view.svg || ele == view.gridBg || (draggedPoint != null && ele == draggedPoint.circle)){
-            p.x = Math.round(p.x / view.gridWidth ) * view.gridWidth;
-            p.y = Math.round(p.y / view.gridHeight) * view.gridHeight;
-        }
-    }
-
-    return new Vec2(p.x, p.y);
-}
-
-function clickHandle(ev: MouseEvent, pt:Vec2) : Point{
-    let handle = getPoint(ev);
-    if(handle == null){
-
-        const line = getLine(ev);
-        if(line != null){
-
-            handle = initPoint(pt);
-            line.adjust(handle);
-
-            line.bind(handle)
-        }
-        else{
-            const circle = getCircle(ev);
-            if(circle != null){
-
-                handle = initPoint(pt);
-                circle.adjust(handle);
-
-                circle.bind(handle)
-            }
-            else{
-
-                handle = initPoint(pt);
-            }
-        }
-    }
-    else{
-        handle.select(true);
-    }
-
-    return handle;
-}
-
-function zip(v1:any[], v2:any[]):any[]{
-    const v = [];
-    const minLen = Math.min(v1.length, v2.length);
-    for(let i = 0; i < minLen; i++){
-        v.push([v1[i], v2[i]])
-    }
-
-    return v;
-}
-
-class ShapeEvent{
-    destination: Shape;
-    sources: Shape[];
-
-    constructor(destination: Shape, sources: Shape[]){
-        this.destination = destination;
-        this.sources = sources;
-    }
-}
-
-class EventQueue {
-    events : ShapeEvent[] = [];
-
-    addEvent(destination:Shape, source: Shape){
-        const event = this.events.find(x=>x.destination == destination);
-        if(event == undefined){
-            this.events.push( new ShapeEvent(destination, [source]) );
-        }
-        else{
-            if(!event.sources.includes(source)){
-
-                event.sources.push(source);
-            }
-        }
-    }
-
-    addEventMakeEventGraph(destination:Shape, source: Shape){
-        this.addEvent(destination, source);
-        destination.makeEventGraph(source);
-    }
-
-    processQueue =()=>{
-        const processed : Shape[] = [];
-
-        while(this.events.length != 0){
-            let event = this.events[0];
-            if(! processed.includes(event.destination)){
-                processed.push(event.destination);
-
-                event.destination.processEvent(event.sources);
-            }
-            this.events.shift();
-        }
-    }
-}
-
 export abstract class Shape extends Action {
     viewId: number;
 
@@ -518,6 +771,8 @@ export abstract class Shape extends Action {
     }
 
     makeObj(obj){
+        obj.viewId = this.viewId;
+
         if(this.listeners.length != 0){
 
             Object.assign(obj, {
@@ -579,57 +834,6 @@ export abstract class CompositeShape extends Shape {
             }
         }
     }
-}
-
-function getPoint(ev: MouseEvent) : Point | null{
-    const pt = Array.from(view.shapes.values()).find(x => x.constructor.name == "Point" && (x as Point).circle == ev.target) as (Point|undefined);
-    return pt == undefined ? null : pt;
-}
-
-function getLine(ev: MouseEvent) : LineSegment | null{
-    const line = Array.from(view.shapes.values()).find(x => x instanceof LineSegment && (x as LineSegment).line == ev.target && (x as LineSegment).handles.length == 2) as (LineSegment|undefined);
-    return line == undefined ? null : line;
-}
-
-function getCircle(ev: MouseEvent) : Circle | null{
-    const circle = Array.from(view.shapes.values()).find(x => x.constructor.name == "Circle" && (x as Circle).circle == ev.target && (x as Circle).handles.length == 2) as (Circle|undefined);
-    return circle == undefined ? null : circle;
-}
-
-function linesIntersection(l1:LineSegment, l2:LineSegment) : Vec2 {
-    l1.setVecs();
-    l2.setVecs();
-
-    /*
-    l1.p1 + u l1.p12 = l2.p1 + v l2.p12
-
-    l1.p1.x + u l1.p12.x = l2.p1.x + v l2.p12.x
-    l1.p1.y + u l1.p12.y = l2.p1.y + v l2.p12.y
-
-    l1.p12.x, - l2.p12.x   u = l2.p1.x - l1.p1.x
-    l1.p12.y, - l2.p12.y   v = l2.p1.y - l1.p1.y
-    
-    */
-    const m = new Mat2(l1.p12.x, - l2.p12.x, l1.p12.y, - l2.p12.y);
-    const v = new Vec2(l2.p1.x - l1.p1.x, l2.p1.y - l1.p1.y);
-    const mi = m.inv();
-    const uv = mi.dot(v);
-    const u = uv.x;
-
-    return l1.p1.add(l1.p12.mul(u));
-}
-
-function calcFootOfPerpendicular(pos:Vec2, line: LineSegment) : Vec2 {
-    const p1 = line.handles[0].pos;
-    const p2 = line.handles[1].pos;
-
-    const e = p2.sub(p1).unit();
-    const v = pos.sub(p1);
-    const h = e.dot(v);
-
-    const foot = p1.add(e.mul(h));
-
-    return foot;
 }
 
 export class Point extends Shape {
@@ -1170,10 +1374,11 @@ class Rect extends CompositeShape {
 }
 
 class Circle extends CompositeShape {
-    circle: SVGCircleElement;
+    byDiameter:boolean 
     center: Vec2|null = null;
     radius: number = this.toSvg(1);
-    byDiameter:boolean 
+    
+    circle: SVGCircleElement;
 
     constructor(byDiameter:boolean){
         super();
@@ -1359,7 +1564,8 @@ class Triangle extends CompositeShape {
 
 class TextBox extends CompositeShape {
     static dialog : HTMLDialogElement;
-    static textBox : TextBox;    
+    static textBox : TextBox;
+    
     text: string;
 
     rect   : SVGRectElement;
@@ -1856,82 +2062,6 @@ class Angle extends CompositeShape {
     }
 }
 
-function setToolType(){
-    view.toolType = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
-}
-
-function makeToolByType(toolType: string): Shape|undefined {
-    const v = toolType.split('.');
-    const typeName = v[0];
-    const arg = v.length == 2 ? v[1] : null;
-
-    switch(typeName){
-        case "Point":         return new Point(new Vec2(0,0));
-        case "LineSegment":  return new LineSegment();
-        case "Rect":          return new Rect(arg == "2");
-        case "Circle":       return new Circle(arg == "2");
-        case "Triangle":      return new Triangle();
-        case "Midpoint":      return new Midpoint();
-        case "Perpendicular": return new Perpendicular()
-        case "ParallelLine": return new ParallelLine()
-        case "Intersection":  return new Intersection();
-        case "Angle":         return new Angle();
-        case "TextBox":      return new TextBox();
-        case "Label":           return new Label("こんにちは");
-    } 
-}
-
-function showProperty(obj: any){
-    const proto = Object.getPrototypeOf(obj);
-
-    tblProperty.innerHTML = "";
-
-    for(let name of Object.getOwnPropertyNames(proto)){
-        const desc = Object.getOwnPropertyDescriptor(proto, name);
-        if(desc.get != undefined && desc.set != undefined){
-            
-            const tr = document.createElement("tr");
-
-            const nameTd = document.createElement("td");
-            nameTd.innerText = name;
-
-            const valueTd = document.createElement("td");
-
-            const value = desc.get.apply(obj);
-            
-            const inp = document.createElement("input");
-            switch(typeof value){
-            case "string":
-            case "number":
-                inp.type = "text";
-                inp.value = `${value}`;
-                inp.addEventListener("blur", (function(inp, desc){
-                    return function(ev: FocusEvent){
-                        desc.set.apply(obj, [ inp.value ]);
-                    };
-                })(inp, desc));
-
-                break;
-            case "boolean":
-                inp.type = "checkbox";
-                inp.checked = value as boolean;
-                inp.addEventListener("click", (function(inp, desc){
-                    return function(ev: MouseEvent){
-                        desc.set.apply(obj, [ inp.checked ]);
-                    };
-                })(inp, desc));
-                break;
-            }
-            valueTd.appendChild(inp);
-
-            tr.appendChild(nameTd);
-            tr.appendChild(valueTd);
-
-            tblProperty.appendChild(tr);
-        }
-    }
-}
-
 
 class Label extends CompositeShape {
     text: string;
@@ -2093,128 +2223,4 @@ export class Image extends CompositeShape {
     }
 }
 
-
-function svgClick(ev: MouseEvent){
-    if(view.capture != null){
-        return;
-    }
-
-    if(view.toolType == "select"){
-
-        for(let shape of view.shapes.values()){
-
-            for(let name of Object.getOwnPropertyNames(shape)){
-                const desc = Object.getOwnPropertyDescriptor(shape, name);
-
-                if(desc.value == ev.srcElement){
-
-                    showProperty(shape);
-                    return
-                }
-            }        
-        }
-
-        showProperty(view);
-        
-        return;
-    }
-
-    const pt = getSvgPoint(ev, null);
-
-    if(view.tool == null){
-        view.tool = makeToolByType(view.toolType)!;
-        console.assert(view.tool.getTypeName() == view.toolType.split('.')[0]);
-        view.tool.init();
-    }
-
-    if(view.tool != null){
-
-        view.tool.click(ev, pt);
-    }
-}
-
-function svgPointermove(ev: PointerEvent){
-    if(view.capture != null){
-        return;
-    }
-
-    if(view.tool != null){
-        view.tool.pointermove(ev);
-    }
-}
-
-export function addShape(){
-    const obj = {
-        "_width" : "500px",
-        "_height" : "500px",
-        "_viewBox" : "-10 -10 20 20",
-    };   
-
-    const view1 = new View(obj);
-    actions.push(view1);
-    view1.init();
-    divActions.appendChild(view1.summaryDom());
-}
-
-export function initDraw(){
-    tblProperty = document.getElementById("tbl-property") as HTMLTableElement;
-
-    TextBox.initDialog();
-
-    const toolTypes = document.getElementsByName("tool-type");
-    for(let x of toolTypes){
-        x.addEventListener("click", setToolType);
-    }
-
-    Angle.initDialog();
-}
-
-export function deserializeShapes(obj:any) : Action {
-    switch(obj["typeName"]){
-    case View.name:
-        return new View(obj);
-
-    case Point.name:
-        return new Point(new Vec2(obj.pos.x, obj.pos.y));
-
-    case LineSegment.name:
-        return new LineSegment();
-
-    case Rect.name:
-        return new Rect(obj.isSquare);
-
-    case Circle.name:
-        return new Circle(obj.byDiameter);
-
-    case Triangle.name:
-        return new Triangle();
-
-    case TextBox.name:
-        return new TextBox();
-
-    case Midpoint.name:
-        return new Midpoint();
-
-    case Perpendicular.name:
-        return new Perpendicular();
-
-    case ParallelLine.name:
-        return new ParallelLine();
-
-    case Intersection.name:
-        return new Intersection();
-
-    case Angle.name:
-        return new Angle();
-
-    case Label.name:
-        return new Label(obj.text);
-
-    case Image.name:
-        return new Image(obj.fileName);
-
-    default:
-        return null;
-    }
-}
 }
