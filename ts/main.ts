@@ -205,7 +205,7 @@ function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
                 const startPath = getJaxPath(jaxIdx, stAncs, stAncs.length - 1);
                 checkPath("path", startPath, last(stAncs));
 
-                tmpSelection = new SelectionAction(getActionId(div.id), "math", startPath, null);
+                tmpSelection = new SelectionAction().make({blockId:getActionId(div.id), domType:"math", startPath:startPath, endPath:null}) as SelectionAction;
             }
         }
         else{
@@ -224,7 +224,7 @@ function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
                         let startPath = getJaxPath(jaxIdx, stAncs, nest - 1);
                         checkPath("path", startPath, parentJax);
 
-                        tmpSelection = new SelectionAction(getActionId(div.id), "math", startPath, null);
+                        tmpSelection = new SelectionAction().make({blockId:getActionId(div.id), domType:"math", startPath:startPath, endPath:null}) as SelectionAction;
                     }
                     else{
 
@@ -234,7 +234,7 @@ function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
                         checkPath("path1", startPath, stAncs[nest]);
                         checkPath("path2", endPath  , edAncs[nest]);
 
-                        tmpSelection = new SelectionAction(getActionId(div.id), "math", startPath, endPath);
+                        tmpSelection = new SelectionAction().make({blockId:getActionId(div.id), domType:"math", startPath:startPath, endPath:endPath}) as SelectionAction;
                     }
                     break;
                 }
@@ -346,7 +346,7 @@ function monitorTextMath(){
 
             textMath.value = "";
 
-            const act = new TextBlockAction("");
+            const act = new TextBlockAction().make({text:""});
             addAction(act);
         
             act.init();        
@@ -374,7 +374,7 @@ export function initManebu(in_editor: boolean){
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
     textMath.disabled = false;
 
-    const act = new TextBlockAction("");
+    const act = new TextBlockAction().make({text:""});
     actions.push(act);
     divActions.appendChild(act.summaryDom());
 
@@ -392,6 +392,10 @@ export class Action {
         ActionId++;
 
         allActions.push(this);
+    }
+
+    make(data:any):Action{
+        return this;
     }
 
     toObj(){
@@ -574,9 +578,14 @@ class DivAction extends Action {
 }
 
 export class TextBlockAction extends DivAction {
-    constructor(text: string){
+    constructor(){
         super();
-        this.text = text;
+    }
+
+    make(data:any):Action{
+        const obj = data as TextBlockAction;
+
+        this.text = obj.text;
         //---------- 
         msg(`append text block[${this.text}]`);
     
@@ -587,7 +596,9 @@ export class TextBlockAction extends DivAction {
     
         this.div.addEventListener('keydown', (event) => {
             msg(`key down ${event.key} ${event.ctrlKey}`);
-        }, false);        
+        }, false);
+
+        return this;
     }
 
     makeObj(obj){
@@ -600,11 +611,18 @@ export class TextBlockAction extends DivAction {
 }
 
 export class SpeechAction extends DivAction {
-    constructor(text: string){
+    constructor(){
         super();
-        this.text = text;
+    }
+
+    make(data:any):Action{
+        const obj = data as SpeechAction;
+
+        this.text = obj.text;
         //---------- 
         this.div = this.makeTextDiv(this.text);
+
+        return this;
     }
 
     makeObj(obj){
@@ -628,12 +646,19 @@ export class SelectionAction extends Action {
     selectedDoms : HTMLElement[];
     isTmp: boolean = false;
 
-    constructor(blockId: number, domType:string, startPath:any[], endPath:any[] | null){
+    constructor(){
         super();
-        this.blockId = blockId;
-        this.domType = domType;
-        this.startPath = startPath;
-        this.endPath   = endPath;
+    }
+
+    make(data:any):Action{
+        const obj = data as SelectionAction;
+
+        this.blockId   = obj.blockId;
+        this.domType   = obj.domType;
+        this.startPath = obj.startPath;
+        this.endPath   = obj.endPath;
+
+        return this;
     }
 
     makeObj(obj){

@@ -15,7 +15,7 @@ let angleDlgColor : HTMLInputElement;
 let view : View;
 
 function initPoint(pt:Vec2){
-    const point = new Point(pt);
+    const point = new Point().make({pos:pt});
     point.init();
 
     return point;
@@ -162,7 +162,7 @@ function makeToolByType(toolType: string): Shape|undefined {
     const arg = v.length == 2 ? v[1] : null;
 
     switch(typeName){
-        case "Point":         return new Point(new Vec2(0,0));
+        case "Point":         return new Point().make({pos:new Vec2(0,0)});
         case "LineSegment":  return new LineSegment();
         case "Rect":          return new Rect(arg == "2");
         case "Circle":       return new Circle(arg == "2");
@@ -285,7 +285,7 @@ export function addShape(){
         "_viewBox" : "-10 -10 20 20",
     };   
 
-    const view1 = new View(obj);
+    const view1 = new View().make(obj);
     actions.push(view1);
     view1.init();
     divActions.appendChild(view1.summaryDom());
@@ -307,10 +307,10 @@ export function initDraw(){
 export function deserializeShapes(obj:any) : Action {
     switch(obj["typeName"]){
     case View.name:
-        return new View(obj);
+        return new View().make(obj);
 
     case Point.name:
-        return new Point(new Vec2(obj.pos.x, obj.pos.y));
+        return new Point().make({pos:new Vec2(obj.pos.x, obj.pos.y)});
 
     case LineSegment.name:
         return new LineSegment();
@@ -519,14 +519,21 @@ export class View extends Action {
     _snapToGrid: boolean = false;
     _flipY : boolean = false;
 
-    constructor(obj: any){
+    _width      : string|undefined;
+    _height     : string|undefined;
+    _viewBox    : string|undefined;
+
+    constructor(){
         super();
+        view = this;     
+    }
+    
+    make(data:any){
+        const obj = data as View;
 
         if(obj.id != undefined){
             this.id = obj.id;
         }
-
-        view = this;     
 
         this.div = document.createElement("div");
         this.div.style.width = obj._width;
@@ -583,6 +590,8 @@ export class View extends Action {
         this.svg.addEventListener("pointermove", svgPointermove);  
 
         setToolType();
+
+        return this;
     }
 
     makeObj(obj){
@@ -842,9 +851,14 @@ export class Point extends Shape {
 
     circle : SVGCircleElement;
 
-    constructor(pt:Vec2){
+    constructor(){
         super();
-        this.pos = pt;
+    }
+    
+    make(data:any){
+        const obj = data as Point;
+
+        this.pos = obj.pos;
         //---------- 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("r", `${this.toSvg(5)}`);
@@ -858,6 +872,8 @@ export class Point extends Shape {
         this.setPos();
     
         this.parentView.G2.appendChild(this.circle);
+
+        return this;
     }
 
     makeObj(obj){

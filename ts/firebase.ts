@@ -360,6 +360,7 @@ function hidePopup(div: HTMLDivElement){
 
 export function openFile(){
     const file = selectedFile;
+    hidePopup(dlgFolder);
 
     db.collection('users').doc(guestUid).collection('docs').doc("" + file.id).get().then(function(doc) {
         if (doc.exists) {
@@ -368,8 +369,6 @@ export function openFile(){
             openActionData(docData.text);       
 
             msg(`[${file.id}]${file.name} を読みこみました。`);
-
-            hidePopup(dlgFolder);
         } 
         else {
             // doc.data() will be undefined in this case

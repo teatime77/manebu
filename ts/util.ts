@@ -200,13 +200,13 @@ export function fromObj(parent:any, key:any, obj: any){
 
         switch(obj["typeName"]){
         case TextBlockAction.name:
-            act = new TextBlockAction(obj.text);
+            act = new TextBlockAction().make({text:obj.text});
             break;
         case SpeechAction.name:
-            act = new SpeechAction(obj.text);
+            act = new SpeechAction().make({text:obj.text});
             break;
         case SelectionAction.name:
-            act = new SelectionAction(obj.blockId, obj.domType, obj.startPath, obj.endPath);
+            act = new SelectionAction().make(obj);
             break;
         case UnselectionAction.name:
             act = new UnselectionAction();
@@ -310,7 +310,7 @@ export function openActionData(actionText: string){
 
     if(actions.length == 0){
         ActionId = 0;
-        actions.push(new TextBlockAction(""));
+        actions.push(new TextBlockAction().make({text:""}));
     }
 
     ActionId = Math.max(... actions.map(x => x.id)) + 1;
