@@ -376,13 +376,13 @@ export function openFile(){
             textMath.value = "";
             msg(`[${file.id}]${file.name} はありません。`);
         }
-    })
-    .catch(function(error) {
-        console.log(error.message, error);
-        console.log(error.stack);
-
-        msg(`[${file.id}]${file.name} の読み込みエラーです。`);
     });
+    // .catch(function(error) {
+    //     console.log(error.message, error);
+    //     console.log(error.stack);
+
+    //     msg(`[${file.id}]${file.name} の読み込みエラーです。`);
+    // });
 }
 
 export function makeFile(){
@@ -442,7 +442,7 @@ function uploadFile(file: File){
             dropZone.style.display = "none";            
         });
 
-        const act = new Image(file.name);
+        const act = new Image().make({fileName:file.name});
         actions.push(act);
     });    
 }

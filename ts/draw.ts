@@ -28,6 +28,19 @@ function initLineSegment(){
     return line;
 }
 
+function getSvgPos(pt: Vec2) : Vec2 {
+    const rc1 = view.svg.getBoundingClientRect() as DOMRect;
+    const rc2 = view.div.getBoundingClientRect() as DOMRect;
+
+    console.assert(rc1.x == rc2.x && rc1.y == rc2.y && rc1.width == rc2.width && rc1.height == rc2.height);
+
+    const x = view.svg.viewBox.baseVal.x + view.svg.viewBox.baseVal.width  * pt.x / rc1.width;
+    const y = view.svg.viewBox.baseVal.y + view.svg.viewBox.baseVal.height * pt.y / rc1.height;
+
+    return new Vec2(x, y);
+}
+
+
 function getSvgPoint(ev: MouseEvent | PointerEvent, draggedPoint: Point|null){
 	const point = view.svg.createSVGPoint();
 	
@@ -35,8 +48,15 @@ function getSvgPoint(ev: MouseEvent | PointerEvent, draggedPoint: Point|null){
     point.x = ev.offsetX;
     point.y = ev.offsetY;
 
-    //座標に逆行列を適用する．
-    const p = point.matrixTransform(view.CTMInv);    
+    const p = getSvgPos(new Vec2(ev.offsetX, ev.offsetY));
+    if(view.CTMInv != undefined){
+
+        //座標に逆行列を適用する．
+        const p2 = point.matrixTransform(view.CTMInv);
+        console.assert(Math.abs(p.x - p2.x) < 0.01 && Math.abs(p.y - p2.y) < 0.01)
+        // msg(`dom->svg (${p.x} , ${p.y}) (${p2.x} , ${p2.y})`)
+    }
+
 
     if(view.flipY){
 
@@ -164,8 +184,8 @@ function makeToolByType(toolType: string): Shape|undefined {
     switch(typeName){
         case "Point":         return new Point().make({pos:new Vec2(0,0)});
         case "LineSegment":  return new LineSegment();
-        case "Rect":          return new Rect(arg == "2");
-        case "Circle":       return new Circle(arg == "2");
+        case "Rect":          return new Rect().make({isSquare:(arg == "2")}) as Shape;
+        case "Circle":       return new Circle().make({byDiameter:(arg == "2")}) as Shape;
         case "Triangle":      return new Triangle();
         case "Midpoint":      return new Midpoint();
         case "Perpendicular": return new Perpendicular()
@@ -173,7 +193,7 @@ function makeToolByType(toolType: string): Shape|undefined {
         case "Intersection":  return new Intersection();
         case "Angle":         return new Angle();
         case "TextBox":      return new TextBox();
-        case "Label":           return new Label("こんにちは");
+        case "Label":           return new Label().make({text:"こんにちは"}) as Shape;
     } 
 }
 
@@ -304,56 +324,6 @@ export function initDraw(){
     Angle.initDialog();
 }
 
-export function deserializeShapes(obj:any) : Action {
-    switch(obj["typeName"]){
-    case View.name:
-        return new View().make(obj);
-
-    case Point.name:
-        return new Point().make({pos:new Vec2(obj.pos.x, obj.pos.y)});
-
-    case LineSegment.name:
-        return new LineSegment();
-
-    case Rect.name:
-        return new Rect(obj.isSquare);
-
-    case Circle.name:
-        return new Circle(obj.byDiameter);
-
-    case Triangle.name:
-        return new Triangle();
-
-    case TextBox.name:
-        return new TextBox();
-
-    case Midpoint.name:
-        return new Midpoint();
-
-    case Perpendicular.name:
-        return new Perpendicular();
-
-    case ParallelLine.name:
-        return new ParallelLine();
-
-    case Intersection.name:
-        return new Intersection();
-
-    case Angle.name:
-        return new Angle();
-
-    case Label.name:
-        return new Label(obj.text);
-
-    case Image.name:
-        return new Image(obj.fileName);
-
-    default:
-        return null;
-    }
-}
-
-
 export class Vec2 {
     x: number;
     y: number;
@@ -413,7 +383,7 @@ export class Vec2 {
     }
 }
 
-class Mat2 {
+export class Mat2 {
     a11 : number;
     a12 : number;
     a21 : number;
@@ -450,7 +420,7 @@ class Mat2 {
     }
 }
 
-class ShapeEvent{
+export class ShapeEvent{
     destination: Shape;
     sources: Shape[];
 
@@ -460,7 +430,7 @@ class ShapeEvent{
     }
 }
 
-class EventQueue {
+export class EventQueue {
     events : ShapeEvent[] = [];
 
     addEvent(destination:Shape, source: Shape){
@@ -504,7 +474,6 @@ export class View extends Action {
     G0 : SVGGElement;
     G1 : SVGGElement;
     G2 : SVGGElement;
-    CTM : DOMMatrix;
     CTMInv : DOMMatrix;
     svgRatio: number;
     shapes: Map<number, Shape> = new Map<number, Shape>();
@@ -558,8 +527,11 @@ export class View extends Action {
         divMath.appendChild(this.div);
         this.div.appendChild(this.svg);
 
-        this.CTM = this.svg.getCTM()!;
-        this.CTMInv = this.CTM.inverse();
+        const CTM = this.svg.getCTM()!;
+        if(CTM != null){
+
+            this.CTMInv = CTM.inverse();
+        }
     
         const rc = this.svg.getBoundingClientRect() as DOMRect;
         this.svgRatio = this.svg.viewBox.baseVal.width / rc.width;
@@ -1016,7 +988,7 @@ export class Point extends Shape {
     }
 }
 
-class LineSegment extends CompositeShape {    
+export class LineSegment extends CompositeShape {    
     line : SVGLineElement;
     p1: Vec2 = new Vec2(0,0);
     p2: Vec2 = new Vec2(0,0);
@@ -1167,15 +1139,22 @@ class LineSegment extends CompositeShape {
     }
 }
 
-class Rect extends CompositeShape {
+export class Rect extends CompositeShape {
     isSquare: boolean;
     lines : Array<LineSegment> = [];
     h : number = -1;
     inSetRectPos : boolean = false;
 
-    constructor(isSquare: boolean){
+    constructor(){
         super();
-        this.isSquare = isSquare;
+    }
+
+    make(data:any):Action{
+        const obj = data as Rect;
+
+        this.isSquare = obj.isSquare;
+
+        return this;
     }
 
     init(){
@@ -1389,17 +1368,21 @@ class Rect extends CompositeShape {
     }
 }
 
-class Circle extends CompositeShape {
+export class Circle extends CompositeShape {
     byDiameter:boolean 
     center: Vec2|null = null;
     radius: number = this.toSvg(1);
     
     circle: SVGCircleElement;
 
-    constructor(byDiameter:boolean){
+    constructor(){
         super();
+    }
 
-        this.byDiameter = byDiameter;
+    make(data:any):Action{
+        const obj = data as Circle;
+
+        this.byDiameter = obj.byDiameter;
         //---------- 
         this.circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
         this.circle.setAttribute("fill", "none");// "transparent");
@@ -1408,6 +1391,8 @@ class Circle extends CompositeShape {
         this.circle.setAttribute("fill-opacity", "0");
         
         this.parentView.G0.appendChild(this.circle);    
+
+        return this;
     }
 
     init(){
@@ -1522,7 +1507,7 @@ class Circle extends CompositeShape {
     }
 }
 
-class Triangle extends CompositeShape {
+export class Triangle extends CompositeShape {
     lines : Array<LineSegment> = [];
 
     makeObj(obj){
@@ -1578,7 +1563,7 @@ class Triangle extends CompositeShape {
     }
 }
 
-class TextBox extends CompositeShape {
+export class TextBox extends CompositeShape {
     static dialog : HTMLDialogElement;
     static textBox : TextBox;
     
@@ -1684,7 +1669,7 @@ class TextBox extends CompositeShape {
     }
 }
 
-class Midpoint extends CompositeShape {
+export class Midpoint extends CompositeShape {
     midpoint : Point | null = null;
 
     init(){
@@ -1728,7 +1713,7 @@ class Midpoint extends CompositeShape {
 }
 
 
-class Perpendicular extends CompositeShape {
+export class Perpendicular extends CompositeShape {
     line : LineSegment | null = null;
     foot : Point | null = null;
     perpendicular : LineSegment | null = null;
@@ -1801,7 +1786,7 @@ class Perpendicular extends CompositeShape {
     }
 }
 
-class ParallelLine extends CompositeShape {
+export class ParallelLine extends CompositeShape {
     line1 : LineSegment | null = null;
     line2 : LineSegment | null = null;
     point : Point|null = null;
@@ -1878,7 +1863,7 @@ class ParallelLine extends CompositeShape {
     }
 }
 
-class Intersection extends CompositeShape {
+export class Intersection extends CompositeShape {
     lines : LineSegment[] = [];
     intersection : Point|null = null;
 
@@ -1932,7 +1917,7 @@ class Intersection extends CompositeShape {
     }
 }
 
-class Angle extends CompositeShape {
+export class Angle extends CompositeShape {
     lines : LineSegment[] = [];
     ts : number[] = [];
 
@@ -2079,15 +2064,19 @@ class Angle extends CompositeShape {
 }
 
 
-class Label extends CompositeShape {
+export class Label extends CompositeShape {
     text: string;
 
     svgText: SVGTextElement;
 
-    constructor(text: string){
+    constructor(){
         super();
+    }
 
-        this.text = text;
+    make(data:any):Action{
+        const obj = data as Label;
+
+        this.text = obj.text;
 
         this.svgText = document.createElementNS("http://www.w3.org/2000/svg","text");
         if(this.parentView.flipY){
@@ -2096,10 +2085,12 @@ class Label extends CompositeShape {
         }
         this.svgText.setAttribute("stroke", "navy");
         this.svgText.setAttribute("stroke-width", `${this.toSvg(strokeWidth)}`);
-        this.svgText.textContent = text;
+        this.svgText.textContent = obj.text;
         this.svgText.style.fontSize = "1";
 
         this.parentView.G0.appendChild(this.svgText);
+
+        return this;
     }
 
     *restore(){
@@ -2134,10 +2125,14 @@ export class Image extends CompositeShape {
 
     image: SVGImageElement;
 
-    constructor(fileName: string){
+    constructor(){
         super();
+    }
 
-        this.fileName = fileName;
+    make(data:any):Action{
+        const obj = data as Image;
+
+        this.fileName = obj.fileName;
 
         this.image = document.createElementNS("http://www.w3.org/2000/svg", "image") as SVGImageElement;
         if(this.parentView.flipY){
@@ -2145,7 +2140,7 @@ export class Image extends CompositeShape {
             this.image.setAttribute("transform", "matrix(1, 0, 0, -1, 0, 0)");
         }
         this.image.setAttribute("preserveAspectRatio", "none");
-        setSvgImg(this.image, fileName);
+        setSvgImg(this.image, obj.fileName);
 
         this.parentView.G0.appendChild(this.image);
     
@@ -2191,6 +2186,8 @@ export class Image extends CompositeShape {
             this.addHandle(initPoint(new Vec2(x, y)));
             this.addHandle(initPoint(new Vec2(x + w, y + h)));
         });
+
+        return this;
     }
 
     makeObj(obj){

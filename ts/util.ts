@@ -5,6 +5,7 @@ const endMark = "😀";
 export let actionMap : Map<number, Action>;
 let pendingRefs : any[];
 let stopPlaying: boolean = false;
+let classes : any[];
 
 function ltrim(stringToTrim) {
 	return stringToTrim.replace(/^\s+/,"");
@@ -198,26 +199,23 @@ export function fromObj(parent:any, key:any, obj: any){
             return new Vec2(obj.x, obj.y);
         }
 
-        switch(obj["typeName"]){
-        case TextBlockAction.name:
-            act = new TextBlockAction().make({text:obj.text});
-            break;
-        case SpeechAction.name:
-            act = new SpeechAction().make({text:obj.text});
-            break;
-        case SelectionAction.name:
-            act = new SelectionAction().make(obj);
-            break;
-        case UnselectionAction.name:
-            act = new UnselectionAction();
-            break;
 
-        default:
-            act = deserializeShapes(obj);
-            console.assert(act != null);
-            break;
+        if(obj.typeName == Point.name){
+
+            act = new Point().make({pos:new Vec2(obj.pos.x, obj.pos.y)});
         }
+        else{
 
+            if(classes == undefined){
+                classes = Object.entries(manebu).map(([key, val]) => val as any ).filter(x => x.name != undefined && x.prototype != undefined && x.prototype.constructor != undefined);
+            }
+            const cls = classes.find(x => x.name == obj["typeName"]);
+            console.assert(cls != undefined);
+
+            act = new (cls as any).prototype.constructor();
+            act.make(obj);
+        }
+    
         for (let [key, value] of Object.entries(obj)){
             act[key] = fromObj(obj, key, value);
         }
