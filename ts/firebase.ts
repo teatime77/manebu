@@ -14,9 +14,6 @@ const defaultUid = "Rb6xnDguG5Z9Jij6XLIPHV4oNge2";
 let loginUid = null;
 let guestUid = defaultUid;
 
-export let actions : Action[] = [];
-export let selections : SelectionAction[] = [];
-
 let rootFile : FileInfo | null = null;
 let selectedFile: FileInfo;
 
@@ -133,6 +130,8 @@ function readFile(file: FileInfo, fnc:(data:string)=>void){
 }
 
 function showContents(){
+    newDocument();
+
     function fnc(file:FileInfo, ul: HTMLUListElement){
         const li = document.createElement("li") as HTMLLIElement;
         ul.appendChild(li);
@@ -359,6 +358,8 @@ function hidePopup(div: HTMLDivElement){
 }
 
 export function openFile(){
+    newDocument();
+
     const file = selectedFile;
     hidePopup(dlgFolder);
 
@@ -373,7 +374,6 @@ export function openFile(){
         else {
             // doc.data() will be undefined in this case
 
-            textMath.value = "";
             msg(`[${file.id}]${file.name} はありません。`);
         }
     });

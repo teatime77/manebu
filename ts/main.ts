@@ -25,10 +25,13 @@ export let textMath : HTMLTextAreaElement;
 export let divMath : HTMLDivElement;
 let divMsg : HTMLDivElement = null;
 
-export let ActionId = 0;
-export let focusedActionIdx : number = -1;
-export let allActions : Action[] = [];
-let tmpSelection : SelectionAction | null = null;
+export let actions : Action[];
+export let selections : SelectionAction[];
+
+export let ActionId;
+export let focusedActionIdx : number;
+export let allActions : Action[];
+let tmpSelection : SelectionAction | null;
 
 function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
@@ -356,22 +359,38 @@ function monitorTextMath(){
     });
 }
 
+export function newDocument(){
+    ActionId = 0;
+    focusedActionIdx = -1;
+    allActions = [];
+    actions = [];
+    selections = [];
+    tmpSelection = null;
+
+    divActions.innerHTML = "";
+    divMath.innerHTML = "";
+    textMath.value = "";
+    divMsg.textContent = "";
+}
+
 export function initManebu(in_editor: boolean){
     inEditor = in_editor;
     divMsg = document.getElementById("div-msg") as HTMLDivElement;
     divMath = document.getElementById("div-math") as HTMLDivElement;
     divActions = document.getElementById("div-actions") as HTMLDivElement;
+    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
 
     msg("body loaded");
 
     initFirebase();
     initSpeech();
 
+    newDocument();
+
     if(! inEditor){
         return;
     }
 
-    textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
     textMath.disabled = false;
 
     const act = new TextBlockAction().make({text:""});
