@@ -377,6 +377,9 @@ export function openFile(){
         }
     })
     .catch(function(error) {
+        console.log(error.message, error);
+        console.log(error.stack);
+
         msg(`[${file.id}]${file.name} の読み込みエラーです。`);
     });
 }

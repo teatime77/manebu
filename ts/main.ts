@@ -305,6 +305,8 @@ export class Action {
         yield;
     }
 
+    clear(){}
+
     summary() : string {
         return this.getTypeName();
     }
@@ -315,26 +317,39 @@ export class Action {
         span.textContent = this.summary();
         span.tabIndex = 0;
         span.style.whiteSpace = "nowrap";
-        span.addEventListener("keydown", function(ev:KeyboardEvent){
-            if(ev.key == "ArrowDown" || ev.key == "ArrowUp"){
+        
+        span.addEventListener("keydown", (ev:KeyboardEvent)=>{
+            if([ "ArrowDown", "ArrowUp", "Delete" ].includes(ev.key)){
                 console.log(`key down:${ev.key}`);
 
-                ev.stopPropagation();
-                ev.preventDefault();
-
                 const spans = Array.from(divActions.childNodes) as HTMLSpanElement[];
-                const idx = spans.indexOf(this);
+                const idx = spans.indexOf(ev.srcElement as HTMLSpanElement);
                 console.assert(idx != -1);
-                if(ev.key == "ArrowDown"){
 
-                    if(idx + 1 < spans.length){
-                        spans[idx + 1].focus();
+                if(ev.key == "ArrowDown" || ev.key == "ArrowUp"){
+
+                    ev.stopPropagation();
+                    ev.preventDefault();
+
+                    if(ev.key == "ArrowDown"){
+
+                        if(idx + 1 < spans.length){
+                            spans[idx + 1].focus();
+                        }
+                    }
+                    else{
+                        if(0 < idx){
+                            spans[idx - 1].focus();
+                        }
                     }
                 }
-                else{
-                    if(0 < idx){
-                        spans[idx - 1].focus();
-                    }
+                else if(ev.key == "Delete"){
+                    this.clear();
+                    const idx = actions.indexOf(this);
+                    console.assert(idx != -1);
+                    actions.splice(idx, 1);
+                    
+                    divActions.removeChild(ev.srcElement as Node);
                 }
             }
         });
@@ -416,6 +431,11 @@ class DivAction extends Action {
         reprocessMathJax(html);
     
         return div;
+    }
+
+
+    clear(){
+        divMath.removeChild(this.div);
     }
 }
 
