@@ -776,8 +776,11 @@ export abstract class Shape extends Action {
     finishTool(){
         const v = Array.from(this.parentView.G0.childNodes.values());
         for(let x of v){
-            this.parentView.G0.removeChild(x);
-            this.parentView.G1.appendChild(x);
+            if(!(x instanceof SVGImageElement)){
+
+                this.parentView.G0.removeChild(x);
+                this.parentView.G1.appendChild(x);
+            }
         }
     
         for(let x of this.parentView.selectedShapes){
@@ -1608,7 +1611,8 @@ export class TextBox extends Shape {
 
         this.div = document.createElement("div");
         this.div.style.position = "absolute";
-        this.div.style.backgroundColor = "cornsilk"
+        this.div.style.backgroundColor = "cornsilk";
+        this.div.style.cursor = "move";
         this.parentView.div.appendChild(this.div);
 
         this.div.addEventListener("pointerdown", (ev: PointerEvent)=>{
@@ -2130,9 +2134,12 @@ export class Label extends CompositeShape {
 
 
 export class Image extends CompositeShape {
+    pos: Vec2;
     fileName: string;
 
     image: SVGImageElement;
+
+    pointerPos: Vec2;
 
     constructor(){
         super();
@@ -2156,16 +2163,14 @@ export class Image extends CompositeShape {
         this.image.addEventListener("load", (ev:Event) => {
             if(this.handles.length != 0){
 
+                this.image.setAttribute("x", `${this.pos.x}`);
+                this.image.setAttribute("y", `${this.pos.y}`);
+
                 const x1 = this.handles[0].pos.x;
                 const y1 = this.handles[0].pos.y;
-                const x2 = this.handles[1].pos.x;
-                const y2 = this.handles[1].pos.y;
 
-                this.image.setAttribute("x", `${x1}`);
-                this.image.setAttribute("y", `${y1}`);
-
-                const w = x2 - x1;
-                const h = y2 - y1;
+                const w = x1 - this.pos.x;
+                const h = y1 - this.pos.y;
                 this.image.setAttribute("width", `${w}`);
                 this.image.setAttribute("height", `${h}`);
                     
@@ -2187,53 +2192,62 @@ export class Image extends CompositeShape {
             this.image.setAttribute("height", `${h}`);
     
             // svgの中央に配置する。
-            const x = vb.x + (vb.width  - w) / 2 ;
-            const y = vb.y + (vb.height - h) / 2;
-            this.image.setAttribute("x", `${x}`);
-            this.image.setAttribute("y", `${y}`);
+            this.pos = new Vec2( vb.x + (vb.width - w) / 2, vb.y + (vb.height - h) / 2);
+
+            this.image.setAttribute("x", `${this.pos.x}`);
+            this.image.setAttribute("y", `${this.pos.y}`);
     
-            this.addHandle(initPoint(new Vec2(x, y)));
-            this.addHandle(initPoint(new Vec2(x + w, y + h)));
+            this.addHandle(initPoint(new Vec2(this.pos.x + w, this.pos.y + h)));
         });
 
+
+        this.image.addEventListener("pointerdown", (ev: PointerEvent)=>{
+            this.image.setPointerCapture(ev.pointerId);
+
+            this.image.addEventListener("pointermove", this.pointermove);
+
+            this.pointerPos = getSvgPoint(ev, null);
+        });
+
+        this.image.addEventListener("pointerup", (ev: PointerEvent)=>{
+            this.pos = new Vec2(parseFloat(this.image.getAttribute("x")), parseFloat(this.image.getAttribute("y")));
+            this.image.removeEventListener("pointermove", this.pointermove);
+            this.image.releasePointerCapture(ev.pointerId);
+        });
+        
         return this;
     }
 
     makeObj(obj){
         super.makeObj(obj);
-        Object.assign(obj, { fileName: this.fileName });
+        Object.assign(obj, {
+            pos: this.pos,
+            fileName: this.fileName
+        });
     }
 
-    makeEventGraph(src:Shape|null){
-        super.makeEventGraph(src);
+    pointermove=(ev: PointerEvent)=>{
+        const pt = getSvgPoint(ev, null);
+        const x = this.pos.x + (pt.x - this.pointerPos.x);
+        const y = this.pos.y + (pt.y - this.pointerPos.y);
 
-        if(src == this.handles[0]){
+        this.image.setAttribute("x", `${x}`);
+        this.image.setAttribute("y", `${y}`);
 
-            this.parentView.eventQueue.addEventMakeEventGraph(this.handles[1], this);
-        }
-        else{
-            console.assert(src == this.handles[1]);
-        }
+        this.handles[0].pos.x = x + this.image.width.baseVal.value;
+        this.handles[0].pos.y = y + this.image.height.baseVal.value;
+
+        this.handles[0].setPos();
     }
-
 
     processEvent =(sources: Shape[])=>{
         for(let src of sources){
             if(src == this.handles[0]){
-                const x = this.handles[0].pos.x;
-                const y = this.handles[0].pos.y;
+                const x = parseFloat(this.image.getAttribute("x"));
+                const y = parseFloat(this.image.getAttribute("y"));
 
-                this.image.setAttribute("x", `${x}`);
-                this.image.setAttribute("y", `${y}`);
-
-                this.handles[1].pos.x = x + this.image.width.baseVal.value;
-                this.handles[1].pos.y = y + this.image.height.baseVal.value;
-
-                this.handles[1].setPos();
-            }
-            else if(src == this.handles[1]){
-                const w = this.handles[1].pos.x - this.handles[0].pos.x;
-                const h = this.handles[1].pos.y - this.handles[0].pos.y;
+                const w = this.handles[0].pos.x - x;
+                const h = this.handles[0].pos.y - y;
                 
                 this.image.setAttribute("width", `${w}`);
                 this.image.setAttribute("height", `${h}`);
