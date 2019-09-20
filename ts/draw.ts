@@ -1574,25 +1574,17 @@ export class Triangle extends CompositeShape {
     }
 }
 
-export class TextBox extends CompositeShape {
+export class TextBox extends Shape {
     static dialog : HTMLDialogElement;
     static textBox : TextBox;
     
+    domPos: Vec2;
     text: string;
 
-    rect   : SVGRectElement;
     div : HTMLDivElement | null = null;
-    typesetDone: boolean;
 
-    static ontypeset(self: TextBox){
-        const rc = self.div!.getBoundingClientRect();
-        self.rect.setAttribute("width", `${self.toSvg(rc.width)}`);
-
-        const h = self.toSvg(rc.height);
-        self.rect.setAttribute("height", `${h}`);
-
-        self.typesetDone = true;
-    }
+    offsetPos: Vec2;
+    pagePos: Vec2;
 
     static okClick(){
         const self = TextBox.textBox;
@@ -1602,9 +1594,7 @@ export class TextBox extends CompositeShape {
         self.div!.innerHTML = makeHtmlLines(text);
         TextBox.dialog.close();
 
-        self.typesetDone = false;
         MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-        MathJax.Hub.Queue([TextBox.ontypeset, self]);
     }
 
     static initDialog(){
@@ -1615,46 +1605,63 @@ export class TextBox extends CompositeShape {
     constructor(){
         super();
         TextBox.textBox = this;
-        //---------- 
-        this.rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        this.rect.setAttribute("width", `${this.toSvg(1)}`);
-        this.rect.setAttribute("height", `${this.toSvg(1)}`);
-        this.rect.setAttribute("fill", "transparent");
-        this.rect.setAttribute("stroke", "navy");
-        this.rect.setAttribute("stroke-width", `${this.toSvg(thisStrokeWidth)}`);
-        this.parentView.G1.appendChild(this.rect);
 
         this.div = document.createElement("div");
         this.div.style.position = "absolute";
         this.div.style.backgroundColor = "cornsilk"
         this.parentView.div.appendChild(this.div);
-    }
 
-    *restore(){
-        this.handles[0].listeners.push(this);
+        this.div.addEventListener("pointerdown", (ev: PointerEvent)=>{
+            this.div.setPointerCapture(ev.pointerId);
+
+            this.div.addEventListener("pointermove", this.pointermove);
+
+            this.offsetPos = new Vec2(this.div.offsetLeft, this.div.offsetTop);
+            this.pagePos = new Vec2(ev.pageX, ev.pageY);
+        });
+
+        this.div.addEventListener("pointerup", (ev: PointerEvent)=>{
+            this.div.removeEventListener("pointermove", this.pointermove);
+            this.div.releasePointerCapture(ev.pointerId);
+        });
+    }
+    
+    make(data:any){
+        const obj = data as TextBox;
+
+        console.assert(obj.domPos != undefined && obj.text != undefined);
+
+        this.domPos = obj.domPos;
+        this.text   = obj.text;
+
+        this.div.innerHTML = makeHtmlLines(this.text);
 
         this.updatePos();
 
-        this.div.innerHTML = makeHtmlLines(this.text);
-        this.typesetDone = false;
+        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);    
 
-        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
-        MathJax.Hub.Queue([TextBox.ontypeset, this]);
-        
-        while(! this.typesetDone){
-            yield;
-        }
+        return this;
+    }
+
+    pointermove=(ev: PointerEvent)=>{
+        const x = this.offsetPos.x + (ev.pageX - this.pagePos.x);
+        const y = this.offsetPos.y + (ev.pageY - this.pagePos.y);
+
+        this.domPos = new Vec2(x, y);
+
+        this.updatePos();
     }
 
     makeObj(obj){
         super.makeObj(obj);
         Object.assign(obj, {
+            domPos: this.domPos,
             text: this.text
         });
     }
 
     click =(ev: MouseEvent, pt:Vec2) : void =>{
-        this.addHandle(clickHandle(ev, pt));
+        this.domPos = new Vec2(ev.offsetX, ev.offsetY);
 
         this.updatePos();
 
@@ -1662,21 +1669,9 @@ export class TextBox extends CompositeShape {
         this.finishTool();
     }
 
-    processEvent =(sources: Shape[])=>{
-        console.assert(sources.length == 1 && sources[0] == this.handles[0]);
-        this.updatePos();
-    }
-
     updatePos(){
-        const pt = this.handles[0].pos;
-
-        this.rect.setAttribute("x", "" + pt.x);
-        this.rect.setAttribute("y", "" + pt.y);
-
-        const domPos = this.parentView.getDomPos(pt);
-
-        this.div.style.left  = `${domPos.x}px`;
-        this.div.style.top   = `${domPos.y}px`;
+        this.div.style.left  = `${this.domPos.x}px`;
+        this.div.style.top   = `${this.domPos.y}px`;
     }
 }
 
