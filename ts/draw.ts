@@ -184,7 +184,30 @@ function calcFootOfPerpendicular(pos:Vec2, line: LineSegment) : Vec2 {
 
 
 function setToolType(){
-    view.toolType = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;  
+    const textBoxes = actions.filter(x => x instanceof TextBox) as TextBox[];
+
+    view.toolType = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;
+
+    if(view.toolType == "select" || view.toolType == "TextSelection"){
+
+        textBoxes.forEach(x => x.div.style.pointerEvents = "auto");
+    }
+    else{
+
+        textBoxes.forEach(x => x.div.style.pointerEvents = "none");
+    }
+    if(view.toolType == "select"){
+
+        textBoxes.forEach(x => x.div.style.cursor = "move");
+    }
+    else if(view.toolType == "TextSelection"){
+
+        textBoxes.forEach(x => x.div.style.cursor = "text");
+    }
+    else{
+
+        textBoxes.forEach(x => x.div.style.cursor = "default");
+    }
 }
 
 function makeToolByType(toolType: string): Shape|undefined {
@@ -1616,20 +1639,32 @@ export class TextBox extends Shape {
         this.parentView.div.appendChild(this.div);
 
         this.div.addEventListener("pointerdown", (ev: PointerEvent)=>{
-            this.div.setPointerCapture(ev.pointerId);
+            if(view.toolType == "select"){
+                this.div.setPointerCapture(ev.pointerId);
 
-            this.div.addEventListener("pointermove", this.pointermove);
+                this.div.addEventListener("pointermove", this.pointermove);
 
-            this.offsetPos = new Vec2(this.div.offsetLeft, this.div.offsetTop);
-            this.pagePos = new Vec2(ev.pageX, ev.pageY);
+                this.offsetPos = new Vec2(this.div.offsetLeft, this.div.offsetTop);
+                this.pagePos = new Vec2(ev.pageX, ev.pageY);
+            }
         });
 
         this.div.addEventListener("pointerup", (ev: PointerEvent)=>{
-            this.div.removeEventListener("pointermove", this.pointermove);
-            this.div.releasePointerCapture(ev.pointerId);
+            switch(view.toolType){
+            case "select":
+
+                this.div.removeEventListener("pointermove", this.pointermove);
+                this.div.releasePointerCapture(ev.pointerId);
+                break;
+
+            case "TextSelection":
+
+                onclickBlock(this.div, ev);
+                break;
+            }
         });
     }
-    
+
     make(data:any){
         const obj = data as TextBox;
 
@@ -1638,6 +1673,7 @@ export class TextBox extends Shape {
         this.domPos = obj.domPos;
         this.text   = obj.text;
 
+        this.div.id = getBlockId(this.id);
         this.div.innerHTML = makeHtmlLines(this.text);
 
         this.updatePos();

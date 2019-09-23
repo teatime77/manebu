@@ -149,7 +149,7 @@ function getJaxFromPath(jaxes:JaxNode[], path:any[]) : JaxNode {
     return node;
 }
 
-function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
+export function onclickBlock(div: HTMLDivElement, ev:MouseEvent){
     msg("clicked");
 
     if(tmpSelection != null){
