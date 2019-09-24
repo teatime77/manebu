@@ -188,13 +188,13 @@ function setToolType(){
 
     view.toolType = (document.querySelector('input[name="tool-type"]:checked') as HTMLInputElement).value;
 
-    if(view.toolType == "select" || view.toolType == "TextSelection"){
+    if(view.toolType == "TextSelection"){
 
-        textBoxes.forEach(x => x.div.style.pointerEvents = "auto");
+        textBoxes.forEach(x => x.div.style.zIndex = "auto");
     }
     else{
 
-        textBoxes.forEach(x => x.div.style.pointerEvents = "none");
+        textBoxes.forEach(x => x.div.style.zIndex = "-1");
     }
     if(view.toolType == "select"){
 
@@ -284,7 +284,7 @@ function showProperty(obj: any){
 
 
 function svgClick(ev: MouseEvent){
-    if(view.capture != null){
+    if(view.capture != null || view.toolType == "TextSelection"){
         return;
     }
 
@@ -550,9 +550,9 @@ export class View extends Action {
 
         this.svg.style.width = obj._width;
         this.svg.style.height = obj._height;
-        this.svg.style.backgroundColor = "wheat";
+        this.svg.style.backgroundColor = "transparent";
         this.svg.style.margin = "0px";
-    
+
         // viewBox="-10 -10 20 20"
         this.svg.setAttribute("viewBox", obj._viewBox);
 
@@ -1616,11 +1616,8 @@ export class TextBox extends Shape {
         const self = TextBox.textBox;
 
         const text = (document.getElementById("text-box-text") as HTMLTextAreaElement).value;
-        self.text = text;
-        self.div!.innerHTML = makeHtmlLines(text);
+        self.make({text: text});
         TextBox.dialog.close();
-
-        MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
     }
 
     static initDialog(){
@@ -1636,6 +1633,8 @@ export class TextBox extends Shape {
         this.div.style.position = "absolute";
         this.div.style.backgroundColor = "cornsilk";
         this.div.style.cursor = "move";
+        this.div.style.zIndex = "-1";
+
         this.parentView.div.appendChild(this.div);
 
         this.div.addEventListener("pointerdown", (ev: PointerEvent)=>{
@@ -1668,15 +1667,19 @@ export class TextBox extends Shape {
     make(data:any){
         const obj = data as TextBox;
 
-        console.assert(obj.domPos != undefined && obj.text != undefined);
+        this.div.id = getBlockId(this.id);
 
-        this.domPos = obj.domPos;
+        console.assert(obj.text != undefined);
+
+        if(obj.domPos != undefined){
+
+            this.domPos = obj.domPos;
+            this.updatePos();
+        }
+
         this.text   = obj.text;
 
-        this.div.id = getBlockId(this.id);
         this.div.innerHTML = makeHtmlLines(this.text);
-
-        this.updatePos();
 
         MathJax.Hub.Queue(["Typeset",MathJax.Hub]);    
 
