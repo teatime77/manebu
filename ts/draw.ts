@@ -220,6 +220,7 @@ function makeToolByType(toolType: string): Shape|undefined {
         case "LineSegment":  return new LineSegment();
         case "Rect":          return new Rect().make({isSquare:(arg == "2")}) as Shape;
         case "Circle":       return new Circle().make({byDiameter:(arg == "2")}) as Shape;
+        case "DimensionLine": return new DimensionLine();
         case "Triangle":      return new Triangle();
         case "Midpoint":      return new Midpoint();
         case "Perpendicular": return new Perpendicular()
@@ -390,8 +391,12 @@ export class Vec2 {
         return new Vec2(c * this.x, c * this.y);
     }
 
+    len2(): number {
+        return this.x * this.x + this.y * this.y;
+    }
+
     len(): number {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
+        return Math.sqrt(this.len2());
     }
 
     dist(pt:Vec2) : number {
@@ -1541,6 +1546,118 @@ export class Circle extends CompositeShape {
         handle.pos = new Vec2(this.center!.x + this.radius * Math.cos(theta), this.center!.y + this.radius * Math.sin(theta));
 
         handle.setPos();
+    }
+}
+
+
+export class DimensionLine extends CompositeShape {
+    arcs: SVGPathElement[];
+    lines : SVGLineElement[];
+
+    constructor(){
+        super();
+
+        this.arcs = [];
+        this.lines = [];
+
+        for(let i = 0; i < 2; i++){
+
+            const arc = document.createElementNS("http://www.w3.org/2000/svg","path");
+
+            arc.setAttribute("fill", "none");
+            arc.setAttribute("stroke", "red");
+            arc.setAttribute("stroke-width", `${this.toSvg(thisStrokeWidth)}`);
+            arc.style.cursor = "pointer";
+            arc.style.zIndex = "-2";
+
+            this.parentView.G0.appendChild(arc);
+
+            this.arcs.push(arc);
+
+            const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+            line.setAttribute("stroke", "red");
+            line.setAttribute("stroke-width", `${this.toSvg(thisStrokeWidth)}`);
+    
+            this.parentView.G0.appendChild(line);
+    
+            this.lines.push(line);
+        }
+    }
+
+    *restore(){
+    }
+
+    processEvent =(sources: Shape[])=>{
+        this.drawPath(this.handles[2].pos);
+    }
+
+    click =(ev: MouseEvent, pt:Vec2): void =>{
+        this.addHandle(clickHandle(ev, pt));
+
+        if(this.handles.length == 3){
+    
+            this.finishTool();
+        }
+    }
+
+    pointermove =(ev: PointerEvent) : void =>{
+        if(this.handles.length != 2){
+            return;
+        }
+
+        this.drawPath(getSvgPoint(ev, null));
+    }
+
+    drawPath(p3: Vec2){
+        const p1 = this.handles[0].pos;
+        const p2 = this.handles[1].pos;
+
+        const p21 = p1.sub(p2);
+        const p23 = p3.sub(p2);
+        const l1 = p21.unit().dot(p23);
+        const p4 = p2.add(p21.unit().mul(l1));
+
+        const v = p3.sub(p4);
+        const r = v.len();
+        const r2 = Math.min(r, p21.len() / 2);
+
+        const p1c = p1.add(v);
+        const p1d = p1c.add(p21.unit().mul(-r2));
+        const d1 = `M${p1.x} ${p1.y} Q ${p1c.x} ${p1c.y} ${p1d.x} ${p1d.y}`;
+
+        this.arcs[0].setAttribute("d", d1);
+
+        const p2c = p2.add(v);
+        const p2d = p2c.add(p21.unit().mul(r2));
+        const d2 = `M${p2.x} ${p2.y} Q ${p2c.x} ${p2c.y} ${p2d.x} ${p2d.y}`;
+
+        this.arcs[1].setAttribute("d", d2);
+
+
+        const line_len = Math.min(l1, p21.len() / 2) - r;
+        if(0 < line_len){
+
+            this.lines[0].setAttribute("x1", "" + p1d.x);
+            this.lines[0].setAttribute("y1", "" + p1d.y);
+
+            const p5 = p1d.add(p21.unit().mul(- line_len))
+            this.lines[0].setAttribute("x2", "" + p5.x);
+            this.lines[0].setAttribute("y2", "" + p5.y);
+
+
+            this.lines[1].setAttribute("x1", "" + p2d.x);
+            this.lines[1].setAttribute("y1", "" + p2d.y);
+
+            const p6 = p2d.add(p21.unit().mul(line_len))
+            this.lines[1].setAttribute("x2", "" + p6.x);
+            this.lines[1].setAttribute("y2", "" + p6.y);
+
+            this.lines.forEach(x => x.style.visibility = "visible");
+        }
+        else{
+            this.lines.forEach(x => x.style.visibility = "hidden");
+        }
+
     }
 }
 
