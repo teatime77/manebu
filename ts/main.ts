@@ -1,5 +1,6 @@
 /// <reference path="speech.ts" />
 /// <reference path="firebase.ts" />
+/// <reference path="matrix.ts" />
 namespace manebu {
 declare let MathJax:any;
 
@@ -23,7 +24,6 @@ export let inEditor : boolean;
 export let divActions : HTMLDivElement;
 export let textMath : HTMLTextAreaElement;
 export let divMath : HTMLDivElement;
-let divMsg : HTMLDivElement = null;
 
 export let actions : Action[];
 export let selections : SelectionAction[];
@@ -37,16 +37,6 @@ function last<T>(v:Array<T>) : T{
     console.assert(v.length != 0);
 
     return v[v.length - 1];
-}
-
-export function msg(text: string){
-    console.log(text);
-
-    if(divMsg != null){
-
-        divMsg.textContent = divMsg.textContent + "\n" + text;
-        divMsg.scrollTop = divMsg.scrollHeight;
-    }
 }
 
 export function getBlockId(blockId: number) : string {
@@ -381,6 +371,55 @@ export function initManebu(in_editor: boolean){
     textMath = document.getElementById("txt-math") as HTMLTextAreaElement;
 
     msg("body loaded");
+
+    let A = new Mat(2, 3, [ 1, 2, 3, 4, 5, 6]);
+    let B = new Mat(2, 2, [ 7, 8, 9, 10]);
+
+    A.print("A");
+    B.print("B");
+    A.cat(B).cat(Mat.I(2)).print("A B I");
+
+    A = new Mat(3, 3, [ 1, 3, 2, 4, 2, 3, 4, 3, 5]);
+    B = A.inv();
+    let C = A.dot(B);
+
+    A.print("A");
+    B.print("B");
+    C.print("C");
+
+    C = A.dot(A.inv());
+    C.print("A A~");
+    
+    for(let n = 3; n < 1000; n+=10){
+        let v = [];
+        v.push((new Date()).getTime());
+
+        A = new Mat(n, n, range(n * n).map(x => 2 * Math.random() - 1));
+        v.push((new Date()).getTime());
+
+        B = A.inv();
+        v.push((new Date()).getTime());
+
+        C = A.dot(B);
+        v.push((new Date()).getTime());
+
+        let D = Mat.I(n);
+        v.push((new Date()).getTime());
+
+        let E = C.sub(D);
+        v.push((new Date()).getTime());
+
+        let F = E.abs();
+        v.push((new Date()).getTime());
+
+        let diff = F.max();
+        v.push((new Date()).getTime());
+
+        let s = range(v.length - 1).map(i => "" + (v[i+1] - v[i])).join(", ");
+
+        msg(`diff ${n}: ${s} :${diff}`);
+
+    }
 
     initFirebase();
     initSpeech();

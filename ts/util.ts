@@ -6,6 +6,21 @@ export let actionMap : Map<number, Action>;
 let pendingRefs : any[];
 let stopPlaying: boolean = false;
 let classes : any[];
+export let divMsg : HTMLDivElement = null;
+
+export function msg(text: string){
+    console.log(text);
+
+    if(divMsg != null){
+
+        divMsg.textContent = divMsg.textContent + "\n" + text;
+        divMsg.scrollTop = divMsg.scrollHeight;
+    }
+}
+
+export function range(n: number) : number[]{
+    return [...Array(n).keys()];
+}
 
 function ltrim(stringToTrim) {
 	return stringToTrim.replace(/^\s+/,"");
