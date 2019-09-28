@@ -218,6 +218,7 @@ function makeToolByType(toolType: string): Shape|undefined {
     switch(typeName){
         case "Point":         return new Point().make({pos:new Vec2(0,0)});
         case "LineSegment":  return new LineSegment();
+        case "BSpline":      return new BSpline();
         case "Rect":          return new Rect().make({isSquare:(arg == "2")}) as Shape;
         case "Circle":       return new Circle().make({byDiameter:(arg == "2")}) as Shape;
         case "DimensionLine": return new DimensionLine();
@@ -419,6 +420,13 @@ export class Vec2 {
         }
 
         return new Vec2(this.x / d, this.y / d);
+    }
+
+    divide(t: number, pt: Vec2) : Vec2 {
+        const x = (1 - t) * this.x + t * pt.x;
+        const y = (1 - t) * this.y + t * pt.y;
+
+        return new Vec2(x, y);
     }
 }
 
@@ -1149,7 +1157,6 @@ export class LineSegment extends CompositeShape {
 
             this.finishTool();
         }    
-
     }
 
     pointermove =(ev: PointerEvent) : void =>{
@@ -1178,6 +1185,160 @@ export class LineSegment extends CompositeShape {
         }
         handle.pos = this.p1.add(this.p12.mul(posInLine));
         handle.setPos();
+    }
+}
+
+export class BSpline extends CompositeShape {  
+    static six = 1 / 6;  
+    static Bs : Float64Array[];
+    paths: SVGPathElement[];
+    points: Vec2[] = [];
+
+    constructor(){
+        super();
+
+        if(BSpline.Bs == undefined){
+
+            BSpline.Bs = [];
+
+            for(let i = 0; i < 10; i++){
+                let s  = i * 0.1;
+                let b0 = this.B0(0 + s);
+                let b1 = this.B1(1 + s);
+                let b2 = this.B2(2 + s);
+                let b3 = this.B3(3 + s);
+
+                BSpline.Bs.push(new Float64Array([b0, b1, b2, b3]));
+            }
+        }
+
+        this.paths = [];
+        const colors = [ "green", "red", "blue"]
+        for(let idx of range(3)){
+
+            let path = document.createElementNS("http://www.w3.org/2000/svg","path");
+
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", colors[idx]);
+            if(idx == 1){
+
+                path.setAttribute("stroke-width", `${2 * this.toSvg(thisStrokeWidth)}`);
+            }
+            else{
+
+                path.setAttribute("stroke-width", `${this.toSvg(thisStrokeWidth)}`);
+            }
+
+            this.paths.push(path);
+            this.parentView.G0.appendChild(path);
+        };
+    }
+
+    click =(ev: MouseEvent, pt:Vec2): void => {
+        this.addHandle(clickHandle(ev, pt));
+
+        this.points.push( getSvgPoint(ev, null) );
+
+        if(this.handles.length == 2){
+
+            msg(`b-spline ${this.points.length}`);
+            this.drawPath();
+            this.finishTool();
+        }
+    }
+
+    pointermove =(ev: PointerEvent) : void =>{
+        const pt = getSvgPoint(ev, null);
+
+        this.points.push(pt);
+        this.drawPath();
+    }
+
+    drawPath(){
+        const d0 = "M" + this.points.map(p => `${p.x},${p.y}`).join(" ");
+        this.paths[0].setAttribute("d", d0);
+
+        const n = 10;
+        const v = [];
+        const v3 = [];
+
+        for(let idx = 0; idx < this.points.length ;idx += n ){
+            let p0 = this.points[idx];
+            let p1 : Vec2;
+            let p2 : Vec2;
+            let p3 : Vec2;
+
+            if(idx + n < this.points.length){
+                p1 = this.points[idx + n];
+            }
+            else{
+                p1 = p0;
+            }
+
+            if(idx + 2 * n < this.points.length){
+                p2 = this.points[idx + 2 * n];
+            }
+            else{
+                p2 = p1;
+            }
+
+            if(idx + 3 * n < this.points.length){
+                p3 = this.points[idx + 3 * n];
+            }
+            else{
+                p3 = p2;
+            }
+    
+
+            for(let i = 0; i < 10; i++){
+                let [b0, b1, b2, b3] = BSpline.Bs[i];
+
+                let x = p0.x * b3 + p1.x * b2 + p2.x * b1 + p3.x * b0; 
+                let y = p0.y * b3 + p1.y * b2 + p2.y * b1 + p3.y * b0; 
+                v.push([x,y]);
+            }
+
+            let p02 = p0.divide(2/3, p1);
+            let p11 = p1.divide(1/3, p2);
+            let p12 = p1.divide(2/3, p2);
+            let p21 = p2.divide(1/3, p3);
+
+            let a   = p02.divide(0.5, p11);
+            let b   = p12.divide(0.5, p21);
+
+            v3.push(`M${a.x} ${a.y} C ${p11.x} ${p11.y}, ${p12.x} ${p12.y}, ${b.x} ${b.y}`);
+        }
+
+        if(2 <= v.length){
+
+            const d1 = "M" + v.map(([x,y]) => `${x},${y}`).join(" ");
+            this.paths[1].setAttribute("d", d1);
+        }
+
+        if(v3.length != 0){
+
+            const d2 = v3.join(" ");
+            this.paths[2].setAttribute("d", d2);
+        }
+    }
+
+    B0(t: number){
+        return BSpline.six * t * t * t;
+    }
+
+    B1(t: number){
+        const t2 = t * t;
+        return BSpline.six * (- 3 * t * t2 + 12 * t2 - 12 * t + 4 );
+    }
+
+    B2(t: number){
+        const t2 = t * t;
+        return BSpline.six * ( 3 * t * t2 - 24 * t2 + 60 * t - 44 );
+    }
+
+    B3(t: number){
+        const t4 = t - 4
+        return - BSpline.six * t4 * t4 * t4;
     }
 }
 

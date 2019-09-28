@@ -390,7 +390,7 @@ export function initManebu(in_editor: boolean){
     C = A.dot(A.inv());
     C.print("A A~");
     
-    for(let n = 3; n < 1000; n+=10){
+    for(let n = 50; n <= 300; n+=50){
         let v = [];
         v.push((new Date()).getTime());
 
