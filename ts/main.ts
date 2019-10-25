@@ -390,35 +390,36 @@ export function initManebu(in_editor: boolean){
     C = A.dot(A.inv());
     C.print("A A~");
     
-    for(let n = 50; n <= 300; n+=50){
-        let v = [];
-        v.push((new Date()).getTime());
+    for(let index of range(10)){
+        for(let n = 50; n <= 300; n+=50){
+            let v = [];
+            v.push((new Date()).getTime());
 
-        A = new Mat(n, n, range(n * n).map(x => 2 * Math.random() - 1));
-        v.push((new Date()).getTime());
+            A = new Mat(n, n, range(n * n).map(x => 2 * Math.random() - 1));
+            v.push((new Date()).getTime());
 
-        B = A.inv();
-        v.push((new Date()).getTime());
+            B = A.inv();
+            v.push((new Date()).getTime());
 
-        C = A.dot(B);
-        v.push((new Date()).getTime());
+            C = A.dot(B);
+            v.push((new Date()).getTime());
 
-        let D = Mat.I(n);
-        v.push((new Date()).getTime());
+            let D = Mat.I(n);
+            v.push((new Date()).getTime());
 
-        let E = C.sub(D);
-        v.push((new Date()).getTime());
+            let E = C.sub(D);
+            v.push((new Date()).getTime());
 
-        let F = E.abs();
-        v.push((new Date()).getTime());
+            let F = E.abs();
+            v.push((new Date()).getTime());
 
-        let diff = F.max();
-        v.push((new Date()).getTime());
+            let diff = F.max();
+            v.push((new Date()).getTime());
 
-        let s = range(v.length - 1).map(i => "" + (v[i+1] - v[i])).join(", ");
+            let s = range(v.length - 1).map(i => "" + (v[i+1] - v[i])).join(", ");
 
-        msg(`diff ${n}: ${s} :${diff}`);
-
+            msg(`diff ${n}: ${s} :${diff}`);
+        }
     }
 
     initFirebase();
